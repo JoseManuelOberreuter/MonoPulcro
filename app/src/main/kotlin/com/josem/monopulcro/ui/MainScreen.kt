@@ -4,6 +4,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -137,11 +138,12 @@ fun MainScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1E293B)
                     )
-                    IconButton(
-                        onClick = onAddTask,
+                    Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .background(Color(0xFF0EA5E9), RoundedCornerShape(10.dp))
+                            .background(WaveColor, RoundedCornerShape(10.dp))
+                            .clickable { onAddTask() },
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
