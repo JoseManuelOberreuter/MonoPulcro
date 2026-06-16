@@ -22,10 +22,11 @@ data class TaskUiState(
 data class MonkeyUiState(
     val streak: Int = 0,
     val bananas: Int = 0,
-    val hasGlasses: Boolean = false,
     val isCleanToday: Boolean = false,
     val streakBroken: Boolean = false,
     val missedDaysCount: Int = 0,
+    val ownedAccessories: Set<String> = emptySet(),
+    val equippedAccessory: String? = null,
     /** Tareas programadas para HOY con su estado de completado */
     val todayTasks: List<TaskUiState> = emptyList(),
     /** Todas las tareas para la pantalla de gestión */
@@ -79,11 +80,19 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // ─── Otras acciones ───────────────────────────────────────────────────────
+    // ─── Tienda ───────────────────────────────────────────────────────────────
 
-    fun buyGlasses() {
+    fun buyAccessory(accessoryId: String) {
         viewModelScope.launch {
-            manager.buyGlasses()
+            manager.buyAccessory(accessoryId)
+            refreshState()
+            updateWidget()
+        }
+    }
+
+    fun useAccessory(accessoryId: String) {
+        viewModelScope.launch {
+            manager.useAccessory(accessoryId)
             refreshState()
             updateWidget()
         }
@@ -107,17 +116,18 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     private fun refreshState(justEarnedBanana: Boolean = false) {
         _uiState.update {
             MonkeyUiState(
-                streak         = manager.streakCount,
-                bananas        = manager.bananas,
-                hasGlasses     = manager.hasGlasses,
-                isCleanToday   = manager.isCleanToday,
-                streakBroken   = manager.streakBroken,
-                missedDaysCount = manager.missedDaysCount,
-                todayTasks     = manager.todayTaskStates.map { (task, done) ->
+                streak            = manager.streakCount,
+                bananas           = manager.bananas,
+                isCleanToday      = manager.isCleanToday,
+                streakBroken      = manager.streakBroken,
+                missedDaysCount   = manager.missedDaysCount,
+                ownedAccessories  = manager.ownedAccessories,
+                equippedAccessory = manager.equippedAccessory,
+                todayTasks        = manager.todayTaskStates.map { (task, done) ->
                     TaskUiState(task, done)
                 },
-                allTasks       = manager.loadTasks(),
-                justEarnedBanana = justEarnedBanana
+                allTasks          = manager.loadTasks(),
+                justEarnedBanana  = justEarnedBanana
             )
         }
     }

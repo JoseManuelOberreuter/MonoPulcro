@@ -69,11 +69,15 @@ class MonkeyStateManager(private val context: Context) {
             return today.all { isTaskCompleted(it.id) }
         }
 
-    val streakCount: Int   get() = prefs.getInt(KEY_STREAK, 0)
-    val bananas: Int       get() = prefs.getInt(KEY_BANANAS, 0)
-    val hasGlasses: Boolean get() = prefs.getBoolean(KEY_HAS_GLASSES, false)
+    val streakCount: Int  get() = prefs.getInt(KEY_STREAK, 0)
+    val bananas: Int      get() = prefs.getInt(KEY_BANANAS, 0)
     val streakBroken: Boolean get() = prefs.getBoolean(KEY_STREAK_BROKEN, false)
     val missedDaysCount: Int  get() = prefs.getInt(KEY_MISSED_DAYS, 0)
+
+    val ownedAccessories: Set<String>
+        get() = prefs.getStringSet(KEY_OWNED_ACCESSORIES, emptySet()) ?: emptySet()
+    val equippedAccessory: String?
+        get() = prefs.getString(KEY_EQUIPPED_ACCESSORY, "").takeIf { it?.isNotEmpty() == true }
 
     // ─── Reset diario ──────────────────────────────────────────────────────────
 
@@ -160,13 +164,19 @@ class MonkeyStateManager(private val context: Context) {
         }
     }
 
-    fun buyGlasses(): Boolean {
-        if (bananas < 10 || hasGlasses) return false
+    fun buyAccessory(accessoryId: String): Boolean {
+        val item = ACCESSORIES.find { it.id == accessoryId } ?: return false
+        if (bananas < item.price || accessoryId in ownedAccessories) return false
+        val newOwned = ownedAccessories.toMutableSet().also { it.add(accessoryId) }
         prefs.edit()
-            .putInt(KEY_BANANAS, bananas - 10)
-            .putBoolean(KEY_HAS_GLASSES, true)
+            .putInt(KEY_BANANAS, bananas - item.price)
+            .putStringSet(KEY_OWNED_ACCESSORIES, newOwned)
             .apply()
         return true
+    }
+
+    fun useAccessory(accessoryId: String) {
+        prefs.edit().putString(KEY_EQUIPPED_ACCESSORY, accessoryId).apply()
     }
 
     // ─── DEBUG ─────────────────────────────────────────────────────────────────
@@ -215,15 +225,25 @@ class MonkeyStateManager(private val context: Context) {
     // ─── Constantes ────────────────────────────────────────────────────────────
 
     companion object {
-        const val PREFS_NAME       = "monkey_prefs"
-        const val KEY_STREAK       = "streakCount"
-        const val KEY_BANANAS      = "bananas"
-        const val KEY_HAS_GLASSES  = "hasGlasses"
-        const val KEY_LAST_RESET   = "lastResetDate"
-        const val KEY_REWARD_GIVEN = "rewardGivenToday"
-        const val KEY_STREAK_COUNTED = "streakCountedToday"
-        const val KEY_STREAK_BROKEN  = "streakBroken"
-        const val KEY_MISSED_DAYS    = "missedDaysCount"
-        const val KEY_TASKS          = "tasksJson"
+        const val PREFS_NAME           = "monkey_prefs"
+        const val KEY_STREAK           = "streakCount"
+        const val KEY_BANANAS          = "bananas"
+        const val KEY_LAST_RESET       = "lastResetDate"
+        const val KEY_REWARD_GIVEN     = "rewardGivenToday"
+        const val KEY_STREAK_COUNTED   = "streakCountedToday"
+        const val KEY_STREAK_BROKEN    = "streakBroken"
+        const val KEY_MISSED_DAYS      = "missedDaysCount"
+        const val KEY_TASKS            = "tasksJson"
+        const val KEY_OWNED_ACCESSORIES  = "ownedAccessories"
+        const val KEY_EQUIPPED_ACCESSORY = "equippedAccessory"
+
+        data class AccessoryItem(val id: String, val name: String, val price: Int)
+
+        val ACCESSORIES = listOf(
+            AccessoryItem("glasses",   "Lentes",     3),
+            AccessoryItem("hat",       "Gorro",       7),
+            AccessoryItem("crown",     "Corona",     14),
+            AccessoryItem("astronaut", "Astronauta", 30)
+        )
     }
 }

@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -42,6 +43,7 @@ private val WaveColor = Color(0xFF7DD3FC)
 fun MainScreen(
     onAddTask: () -> Unit,
     onEditTask: (taskId: String) -> Unit,
+    onOpenShop: () -> Unit,
     vm: MonkeyViewModel = viewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -87,24 +89,44 @@ fun MainScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     BananaCounter(count = state.bananas)
+                    ShopButton(onClick = onOpenShop)
                     StreakCounter(streak = state.streak)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // ── Imagen del mono ────────────────────────────────────────────
-                Image(
-                    painter = painterResource(
-                        id = resolveMonkeyImage(
-                            state.isCleanToday,
-                            state.hasGlasses,
-                            state.streakBroken,
-                            state.missedDaysCount
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(240.dp)
+                ) {
+                    Canvas(modifier = Modifier.size(230.dp)) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.0f to Color(0x40000000),
+                                    0.45f to Color(0x22000000),
+                                    0.75f to Color(0x0C000000),
+                                    1.0f to Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.minDimension / 2
+                            )
                         )
-                    ),
-                    contentDescription = "Mono Pulcro",
-                    modifier = Modifier.size(220.dp)
-                )
+                    }
+                    Image(
+                        painter = painterResource(
+                            id = resolveMonkeyImage(
+                                state.isCleanToday,
+                                state.equippedAccessory,
+                                state.streakBroken,
+                                state.missedDaysCount
+                            )
+                        ),
+                        contentDescription = "Mono Pulcro",
+                        modifier = Modifier.size(220.dp)
+                    )
+                }
 
                 Text(
                     text = when {
@@ -173,14 +195,6 @@ fun MainScreen(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
-
-                GlassesSection(
-                    hasGlasses  = state.hasGlasses,
-                    bananas     = state.bananas,
-                    onBuyGlasses = { vm.buyGlasses() }
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
 
                 DebugPanel(vm)
 
@@ -435,49 +449,14 @@ private fun StreakCounter(streak: Int) {
 }
 
 @Composable
-private fun GlassesSection(
-    hasGlasses: Boolean,
-    bananas: Int,
-    onBuyGlasses: () -> Unit
-) {
-    if (hasGlasses) {
-        Text(
-            text = "😎 ¡El mono ya tiene sus lentes!",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF7C3AED),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-    } else {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "Compra los lentes por 🍌 10 bananas",
-                fontSize = 14.sp,
-                color = Color(0xFF94A3B8),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Button(
-                onClick = onBuyGlasses,
-                enabled = bananas >= 10,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF7C3AED),
-                    disabledContainerColor = Color(0xFFE2E8F0)
-                )
-            ) {
-                Text(
-                    text = if (bananas >= 10) "😎 Comprar lentes" else "🍌 $bananas / 10 bananas",
-                    fontSize = 15.sp,
-                    color = if (bananas >= 10) Color.White else Color(0xFF94A3B8)
-                )
-            }
-        }
-    }
+private fun ShopButton(onClick: () -> Unit) {
+    Image(
+        painter = painterResource(R.drawable.cara_mono),
+        contentDescription = "Tienda",
+        modifier = Modifier
+            .size(40.dp)
+            .clickable { onClick() }
+    )
 }
 
 // ─── DEBUG ────────────────────────────────────────────────────────────────────
@@ -551,14 +530,16 @@ private fun DrawScope.drawBottomWaves(color: Color) {
 
 private fun resolveMonkeyImage(
     isClean: Boolean,
-    hasGlasses: Boolean,
+    equippedAccessory: String?,
     streakBroken: Boolean = false,
     missedDays: Int = 0
 ): Int = when {
-    isClean && hasGlasses -> R.drawable.mono_cool
-    isClean               -> R.drawable.mono_pulcro
-    missedDays >= 3       -> R.drawable.mono_sucio_3
-    streakBroken          -> R.drawable.mono_sucio_2
-    hasGlasses            -> R.drawable.mono_sucio_2
-    else                  -> R.drawable.mono_sucio_1
+    isClean && equippedAccessory == "glasses"   -> R.drawable.mono_cool
+    isClean && equippedAccessory == "hat"       -> R.drawable.mono_gorro
+    isClean && equippedAccessory == "crown"     -> R.drawable.mono_corona
+    isClean && equippedAccessory == "astronaut" -> R.drawable.mono_astronauta
+    isClean                                     -> R.drawable.mono_pulcro
+    missedDays >= 3                             -> R.drawable.mono_sucio_3
+    streakBroken                                -> R.drawable.mono_sucio_2
+    else                                        -> R.drawable.mono_sucio_1
 }

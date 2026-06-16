@@ -23,12 +23,12 @@ class MonkeyWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val manager = MonkeyStateManager(context)
 
-        val streak       = manager.streakCount
-        val hasGlasses   = manager.hasGlasses
-        val isClean      = manager.isCleanToday
-        val streakBroken = manager.streakBroken
-        val missedDays   = manager.missedDaysCount
-        val imageRes     = resolveMonkeyImage(isClean, hasGlasses, streakBroken, missedDays)
+        val streak            = manager.streakCount
+        val equippedAccessory = manager.equippedAccessory
+        val isClean           = manager.isCleanToday
+        val streakBroken      = manager.streakBroken
+        val missedDays        = manager.missedDaysCount
+        val imageRes          = resolveMonkeyImage(isClean, equippedAccessory, streakBroken, missedDays)
 
         provideContent {
             WidgetContent(streak = streak, isClean = isClean, monkeyImageRes = imageRes)
@@ -84,15 +84,17 @@ class MonkeyWidget : GlanceAppWidget() {
 
     private fun resolveMonkeyImage(
         isClean: Boolean,
-        hasGlasses: Boolean,
+        equippedAccessory: String?,
         streakBroken: Boolean = false,
         missedDays: Int = 0
     ): Int = when {
-        isClean && hasGlasses -> R.drawable.mono_cool
-        isClean               -> R.drawable.mono_pulcro
-        missedDays >= 3       -> R.drawable.mono_sucio_3
-        streakBroken          -> R.drawable.mono_sucio_2
-        hasGlasses            -> R.drawable.mono_sucio_2
-        else                  -> R.drawable.mono_sucio_1
+        isClean && equippedAccessory == "glasses"   -> R.drawable.mono_cool
+        isClean && equippedAccessory == "hat"       -> R.drawable.mono_gorro
+        isClean && equippedAccessory == "crown"     -> R.drawable.mono_corona
+        isClean && equippedAccessory == "astronaut" -> R.drawable.mono_astronauta
+        isClean                                     -> R.drawable.mono_pulcro
+        missedDays >= 3                             -> R.drawable.mono_sucio_3
+        streakBroken                                -> R.drawable.mono_sucio_2
+        else                                        -> R.drawable.mono_sucio_1
     }
 }
