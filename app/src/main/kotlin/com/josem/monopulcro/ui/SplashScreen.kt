@@ -83,7 +83,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Tu mono siempre limpio 🐒",
+                text = "Tu mono siempre pulcro",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Normal,
                 color = Color(0xFF94A3B8),

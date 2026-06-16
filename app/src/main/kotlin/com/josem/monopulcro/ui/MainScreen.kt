@@ -132,8 +132,8 @@ fun MainScreen(
                     text = when {
                         state.allTasks.isEmpty()                       -> "¡Agrega tareas para empezar!"
                         state.todayTasks.isEmpty()                     -> "¡Hoy es día de descanso! 😎"
-                        state.isCleanToday && state.streak > 0         -> "¡${state.streak} días pulcro! 🎉"
-                        state.isCleanToday                             -> "¡Pulcro por hoy!"
+                        state.isCleanToday && state.streak > 0         -> "${state.streak} días pulcro!"
+                        state.isCleanToday                             -> "Pulcro por hoy!"
                         else                                           -> "Hay tareas pendientes..."
                     },
                     fontSize = 15.sp,
