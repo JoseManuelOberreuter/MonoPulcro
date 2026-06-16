@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MonoPulcro" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+    </style>
+
+    <style name="Theme.MonoPulcro.Splash" parent="Theme.SplashScreen">
+        <!-- Fondo blanco — consistente con la custom splash -->
+        <item name="windowSplashScreenBackground">#FFFFFF</item>
+        <!-- Mono dentro de un círculo celeste pálido -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <!-- Sin color extra detrás del ícono (ya lo maneja splash_icon.xml) -->
+        <item name="windowSplashScreenIconBackgroundColor">#FFFFFF</item>
+        <item name="postSplashScreenTheme">@style/Theme.MonoPulcro</item>
+    </style>
+</resources>

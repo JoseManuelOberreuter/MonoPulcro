@@ -1,0 +1,3 @@
+-keep class com.josem.monopulcro.widget.** { *; }
+-keepclassmembers class * extends androidx.glance.appwidget.GlanceAppWidget { *; }
+-keepclassmembers class * extends androidx.glance.appwidget.GlanceAppWidgetReceiver { *; }

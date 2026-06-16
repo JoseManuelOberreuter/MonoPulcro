@@ -1,0 +1,24 @@
+R_DEF: Internal format may change without notice
+local
+color background_cream
+color brown_dirty
+color green_clean
+color orange_streak
+color purple_hat
+color yellow_banana
+drawable banana
+drawable fuego
+drawable mono
+drawable mono_cool
+drawable mono_pulcro
+drawable mono_sucio_1
+drawable mono_sucio_2
+drawable mono_sucio_3
+drawable splash_branding
+drawable splash_icon
+layout widget_initial_layout
+string app_name
+string widget_description
+style Theme.MonoPulcro
+style Theme.MonoPulcro.Splash
+xml monkey_widget_info

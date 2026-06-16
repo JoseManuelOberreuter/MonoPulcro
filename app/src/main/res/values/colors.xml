@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background_cream">#FFF8F0</color>
+    <color name="green_clean">#4CAF50</color>
+    <color name="orange_streak">#FF6D00</color>
+    <color name="purple_hat">#6A1B9A</color>
+    <color name="yellow_banana">#E65100</color>
+    <color name="brown_dirty">#9E6B00</color>
+</resources>
