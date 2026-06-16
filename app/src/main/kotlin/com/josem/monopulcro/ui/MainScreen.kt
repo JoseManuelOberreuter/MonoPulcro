@@ -39,6 +39,42 @@ import kotlinx.coroutines.launch
 
 private val WaveColor = Color(0xFF7DD3FC)
 
+private val TIPS_PHRASES = listOf(
+    "7 días seguidos te dan 3 bananas extra",
+    "Un hogar limpio reduce el estrés en un 30%",
+    "Limpiar 15 min al día evita limpiezas de 3 horas",
+    "La cocina limpia después de cocinar evita plagas",
+    "Completa todas las tareas hoy y suma a tu racha",
+    "Los baños deben limpiarse al menos 1 vez por semana",
+    "Una cama tendida mejora tu productividad del día",
+    "Saca la basura antes de que huela: cada 2-3 días",
+    "Los gérmenes de la cocina superan a los del baño",
+    "Un espacio ordenado = una mente más clara",
+    "Pequeñas tareas diarias construyen grandes hábitos"
+    "Cuando el mono está sucio, no le gusta usar sus accesorios"
+
+)
+
+private val SUCIO1_PHRASES = listOf(
+    "Hoy no fue, mañana sí puede ser",
+    "El mono te está esperando, no lo decepciones!",
+    "Un día perdido no arruina un buen hábito",
+    "Tu mono necesita un baño, completa las tareas",
+    "La limpieza es un hábito, los hábitos se construyen",
+    "Cuando el mono está sucio, no le gusta usar sus accesorios",
+    "7 días seguidos te dan 3 bananas extra"
+)
+
+private val SUCIO2_PHRASES = listOf(
+    "Tu mono te extraña, dale una razón para sonreír",
+    "El mono lleva días triste, hoy puedes cambiarlo",
+    "Un pequeño esfuerzo hoy alegra al mono mañana",
+    "Míralo, está esperando que vuelvas. Tú puedes!",
+    "El mono confía en ti, no lo dejes más tiempo así",
+    "Cuando el mono está sucio, no le gusta usar sus accesorios"
+
+)
+
 @Composable
 fun MainScreen(
     onAddTask: () -> Unit,
@@ -48,6 +84,9 @@ fun MainScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     var showCelebration by remember { mutableStateOf(false) }
+    val tipIndex    = remember { TIPS_PHRASES.indices.random() }
+    val sucio1Index = remember { SUCIO1_PHRASES.indices.random() }
+    val sucio2Index = remember { SUCIO2_PHRASES.indices.random() }
 
     // Refresca el estado al volver a esta pantalla (ej. después de editar/borrar una tarea)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -130,18 +169,21 @@ fun MainScreen(
 
                 Text(
                     text = when {
-                        state.allTasks.isEmpty()                       -> "¡Agrega tareas para empezar!"
-                        state.todayTasks.isEmpty()                     -> "¡Hoy es día de descanso! 😎"
-                        state.isCleanToday && state.streak > 0         -> "${state.streak} días pulcro!"
-                        state.isCleanToday                             -> "Pulcro por hoy!"
-                        else                                           -> "Hay tareas pendientes..."
+                        state.allTasks.isEmpty()                          -> "¡Agrega tareas para empezar!"
+                        state.todayTasks.isEmpty()                        -> "¡Hoy es día de descanso! 😎"
+                        state.isCleanToday                                -> TIPS_PHRASES[tipIndex]
+                        state.missedDaysCount >= 2 || state.streakBroken  -> SUCIO2_PHRASES[sucio2Index]
+                        state.missedDaysCount == 1                        -> SUCIO1_PHRASES[sucio1Index]
+                        else                                              -> "Hay tareas pendientes..."
                     },
                     fontSize = 15.sp,
                     color = when {
-                        state.allTasks.isEmpty()   -> Color(0xFF7C3AED)
-                        state.todayTasks.isEmpty() -> Color(0xFF0369A1)
-                        state.isCleanToday         -> Color(0xFF16A34A)
-                        else                       -> Color(0xFF92400E)
+                        state.allTasks.isEmpty()                          -> Color(0xFF7C3AED)
+                        state.todayTasks.isEmpty()                        -> Color(0xFF0369A1)
+                        state.isCleanToday                                -> Color(0xFF16A34A)
+                        state.missedDaysCount >= 2 || state.streakBroken  -> Color(0xFFB91C1C)
+                        state.missedDaysCount == 1                        -> Color(0xFF92400E)
+                        else                                              -> Color(0xFF92400E)
                     },
                     fontWeight = FontWeight.Medium
                 )
