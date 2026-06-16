@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.josem.monopulcro.data.MonkeyStateManager
+import com.josem.monopulcro.data.Task
 import com.josem.monopulcro.widget.MonkeyWidgetReceiver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +12,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-// ─── Estado inmutable de la UI ─────────────────────────────────────────────────
+// ─── Modelos de estado ────────────────────────────────────────────────────────
+
+data class TaskUiState(
+    val task: Task,
+    val isCompleted: Boolean
+)
 
 data class MonkeyUiState(
     val streak: Int = 0,
@@ -20,8 +26,11 @@ data class MonkeyUiState(
     val isCleanToday: Boolean = false,
     val streakBroken: Boolean = false,
     val missedDaysCount: Int = 0,
-    val taskStates: List<Boolean> = List(MonkeyStateManager.TASKS.size) { false },
-    /** Evento puntual: se acaba de ganar una banana (para mostrar feedback) */
+    /** Tareas programadas para HOY con su estado de completado */
+    val todayTasks: List<TaskUiState> = emptyList(),
+    /** Todas las tareas para la pantalla de gestión */
+    val allTasks: List<Task> = emptyList(),
+    /** Evento puntual: se acaba de ganar una banana (dispara animación) */
     val justEarnedBanana: Boolean = false
 )
 
@@ -39,15 +48,38 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         refreshState()
     }
 
-    // ─── Acciones públicas ─────────────────────────────────────────────────────
+    // ─── Tareas ────────────────────────────────────────────────────────────────
 
-    fun toggleTask(index: Int) {
+    fun toggleTask(taskId: String) {
         viewModelScope.launch {
-            val earnedBanana = manager.toggleTask(index)
-            refreshState(justEarnedBanana = earnedBanana)
+            val earned = manager.toggleTask(taskId)
+            refreshState(justEarnedBanana = earned)
             updateWidget()
         }
     }
+
+    fun addTask(task: Task) {
+        viewModelScope.launch {
+            manager.addTask(task)
+            refreshState()
+        }
+    }
+
+    fun updateTask(task: Task) {
+        viewModelScope.launch {
+            manager.updateTask(task)
+            refreshState()
+        }
+    }
+
+    fun deleteTask(taskId: String) {
+        viewModelScope.launch {
+            manager.deleteTask(taskId)
+            refreshState()
+        }
+    }
+
+    // ─── Otras acciones ───────────────────────────────────────────────────────
 
     fun buyGlasses() {
         viewModelScope.launch {
@@ -57,35 +89,40 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /** Descarta el evento puntual de banana ganada */
     fun consumeBananaEvent() {
         _uiState.update { it.copy(justEarnedBanana = false) }
     }
+
+    /** Fuerza una re-lectura del estado. Llamar al volver a esta pantalla. */
+    fun refresh() = refreshState()
+
+    // ─── DEBUG ─────────────────────────────────────────────────────────────────
+
+    fun debugMissedDay()    { viewModelScope.launch { manager.debugSimulateMissedDay();    refreshState(); updateWidget() } }
+    fun debugCompletedDay() { viewModelScope.launch { manager.debugSimulateCompletedDay(); refreshState(); updateWidget() } }
+    fun debugReset()        { viewModelScope.launch { manager.debugReset();                refreshState(); updateWidget() } }
 
     // ─── Helpers privados ──────────────────────────────────────────────────────
 
     private fun refreshState(justEarnedBanana: Boolean = false) {
         _uiState.update {
             MonkeyUiState(
-                streak = manager.streakCount,
-                bananas = manager.bananas,
-                hasGlasses = manager.hasGlasses,
-                isCleanToday = manager.isCleanToday,
-                streakBroken = manager.streakBroken,
+                streak         = manager.streakCount,
+                bananas        = manager.bananas,
+                hasGlasses     = manager.hasGlasses,
+                isCleanToday   = manager.isCleanToday,
+                streakBroken   = manager.streakBroken,
                 missedDaysCount = manager.missedDaysCount,
-                taskStates = manager.taskStates,
+                todayTasks     = manager.todayTaskStates.map { (task, done) ->
+                    TaskUiState(task, done)
+                },
+                allTasks       = manager.loadTasks(),
                 justEarnedBanana = justEarnedBanana
             )
         }
     }
 
-    // ─── DEBUG ─────────────────────────────────────────────────────────────────
-    fun debugMissedDay() { viewModelScope.launch { manager.debugSimulateMissedDay(); refreshState(); updateWidget() } }
-    fun debugCompletedDay() { viewModelScope.launch { manager.debugSimulateCompletedDay(); refreshState(); updateWidget() } }
-    fun debugReset() { viewModelScope.launch { manager.debugReset(); refreshState(); updateWidget() } }
-
     private fun updateWidget() {
         MonkeyWidgetReceiver.updateWidget(getApplication())
     }
-
 }

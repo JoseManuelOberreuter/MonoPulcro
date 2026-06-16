@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,16 +19,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.josem.monopulcro.R
-import com.josem.monopulcro.data.MonkeyStateManager
-import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -33,10 +38,23 @@ import kotlinx.coroutines.launch
 private val WaveColor = Color(0xFF7DD3FC)
 
 @Composable
-fun MainScreen(vm: MonkeyViewModel = viewModel()) {
+fun MainScreen(
+    onAddTask: () -> Unit,
+    onEditTask: (taskId: String) -> Unit,
+    vm: MonkeyViewModel = viewModel()
+) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-
     var showCelebration by remember { mutableStateOf(false) }
+
+    // Refresca el estado al volver a esta pantalla (ej. después de editar/borrar una tarea)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) vm.refresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(state.justEarnedBanana) {
         if (state.justEarnedBanana) {
@@ -76,7 +94,12 @@ fun MainScreen(vm: MonkeyViewModel = viewModel()) {
                 // ── Imagen del mono ────────────────────────────────────────────
                 Image(
                     painter = painterResource(
-                        id = resolveMonkeyImage(state.isCleanToday, state.hasGlasses, state.streakBroken, state.missedDaysCount)
+                        id = resolveMonkeyImage(
+                            state.isCleanToday,
+                            state.hasGlasses,
+                            state.streakBroken,
+                            state.missedDaysCount
+                        )
                     ),
                     contentDescription = "Mono Pulcro",
                     modifier = Modifier.size(220.dp)
@@ -84,67 +107,192 @@ fun MainScreen(vm: MonkeyViewModel = viewModel()) {
 
                 Text(
                     text = when {
-                        state.isCleanToday && state.streak > 0 -> "¡${state.streak} días limpio! 🎉"
-                        state.isCleanToday -> "¡Limpio por hoy!"
-                        else -> "Hay tareas pendientes..."
+                        state.allTasks.isEmpty()                       -> "¡Agrega tareas para empezar!"
+                        state.todayTasks.isEmpty()                     -> "¡Hoy es día de descanso! 😎"
+                        state.isCleanToday && state.streak > 0         -> "¡${state.streak} días limpio! 🎉"
+                        state.isCleanToday                             -> "¡Limpio por hoy!"
+                        else                                           -> "Hay tareas pendientes..."
                     },
                     fontSize = 15.sp,
-                    color = if (state.isCleanToday) Color(0xFF16A34A) else Color(0xFF92400E),
+                    color = when {
+                        state.allTasks.isEmpty()   -> Color(0xFF7C3AED)
+                        state.todayTasks.isEmpty() -> Color(0xFF0369A1)
+                        state.isCleanToday         -> Color(0xFF16A34A)
+                        else                       -> Color(0xFF92400E)
+                    },
                     fontWeight = FontWeight.Medium
                 )
 
                 Spacer(modifier = Modifier.height(28.dp))
 
-                // ── Lista de tareas ────────────────────────────────────────────
-                Text(
-                    text = "Tareas del día",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    color = Color(0xFF1E293B)
-                )
-
-                MonkeyStateManager.TASKS.forEachIndexed { index, taskName ->
-                    TaskCheckboxRow(
-                        taskName = taskName,
-                        isChecked = state.taskStates.getOrElse(index) { false },
-                        onCheckedChange = { vm.toggleTask(index) }
+                // ── Sección tareas ─────────────────────────────────────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Tareas de hoy",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E293B)
                     )
+                    IconButton(
+                        onClick = onAddTask,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Color(0xFF0EA5E9), RoundedCornerShape(10.dp))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Agregar tarea",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Lista dinámica de tareas de hoy
+                if (state.allTasks.isEmpty()) {
+                    EmptyTasksHint(onAddTask)
+                } else if (state.todayTasks.isEmpty()) {
+                    RestDayCard()
+                } else {
+                    state.todayTasks.forEach { taskState ->
+                        TaskCheckboxRow(
+                            taskName   = taskState.task.name,
+                            isChecked  = taskState.isCompleted,
+                            onChecked  = { vm.toggleTask(taskState.task.id) },
+                            onEdit     = { onEditTask(taskState.task.id) }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
                 GlassesSection(
-                    hasGlasses = state.hasGlasses,
-                    bananas = state.bananas,
+                    hasGlasses  = state.hasGlasses,
+                    bananas     = state.bananas,
                     onBuyGlasses = { vm.buyGlasses() }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ── DEBUG (quitar antes de publicar) ──────────────────────────
                 DebugPanel(vm)
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
 
-        // ── Celebración pantalla completa ──────────────────────────────────────
         if (showCelebration) {
             FireCelebrationOverlay(onFinished = { showCelebration = false })
         }
     }
 }
 
-// ─── Datos de cada partícula de fuego ────────────────────────────────────────
+// ─── Estados vacíos ───────────────────────────────────────────────────────────
+
+@Composable
+private fun EmptyTasksHint(onAddTask: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF0F9FF), RoundedCornerShape(16.dp))
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("🐒", fontSize = 36.sp)
+        Text(
+            text = "Aún no tienes tareas. ¡Agrega la primera!",
+            fontSize = 14.sp,
+            color = Color(0xFF0369A1),
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Medium
+        )
+        TextButton(onClick = onAddTask) {
+            Text("+ Agregar tarea", color = Color(0xFF0EA5E9), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun RestDayCard() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF0FDF4), RoundedCornerShape(16.dp))
+            .padding(20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "No hay tareas programadas para hoy. ¡Disfruta tu descanso! 🎉",
+            fontSize = 14.sp,
+            color = Color(0xFF16A34A),
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+// ─── Fila de tarea ────────────────────────────────────────────────────────────
+
+@Composable
+private fun TaskCheckboxRow(
+    taskName: String,
+    isChecked: Boolean,
+    onChecked: () -> Unit,
+    onEdit: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .background(
+                color = if (isChecked) Color(0xFFDCFCE7) else Color(0xFFF8FAFC),
+                shape = RoundedCornerShape(14.dp)
+            )
+            .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked  = isChecked,
+            onCheckedChange = { onChecked() },
+            colors = CheckboxDefaults.colors(
+                checkedColor   = Color(0xFF16A34A),
+                uncheckedColor = Color(0xFFCBD5E1)
+            )
+        )
+        Text(
+            text = taskName,
+            fontSize = 16.sp,
+            color  = if (isChecked) Color(0xFF15803D) else Color(0xFF334155),
+            fontWeight = if (isChecked) FontWeight.Medium else FontWeight.Normal,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(
+            onClick = onEdit,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Editar",
+                tint = Color(0xFFCBD5E1),
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+// ─── Partículas de fuego ──────────────────────────────────────────────────────
 
 private data class FireParticle(
-    val xFrac: Float,       // posición horizontal (0..1 del ancho de pantalla)
-    val sizeDp: Float,      // tamaño en dp
-    val delayMs: Long,      // retraso de inicio
-    val durationMs: Int     // duración del viaje hacia arriba
+    val xFrac: Float,
+    val sizeDp: Float,
+    val delayMs: Long,
+    val durationMs: Int
 )
 
 private val FIRE_PARTICLES = listOf(
@@ -157,12 +305,9 @@ private val FIRE_PARTICLES = listOf(
     FireParticle(xFrac = 0.92f, sizeDp = 110f, delayMs = 220L, durationMs = 1020),
 )
 
-// ─── Overlay de celebración ───────────────────────────────────────────────────
-
 @Composable
 private fun FireCelebrationOverlay(onFinished: () -> Unit) {
     val overlayAlpha  = remember { Animatable(0f) }
-    // Cada partícula tiene su propio viaje (en dp, negativo = hacia arriba)
     val travels = remember { FIRE_PARTICLES.map { Animatable(0f) } }
     val alphas  = remember { FIRE_PARTICLES.map { Animatable(0f) } }
     val plusOneY     = remember { Animatable(0f) }
@@ -171,20 +316,15 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
     LaunchedEffect(Unit) {
         overlayAlpha.animateTo(1f, tween(150))
 
-        // Todas las partículas suben en paralelo con distintos delays
         coroutineScope {
             FIRE_PARTICLES.forEachIndexed { i, p ->
                 launch {
                     delay(p.delayMs)
                     alphas[i].animateTo(1f, tween(80))
-                    travels[i].animateTo(
-                        targetValue = -720f,   // sube ~720dp
-                        animationSpec = tween(p.durationMs, easing = EaseOut)
-                    )
+                    travels[i].animateTo(-720f, tween(p.durationMs, easing = EaseOut))
                     alphas[i].animateTo(0f, tween(220))
                 }
             }
-            // +1 sube desde el centro inferior
             launch {
                 delay(160L)
                 plusOneAlpha.animateTo(1f, tween(140))
@@ -208,9 +348,7 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
 
         FIRE_PARTICLES.forEachIndexed { i, p ->
             val sizeDp = p.sizeDp.dp
-            // Centra cada fuego en su posición X
             val xOffset = widthDp * p.xFrac - sizeDp / 2
-
             Image(
                 painter = painterResource(R.drawable.fuego),
                 contentDescription = null,
@@ -219,14 +357,12 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
                     .align(Alignment.BottomStart)
                     .offset(x = xOffset)
                     .graphicsLayer {
-                        // travels en dp → convertir a px para graphicsLayer
                         translationY = with(density) { travels[i].value.dp.toPx() }
                         alpha = alphas[i].value
                     }
             )
         }
 
-        // Indicadores +1 (fuego y banana) flotando hacia arriba juntos
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -238,34 +374,21 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
                     alpha = plusOneAlpha.value
                 }
         ) {
-            // Banana +1
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     painter = painterResource(R.drawable.banana),
                     contentDescription = null,
                     modifier = Modifier.size(60.dp)
                 )
-                Text(
-                    text = "+1",
-                    fontSize = 62.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
-                )
+                Text("+1", fontSize = 62.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
             }
-
-            // Fuego +1
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     painter = painterResource(R.drawable.fuego),
                     contentDescription = null,
                     modifier = Modifier.size(70.dp)
                 )
-                Text(
-                    text = "+1",
-                    fontSize = 62.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
-                )
+                Text("+1", fontSize = 62.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
             }
         }
     }
@@ -305,41 +428,6 @@ private fun StreakCounter(streak: Int) {
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFFEA580C)
-        )
-    }
-}
-
-@Composable
-private fun TaskCheckboxRow(
-    taskName: String,
-    isChecked: Boolean,
-    onCheckedChange: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .background(
-                color = if (isChecked) Color(0xFFDCFCE7) else Color(0xFFF8FAFC),
-                shape = RoundedCornerShape(14.dp)
-            )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(
-            checked = isChecked,
-            onCheckedChange = { onCheckedChange() },
-            colors = CheckboxDefaults.colors(
-                checkedColor = Color(0xFF16A34A),
-                uncheckedColor = Color(0xFFCBD5E1)
-            )
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = taskName,
-            fontSize = 16.sp,
-            color = if (isChecked) Color(0xFF15803D) else Color(0xFF334155),
-            fontWeight = if (isChecked) FontWeight.Medium else FontWeight.Normal
         )
     }
 }
@@ -401,12 +489,7 @@ private fun DebugPanel(vm: MonkeyViewModel) {
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(
-            text = "⚙️ DEBUG",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF856404)
-        )
+        Text("⚙️ DEBUG", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF856404))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DebugButton("😴 Día perdido", Color(0xFFDC3545)) { vm.debugMissedDay() }
             DebugButton("✅ Día ganado",  Color(0xFF198754)) { vm.debugCompletedDay() }
@@ -462,7 +545,7 @@ private fun DrawScope.drawBottomWaves(color: Color) {
     )
 }
 
-// ─── Helper imagen ────────────────────────────────────────────────────────────
+// ─── Helper imagen del mono ───────────────────────────────────────────────────
 
 private fun resolveMonkeyImage(
     isClean: Boolean,
@@ -470,10 +553,10 @@ private fun resolveMonkeyImage(
     streakBroken: Boolean = false,
     missedDays: Int = 0
 ): Int = when {
-    isClean && hasGlasses  -> R.drawable.mono_cool
-    isClean                -> R.drawable.mono_pulcro
-    missedDays >= 3        -> R.drawable.mono_sucio_3   // 3+ días sin limpiar
-    streakBroken           -> R.drawable.mono_sucio_2   // racha rota (1-2 días)
-    hasGlasses             -> R.drawable.mono_sucio_2   // lentes pero sin limpiar
-    else                   -> R.drawable.mono_sucio_1
+    isClean && hasGlasses -> R.drawable.mono_cool
+    isClean               -> R.drawable.mono_pulcro
+    missedDays >= 3       -> R.drawable.mono_sucio_3
+    streakBroken          -> R.drawable.mono_sucio_2
+    hasGlasses            -> R.drawable.mono_sucio_2
+    else                  -> R.drawable.mono_sucio_1
 }

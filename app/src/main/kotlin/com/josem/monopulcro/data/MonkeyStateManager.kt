@@ -2,55 +2,120 @@ package com.josem.monopulcro.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.time.LocalDate
 
-class MonkeyStateManager(context: Context) {
+class MonkeyStateManager(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val gson = Gson()
 
-    // ─── Propiedades ───────────────────────────────────────────────────────────
+    // ─── Tareas ────────────────────────────────────────────────────────────────
 
-    val streakCount: Int get() = prefs.getInt(KEY_STREAK, 0)
-    val bananas: Int get() = prefs.getInt(KEY_BANANAS, 0)
+    fun loadTasks(): List<Task> {
+        val json = prefs.getString(KEY_TASKS, null) ?: return defaultTasks()
+        return try {
+            val type = object : TypeToken<List<Task>>() {}.type
+            gson.fromJson(json, type) ?: defaultTasks()
+        } catch (e: Exception) {
+            defaultTasks()
+        }
+    }
+
+    private fun saveTasks(tasks: List<Task>) {
+        prefs.edit().putString(KEY_TASKS, gson.toJson(tasks)).apply()
+    }
+
+    fun addTask(task: Task) {
+        val tasks = loadTasks().toMutableList()
+        tasks.add(task)
+        saveTasks(tasks)
+    }
+
+    fun updateTask(task: Task) {
+        val tasks = loadTasks().toMutableList()
+        val idx = tasks.indexOfFirst { it.id == task.id }
+        if (idx >= 0) tasks[idx] = task
+        saveTasks(tasks)
+    }
+
+    fun deleteTask(taskId: String) {
+        saveTasks(loadTasks().filter { it.id != taskId })
+        prefs.edit().remove(taskKey(taskId)).apply()
+    }
+
+    val todayTasks: List<Task>
+        get() {
+            val dow = LocalDate.now().dayOfWeek.value   // 1=Lun … 7=Dom
+            return loadTasks().filter { dow in it.scheduledDays }
+        }
+
+    fun isTaskCompleted(taskId: String): Boolean =
+        prefs.getBoolean(taskKey(taskId), false)
+
+    val todayTaskStates: List<Pair<Task, Boolean>>
+        get() = todayTasks.map { it to isTaskCompleted(it.id) }
+
+    // ─── Estado derivado ───────────────────────────────────────────────────────
+
+    val isCleanToday: Boolean
+        get() {
+            val all = loadTasks()
+            if (all.isEmpty()) return false          // 0 tareas → siempre sucio
+            val today = todayTasks
+            if (today.isEmpty()) return true         // día de descanso → limpio
+            return today.all { isTaskCompleted(it.id) }
+        }
+
+    val streakCount: Int   get() = prefs.getInt(KEY_STREAK, 0)
+    val bananas: Int       get() = prefs.getInt(KEY_BANANAS, 0)
     val hasGlasses: Boolean get() = prefs.getBoolean(KEY_HAS_GLASSES, false)
-    val isCleanToday: Boolean get() = taskStates.all { it }
-
-    /** true cuando la racha fue rota al no completar tareas el día anterior */
     val streakBroken: Boolean get() = prefs.getBoolean(KEY_STREAK_BROKEN, false)
+    val missedDaysCount: Int  get() = prefs.getInt(KEY_MISSED_DAYS, 0)
 
-    /** Días consecutivos sin completar tareas (racha negativa) */
-    val missedDaysCount: Int get() = prefs.getInt(KEY_MISSED_DAYS, 0)
-
-    val taskStates: List<Boolean>
-        get() = TASK_KEYS.map { prefs.getBoolean(it, false) }
-
-    // ─── Lógica de reset diario ────────────────────────────────────────────────
+    // ─── Reset diario ──────────────────────────────────────────────────────────
 
     fun checkAndResetForNewDay() {
         val today = LocalDate.now().toString()
         val lastReset = prefs.getString(KEY_LAST_RESET, "") ?: ""
-
         if (lastReset == today) return
 
         val streakAlreadyCounted = prefs.getBoolean(KEY_STREAK_COUNTED, false)
-        val wasCleanYesterday = taskStates.all { it }
+        val allTasks = loadTasks()
         val hadPreviousDay = lastReset.isNotEmpty()
 
         prefs.edit().apply {
             if (hadPreviousDay) {
-                if (streakAlreadyCounted) {
-                    // Completó ayer → racha sana, reset días perdidos
-                    putBoolean(KEY_STREAK_BROKEN, false)
-                    putInt(KEY_MISSED_DAYS, 0)
-                } else if (!wasCleanYesterday) {
-                    // No completó ayer → racha a 0, incrementar días perdidos
-                    putInt(KEY_STREAK, 0)
-                    putBoolean(KEY_STREAK_BROKEN, true)
-                    putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
+                val lastDow = LocalDate.parse(lastReset).dayOfWeek.value
+                val tasksForLastDay = allTasks.filter { lastDow in it.scheduledDays }
+
+                when {
+                    streakAlreadyCounted -> {
+                        // Completó ayer → racha sana
+                        putBoolean(KEY_STREAK_BROKEN, false)
+                        putInt(KEY_MISSED_DAYS, 0)
+                    }
+                    allTasks.isEmpty() -> {
+                        // Sin tareas → mono se ensucia igual (incentivo)
+                        putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
+                    }
+                    tasksForLastDay.isEmpty() -> {
+                        // Día de descanso ayer → racha intacta, sin cambios
+                    }
+                    else -> {
+                        val wasClean = tasksForLastDay.all { prefs.getBoolean(taskKey(it.id), false) }
+                        if (!wasClean) {
+                            putInt(KEY_STREAK, 0)
+                            putBoolean(KEY_STREAK_BROKEN, true)
+                            putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
+                        }
+                    }
                 }
             }
-            TASK_KEYS.forEach { key -> putBoolean(key, false) }
+            // Limpiar estados de completado del día anterior
+            allTasks.forEach { remove(taskKey(it.id)) }
             putBoolean(KEY_REWARD_GIVEN, false)
             putBoolean(KEY_STREAK_COUNTED, false)
             putString(KEY_LAST_RESET, today)
@@ -60,28 +125,28 @@ class MonkeyStateManager(context: Context) {
 
     // ─── Acciones del usuario ──────────────────────────────────────────────────
 
-    fun toggleTask(taskIndex: Int): Boolean {
-        require(taskIndex in TASK_KEYS.indices) { "Índice de tarea inválido: $taskIndex" }
-
+    /**
+     * Marca/desmarca una tarea. Devuelve true si se ganó recompensa (todas completadas).
+     */
+    fun toggleTask(taskId: String): Boolean {
         val rewardAlreadyGiven = prefs.getBoolean(KEY_REWARD_GIVEN, false)
-        val newState = !prefs.getBoolean(TASK_KEYS[taskIndex], false)
+        val newState = !prefs.getBoolean(taskKey(taskId), false)
+        prefs.edit().putBoolean(taskKey(taskId), newState).apply()
 
-        prefs.edit().putBoolean(TASK_KEYS[taskIndex], newState).apply()
+        val allTodayDone = todayTasks.isNotEmpty() && todayTasks.all { isTaskCompleted(it.id) }
 
         return when {
-            // Marcó la última tarea → recompensa + limpiar streakBroken
-            newState && isCleanToday && !rewardAlreadyGiven -> {
+            newState && allTodayDone && !rewardAlreadyGiven -> {
                 prefs.edit()
                     .putInt(KEY_BANANAS, bananas + 1)
                     .putInt(KEY_STREAK, streakCount + 1)
                     .putBoolean(KEY_REWARD_GIVEN, true)
                     .putBoolean(KEY_STREAK_COUNTED, true)
                     .putBoolean(KEY_STREAK_BROKEN, false)
-                    .putInt(KEY_MISSED_DAYS, 0)            // se redimió hoy
+                    .putInt(KEY_MISSED_DAYS, 0)
                     .apply()
                 true
             }
-            // Desmarcó estando todo completo → devolver recompensa
             !newState && rewardAlreadyGiven -> {
                 prefs.edit()
                     .putInt(KEY_BANANAS, maxOf(0, bananas - 1))
@@ -95,32 +160,40 @@ class MonkeyStateManager(context: Context) {
         }
     }
 
-    // ─── DEBUG (quitar antes de publicar) ─────────────────────────────────────
+    fun buyGlasses(): Boolean {
+        if (bananas < 10 || hasGlasses) return false
+        prefs.edit()
+            .putInt(KEY_BANANAS, bananas - 10)
+            .putBoolean(KEY_HAS_GLASSES, true)
+            .apply()
+        return true
+    }
+
+    // ─── DEBUG ─────────────────────────────────────────────────────────────────
 
     fun debugSimulateMissedDay() {
-        val yesterday = java.time.LocalDate.now().minusDays(1).toString()
-        val newMissed = missedDaysCount + 1
-        prefs.edit()
-            .putString(KEY_LAST_RESET, yesterday)
-            .also { TASK_KEYS.forEach { key -> it.putBoolean(key, false) } }
-            .putBoolean(KEY_REWARD_GIVEN, false)
-            .putBoolean(KEY_STREAK_COUNTED, false)
-            .putInt(KEY_STREAK, 0)
-            .putBoolean(KEY_STREAK_BROKEN, true)
-            .putInt(KEY_MISSED_DAYS, newMissed)   // incremento directo
-            .putString(KEY_LAST_RESET, java.time.LocalDate.now().toString())
-            .apply()
+        prefs.edit().apply {
+            putInt(KEY_STREAK, 0)
+            putBoolean(KEY_STREAK_BROKEN, true)
+            putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
+            putBoolean(KEY_REWARD_GIVEN, false)
+            putBoolean(KEY_STREAK_COUNTED, false)
+            loadTasks().forEach { remove(taskKey(it.id)) }
+            putString(KEY_LAST_RESET, LocalDate.now().toString())
+            apply()
+        }
     }
 
     fun debugSimulateCompletedDay() {
-        val yesterday = java.time.LocalDate.now().minusDays(1).toString()
-        prefs.edit()
-            .putString(KEY_LAST_RESET, yesterday)
-            .also { TASK_KEYS.forEach { key -> it.putBoolean(key, true) } }
-            .putBoolean(KEY_REWARD_GIVEN, true)
-            .putBoolean(KEY_STREAK_COUNTED, true)
-            .putBoolean(KEY_STREAK_BROKEN, false)
-            .apply()
+        val yesterday = LocalDate.now().minusDays(1).toString()
+        prefs.edit().apply {
+            putString(KEY_LAST_RESET, yesterday)
+            loadTasks().forEach { putBoolean(taskKey(it.id), true) }
+            putBoolean(KEY_REWARD_GIVEN, true)
+            putBoolean(KEY_STREAK_COUNTED, true)
+            putBoolean(KEY_STREAK_BROKEN, false)
+            apply()
+        }
         checkAndResetForNewDay()
     }
 
@@ -128,34 +201,29 @@ class MonkeyStateManager(context: Context) {
         prefs.edit().clear().apply()
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
+    // ─── Helpers ───────────────────────────────────────────────────────────────
 
-    fun buyGlasses(): Boolean {
-        if (bananas < 10 || hasGlasses) return false
+    private fun taskKey(taskId: String) = "done_$taskId"
 
-        prefs.edit()
-            .putInt(KEY_BANANAS, bananas - 10)
-            .putBoolean(KEY_HAS_GLASSES, true)
-            .apply()
-
-        return true
-    }
+    private fun defaultTasks(): List<Task> = listOf(
+        Task("default_0", "Lavar platos",    listOf(1, 2, 3, 4, 5, 6, 7)),
+        Task("default_1", "Hacer la cama",   listOf(1, 2, 3, 4, 5, 6, 7)),
+        Task("default_2", "Sacar la basura", listOf(1, 2, 3, 4, 5, 6, 7)),
+        Task("default_3", "Limpiar el baño", listOf(1, 2, 3, 4, 5, 6, 7)),
+    )
 
     // ─── Constantes ────────────────────────────────────────────────────────────
 
     companion object {
-        const val PREFS_NAME = "monkey_prefs"
-
-        const val KEY_STREAK         = "streakCount"
-        const val KEY_BANANAS        = "bananas"
-        const val KEY_HAS_GLASSES    = "hasGlasses"
-        const val KEY_LAST_RESET     = "lastResetDate"
-        const val KEY_REWARD_GIVEN   = "rewardGivenToday"
+        const val PREFS_NAME       = "monkey_prefs"
+        const val KEY_STREAK       = "streakCount"
+        const val KEY_BANANAS      = "bananas"
+        const val KEY_HAS_GLASSES  = "hasGlasses"
+        const val KEY_LAST_RESET   = "lastResetDate"
+        const val KEY_REWARD_GIVEN = "rewardGivenToday"
         const val KEY_STREAK_COUNTED = "streakCountedToday"
         const val KEY_STREAK_BROKEN  = "streakBroken"
         const val KEY_MISSED_DAYS    = "missedDaysCount"
-
-        val TASKS = listOf("Lavar platos", "Hacer la cama", "Sacar la basura", "Limpiar el baño")
-        val TASK_KEYS = List(TASKS.size) { index -> "task_$index" }
+        const val KEY_TASKS          = "tasksJson"
     }
 }

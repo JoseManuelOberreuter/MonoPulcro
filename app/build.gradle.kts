@@ -57,6 +57,12 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.foundation:foundation")
 
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.8.4")
+
+    // JSON serialization
+    implementation("com.google.code.gson:gson:2.11.0")
+
     // Glance (Widget)
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")

@@ -21,30 +21,19 @@ import com.josem.monopulcro.data.MonkeyStateManager
 class MonkeyWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // Leemos SharedPreferences directamente; estamos en una coroutine
-        val prefs = context.getSharedPreferences(
-            MonkeyStateManager.PREFS_NAME,
-            Context.MODE_PRIVATE
-        )
+        val manager = MonkeyStateManager(context)
 
-        val streak = prefs.getInt(MonkeyStateManager.KEY_STREAK, 0)
-        val hasHat = prefs.getBoolean(MonkeyStateManager.KEY_HAS_GLASSES, false)
-        val isClean = MonkeyStateManager.TASK_KEYS.all { prefs.getBoolean(it, false) }
-        val streakBroken = prefs.getBoolean(MonkeyStateManager.KEY_STREAK_BROKEN, false)
-        val missedDays = prefs.getInt(MonkeyStateManager.KEY_MISSED_DAYS, 0)
-
-        val monkeyImageRes = resolveMonkeyImage(isClean = isClean, hasHat = hasHat, streakBroken = streakBroken, missedDays = missedDays)
+        val streak       = manager.streakCount
+        val hasGlasses   = manager.hasGlasses
+        val isClean      = manager.isCleanToday
+        val streakBroken = manager.streakBroken
+        val missedDays   = manager.missedDaysCount
+        val imageRes     = resolveMonkeyImage(isClean, hasGlasses, streakBroken, missedDays)
 
         provideContent {
-            WidgetContent(
-                streak = streak,
-                isClean = isClean,
-                monkeyImageRes = monkeyImageRes
-            )
+            WidgetContent(streak = streak, isClean = isClean, monkeyImageRes = imageRes)
         }
     }
-
-    // ─── Contenido visual del widget ──────────────────────────────────────────
 
     @Composable
     private fun WidgetContent(
@@ -59,58 +48,51 @@ class MonkeyWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity<MainActivity>())
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment   = Alignment.CenterVertically
         ) {
-            // Imagen del mono
             Image(
                 provider = ImageProvider(monkeyImageRes),
                 contentDescription = "Estado del mono",
                 modifier = GlanceModifier.size(72.dp)
             )
-
             Spacer(GlanceModifier.height(8.dp))
-
-            // Racha
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "🔥",
-                    style = TextStyle(fontSize = 16.sp)
-                )
+                Text(text = "🔥", style = TextStyle(fontSize = 16.sp))
                 Spacer(GlanceModifier.width(4.dp))
                 Text(
                     text = "$streak días",
                     style = TextStyle(
-                        fontSize = 16.sp,
+                        fontSize   = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = ColorProvider(android.graphics.Color.parseColor("#FF6D00"))
+                        color      = ColorProvider(android.graphics.Color.parseColor("#FF6D00"))
                     )
                 )
             }
-
             Spacer(GlanceModifier.height(4.dp))
-
-            // Estado del mono
             Text(
                 text = if (isClean) "¡Limpio! ✨" else "Tareas pendientes",
                 style = TextStyle(
                     fontSize = 11.sp,
-                    color = ColorProvider(
+                    color    = ColorProvider(
                         if (isClean) android.graphics.Color.parseColor("#388E3C")
-                        else android.graphics.Color.parseColor("#9E6B00")
+                        else         android.graphics.Color.parseColor("#9E6B00")
                     )
                 )
             )
         }
     }
 
-    // ─── Helper ───────────────────────────────────────────────────────────────
-
-    private fun resolveMonkeyImage(isClean: Boolean, hasHat: Boolean, streakBroken: Boolean = false, missedDays: Int = 0): Int = when {
-        isClean && hasHat -> R.drawable.mono_cool
-        isClean           -> R.drawable.mono_pulcro
-        missedDays >= 3   -> R.drawable.mono_sucio_3
-        streakBroken      -> R.drawable.mono_sucio_2
-        hasHat            -> R.drawable.mono_sucio_2
-        else              -> R.drawable.mono_sucio_1
+    private fun resolveMonkeyImage(
+        isClean: Boolean,
+        hasGlasses: Boolean,
+        streakBroken: Boolean = false,
+        missedDays: Int = 0
+    ): Int = when {
+        isClean && hasGlasses -> R.drawable.mono_cool
+        isClean               -> R.drawable.mono_pulcro
+        missedDays >= 3       -> R.drawable.mono_sucio_3
+        streakBroken          -> R.drawable.mono_sucio_2
+        hasGlasses            -> R.drawable.mono_sucio_2
+        else                  -> R.drawable.mono_sucio_1
     }
 }

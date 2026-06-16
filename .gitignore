@@ -5,8 +5,8 @@
 *.apk
 *.aab
 *.dex
-/app/build/
-/build/
+app/build/
+build/
 
 # Gradle
 .gradle/
