@@ -70,7 +70,7 @@ class MonkeyWidget : GlanceAppWidget() {
             }
             Spacer(GlanceModifier.height(4.dp))
             Text(
-                text = if (isClean) "¡Limpio! ✨" else "Tareas pendientes",
+                text = if (isClean) "¡Pulcro! ✨" else "Tareas pendientes",
                 style = TextStyle(
                     fontSize = 11.sp,
                     color    = ColorProvider(
