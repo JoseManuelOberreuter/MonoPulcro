@@ -1,20 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ícono del system splash: círculo celeste con el mono adentro con padding -->
+<!-- Ícono del system splash: fondo azul con ondas celestes y el mono centrado -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Círculo de fondo celeste pálido -->
-    <item>
-        <shape android:shape="oval">
-            <solid android:color="#BAE6FD" />
-        </shape>
-    </item>
+    <!-- Fondo azul con ondas sutiles -->
+    <item android:drawable="@drawable/splash_bg_waves" />
 
-    <!-- Mono con padding interno para que no llegue al borde del círculo -->
+    <!-- Mono con padding mayor para que se vea completo -->
     <item
-        android:bottom="18dp"
-        android:drawable="@drawable/mono_pulcro"
-        android:left="18dp"
-        android:right="18dp"
-        android:top="18dp" />
+        android:top="26dp"
+        android:bottom="26dp"
+        android:left="26dp"
+        android:right="26dp"
+        android:drawable="@drawable/mono_pulcro" />
 
 </layer-list>
