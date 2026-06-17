@@ -50,7 +50,7 @@ private val TIPS_PHRASES = listOf(
     "Saca la basura antes de que huela: cada 2-3 días",
     "Los gérmenes de la cocina superan a los del baño",
     "Un espacio ordenado = una mente más clara",
-    "Pequeñas tareas diarias construyen grandes hábitos"
+    "Pequeñas tareas diarias construyen grandes hábitos",
     "Cuando el mono está sucio, no le gusta usar sus accesorios"
 
 )

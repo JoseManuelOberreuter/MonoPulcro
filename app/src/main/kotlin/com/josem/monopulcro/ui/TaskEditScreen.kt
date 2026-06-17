@@ -1,5 +1,6 @@
 package com.josem.monopulcro.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -28,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.res.painterResource
+import com.josem.monopulcro.R
 import com.josem.monopulcro.data.Task
 import java.util.UUID
 
@@ -167,7 +170,18 @@ fun TaskEditScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.mono_pulcro),
+                    contentDescription = null,
+                    modifier = Modifier.size(200.dp)
+                )
+            }
 
             // ── Botón guardar ──────────────────────────────────────────────────
             Button(
