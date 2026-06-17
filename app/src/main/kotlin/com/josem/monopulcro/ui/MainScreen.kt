@@ -176,7 +176,8 @@ fun MainScreen(
                         state.missedDaysCount == 1                        -> SUCIO1_PHRASES[sucio1Index]
                         else                                              -> "Hay tareas pendientes..."
                     },
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
                     color = when {
                         state.allTasks.isEmpty()                          -> Color(0xFF7C3AED)
                         state.todayTasks.isEmpty()                        -> Color(0xFF0369A1)
@@ -185,7 +186,8 @@ fun MainScreen(
                         state.missedDaysCount == 1                        -> Color(0xFF92400E)
                         else                                              -> Color(0xFF92400E)
                     },
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(28.dp))
