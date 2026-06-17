@@ -122,6 +122,7 @@ class MonkeyStateManager(private val context: Context) {
             allTasks.forEach { remove(taskKey(it.id)) }
             putBoolean(KEY_REWARD_GIVEN, false)
             putBoolean(KEY_STREAK_COUNTED, false)
+            putBoolean(KEY_STREAK_BONUS_GIVEN, false)
             putString(KEY_LAST_RESET, today)
             apply()
         }
@@ -141,22 +142,28 @@ class MonkeyStateManager(private val context: Context) {
 
         return when {
             newState && allTodayDone && !rewardAlreadyGiven -> {
+                val newStreak = streakCount + 1
+                val isMilestone = newStreak % 7 == 0
+                val bonusBananas = if (isMilestone) 3 else 0
                 prefs.edit()
-                    .putInt(KEY_BANANAS, bananas + 1)
-                    .putInt(KEY_STREAK, streakCount + 1)
+                    .putInt(KEY_BANANAS, bananas + 1 + bonusBananas)
+                    .putInt(KEY_STREAK, newStreak)
                     .putBoolean(KEY_REWARD_GIVEN, true)
                     .putBoolean(KEY_STREAK_COUNTED, true)
                     .putBoolean(KEY_STREAK_BROKEN, false)
                     .putInt(KEY_MISSED_DAYS, 0)
+                    .putBoolean(KEY_STREAK_BONUS_GIVEN, isMilestone)
                     .apply()
                 true
             }
             !newState && rewardAlreadyGiven -> {
+                val hadBonus = prefs.getBoolean(KEY_STREAK_BONUS_GIVEN, false)
                 prefs.edit()
-                    .putInt(KEY_BANANAS, maxOf(0, bananas - 1))
+                    .putInt(KEY_BANANAS, maxOf(0, bananas - 1 - if (hadBonus) 3 else 0))
                     .putInt(KEY_STREAK, maxOf(0, streakCount - 1))
                     .putBoolean(KEY_REWARD_GIVEN, false)
                     .putBoolean(KEY_STREAK_COUNTED, false)
+                    .putBoolean(KEY_STREAK_BONUS_GIVEN, false)
                     .apply()
                 false
             }
@@ -236,6 +243,7 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_TASKS            = "tasksJson"
         const val KEY_OWNED_ACCESSORIES  = "ownedAccessories"
         const val KEY_EQUIPPED_ACCESSORY = "equippedAccessory"
+        const val KEY_STREAK_BONUS_GIVEN = "streakBonusGiven"
 
         data class AccessoryItem(val id: String, val name: String, val price: Int)
 
