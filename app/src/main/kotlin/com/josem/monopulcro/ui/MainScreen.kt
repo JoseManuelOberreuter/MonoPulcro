@@ -539,6 +539,13 @@ private fun DrawScope.drawBottomWaves(color: Color) {
 
 // ─── Helper imagen del mono ───────────────────────────────────────────────────
 
+private val ESTADOS_EXTREMO = listOf(
+    R.drawable.mono_sucio_cansado,
+    R.drawable.mono_sucio_enfermo,
+    R.drawable.mono_sucio_frustrado,
+    R.drawable.mono_sucio_llorando,
+)
+
 private fun resolveMonkeyImage(
     isClean: Boolean,
     equippedAccessory: String?,
@@ -550,7 +557,8 @@ private fun resolveMonkeyImage(
     isClean && equippedAccessory == "crown"     -> R.drawable.mono_corona
     isClean && equippedAccessory == "astronaut" -> R.drawable.mono_astronauta
     isClean                                     -> R.drawable.mono_pulcro
-    missedDays >= 3                             -> R.drawable.mono_sucio_3
+    missedDays >= 4                             -> ESTADOS_EXTREMO[java.util.Random(missedDays.toLong()).nextInt(ESTADOS_EXTREMO.size)]
+    missedDays == 3                             -> R.drawable.mono_sucio_3
     streakBroken                                -> R.drawable.mono_sucio_2
     else                                        -> R.drawable.mono_sucio_1
 }

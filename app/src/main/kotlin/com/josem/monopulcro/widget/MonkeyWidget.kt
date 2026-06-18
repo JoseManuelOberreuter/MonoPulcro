@@ -87,14 +87,23 @@ class MonkeyWidget : GlanceAppWidget() {
         equippedAccessory: String?,
         streakBroken: Boolean = false,
         missedDays: Int = 0
-    ): Int = when {
-        isClean && equippedAccessory == "glasses"   -> R.drawable.mono_cool
-        isClean && equippedAccessory == "hat"       -> R.drawable.mono_gorro
-        isClean && equippedAccessory == "crown"     -> R.drawable.mono_corona
-        isClean && equippedAccessory == "astronaut" -> R.drawable.mono_astronauta
-        isClean                                     -> R.drawable.mono_pulcro
-        missedDays >= 3                             -> R.drawable.mono_sucio_3
-        streakBroken                                -> R.drawable.mono_sucio_2
-        else                                        -> R.drawable.mono_sucio_1
+    ): Int {
+        if (isClean && equippedAccessory == "glasses")   return R.drawable.mono_cool
+        if (isClean && equippedAccessory == "hat")       return R.drawable.mono_gorro
+        if (isClean && equippedAccessory == "crown")     return R.drawable.mono_corona
+        if (isClean && equippedAccessory == "astronaut") return R.drawable.mono_astronauta
+        if (isClean) return R.drawable.mono_pulcro
+        if (missedDays >= 4) {
+            val states = listOf(
+                R.drawable.mono_sucio_cansado,
+                R.drawable.mono_sucio_enfermo,
+                R.drawable.mono_sucio_frustrado,
+                R.drawable.mono_sucio_llorando,
+            )
+            return states[java.util.Random(missedDays.toLong()).nextInt(states.size)]
+        }
+        if (missedDays == 3) return R.drawable.mono_sucio_3
+        if (streakBroken) return R.drawable.mono_sucio_2
+        return R.drawable.mono_sucio_1
     }
 }
