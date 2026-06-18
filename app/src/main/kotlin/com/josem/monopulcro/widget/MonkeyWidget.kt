@@ -56,11 +56,17 @@ class MonkeyWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.size(72.dp)
             )
             Spacer(GlanceModifier.height(8.dp))
+
+            // Racha: ícono fuego + número (sin emoji para evitar crashes en OEM)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "🔥", style = TextStyle(fontSize = 16.sp))
+                Image(
+                    provider = ImageProvider(R.drawable.fuego),
+                    contentDescription = null,
+                    modifier = GlanceModifier.size(18.dp)
+                )
                 Spacer(GlanceModifier.width(4.dp))
                 Text(
-                    text = "$streak días",
+                    text = "$streak dias",
                     style = TextStyle(
                         fontSize   = 16.sp,
                         fontWeight = FontWeight.Bold,
@@ -68,9 +74,12 @@ class MonkeyWidget : GlanceAppWidget() {
                     )
                 )
             }
+
             Spacer(GlanceModifier.height(4.dp))
+
+            // Estado (sin emoji)
             Text(
-                text = if (isClean) "¡Pulcro! ✨" else "Tareas pendientes",
+                text = if (isClean) "Pulcro!" else "Tareas pendientes",
                 style = TextStyle(
                     fontSize = 11.sp,
                     color    = ColorProvider(
