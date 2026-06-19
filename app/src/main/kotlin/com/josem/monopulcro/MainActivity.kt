@@ -16,9 +16,11 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.notifications.NotificationHelper
 import com.josem.monopulcro.notifications.NotificationScheduler
 import com.josem.monopulcro.ui.MainScreen
+import com.josem.monopulcro.ui.OnboardingScreen
 import com.josem.monopulcro.ui.ShopScreen
 import com.josem.monopulcro.ui.SplashScreen
 import com.josem.monopulcro.ui.TaskEditScreen
@@ -26,11 +28,12 @@ import com.josem.monopulcro.ui.theme.MonoPulcroTheme
 
 class MainActivity : ComponentActivity() {
 
+    private val stateManager by lazy { MonkeyStateManager(this) }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            // Permiso concedido: crear canales y programar el alarm
             NotificationHelper.createChannels(this)
             NotificationScheduler.schedule(this)
         }
@@ -46,16 +49,34 @@ class MainActivity : ComponentActivity() {
         setContent {
             MonoPulcroTheme {
                 var showSplash by remember { mutableStateOf(true) }
+                var showOnboarding by remember { mutableStateOf(!stateManager.onboardingCompleted) }
+                var openAddTaskOnStart by remember { mutableStateOf(false) }
 
                 Crossfade(
-                    targetState  = showSplash,
+                    targetState = showSplash,
                     animationSpec = tween(durationMillis = 500),
-                    label        = "splashTransition"
+                    label = "splashTransition"
                 ) { isSplash ->
-                    if (isSplash) {
-                        SplashScreen(onFinished = { showSplash = false })
-                    } else {
-                        AppNavigation()
+                    when {
+                        isSplash -> {
+                            SplashScreen(onFinished = { showSplash = false })
+                        }
+                        showOnboarding -> {
+                            OnboardingScreen(
+                                onFinished = {
+                                    stateManager.completeOnboarding()
+                                    showOnboarding = false
+                                },
+                                onAddFirstTask = {
+                                    stateManager.completeOnboarding()
+                                    showOnboarding = false
+                                    openAddTaskOnStart = true
+                                }
+                            )
+                        }
+                        else -> {
+                            AppNavigation(openAddTaskOnStart = openAddTaskOnStart)
+                        }
                     }
                 }
             }
@@ -66,7 +87,6 @@ class MainActivity : ComponentActivity() {
         NotificationHelper.createChannels(this)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+: pedir permiso en tiempo de ejecución
             when {
                 ContextCompat.checkSelfPermission(
                     this, Manifest.permission.POST_NOTIFICATIONS
@@ -78,15 +98,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } else {
-            // Android 12 y anteriores: no requiere permiso en runtime
             NotificationScheduler.schedule(this)
         }
     }
 }
 
 @Composable
-private fun AppNavigation() {
+private fun AppNavigation(openAddTaskOnStart: Boolean = false) {
     val navController = rememberNavController()
+
+    LaunchedEffect(openAddTaskOnStart) {
+        if (openAddTaskOnStart) {
+            navController.navigate("task_edit/new")
+        }
+    }
 
     NavHost(navController = navController, startDestination = "main") {
         composable("main") {

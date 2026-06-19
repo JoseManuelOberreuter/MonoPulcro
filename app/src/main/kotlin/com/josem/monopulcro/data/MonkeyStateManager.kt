@@ -79,6 +79,13 @@ class MonkeyStateManager(private val context: Context) {
     val equippedAccessory: String?
         get() = prefs.getString(KEY_EQUIPPED_ACCESSORY, "").takeIf { it?.isNotEmpty() == true }
 
+    val onboardingCompleted: Boolean
+        get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
+
+    fun completeOnboarding() {
+        prefs.edit().putBoolean(KEY_ONBOARDING_DONE, true).apply()
+    }
+
     // ─── Reset diario ──────────────────────────────────────────────────────────
 
     fun checkAndResetForNewDay() {
@@ -244,6 +251,7 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_OWNED_ACCESSORIES  = "ownedAccessories"
         const val KEY_EQUIPPED_ACCESSORY = "equippedAccessory"
         const val KEY_STREAK_BONUS_GIVEN = "streakBonusGiven"
+        const val KEY_ONBOARDING_DONE    = "onboardingDone"
 
         data class AccessoryItem(val id: String, val name: String, val price: Int)
 
