@@ -399,8 +399,9 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
             .graphicsLayer { alpha = overlayAlpha.value }
             .background(Color.Black.copy(alpha = 0.18f))
     ) {
+        // maxWidth viene directo del scope de BoxWithConstraints (ya es Dp)
+        val widthDp = maxWidth
         val density = LocalDensity.current
-        val widthDp = with(density) { constraints.maxWidth.toDp() }
 
         FIRE_PARTICLES.forEachIndexed { i, p ->
             val sizeDp = p.sizeDp.dp
