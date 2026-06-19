@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -393,14 +394,13 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
         onFinished()
     }
 
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer { alpha = overlayAlpha.value }
             .background(Color.Black.copy(alpha = 0.18f))
     ) {
-        // maxWidth viene directo del scope de BoxWithConstraints (ya es Dp)
-        val widthDp = maxWidth
+        val widthDp = LocalConfiguration.current.screenWidthDp.dp
         val density = LocalDensity.current
 
         FIRE_PARTICLES.forEachIndexed { i, p ->
