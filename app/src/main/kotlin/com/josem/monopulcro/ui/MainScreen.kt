@@ -1,11 +1,15 @@
 package com.josem.monopulcro.ui
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +30,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -39,6 +44,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val WaveColor = Color(0xFF7DD3FC)
+private val TaskRowHeight = 72.dp
+
+private val taskMoveSpec = spring<IntOffset>(
+    dampingRatio = Spring.DampingRatioLowBouncy,
+    stiffness = Spring.StiffnessMediumLow
+)
 
 private val TIPS_PHRASES = listOf(
     "7 días seguidos te dan 3 bananas extra",
@@ -221,7 +232,7 @@ fun MainScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Lista dinámica de tareas de hoy
                 if (state.allTasks.isEmpty()) {
@@ -229,14 +240,11 @@ fun MainScreen(
                 } else if (state.todayTasks.isEmpty()) {
                     RestDayCard()
                 } else {
-                    state.todayTasks.forEach { taskState ->
-                        TaskCheckboxRow(
-                            taskName   = taskState.task.name,
-                            isChecked  = taskState.isCompleted,
-                            onChecked  = { vm.toggleTask(taskState.task.id) },
-                            onEdit     = { onEditTask(taskState.task.id) }
-                        )
-                    }
+                    AnimatedTaskList(
+                        tasks    = state.todayTasks,
+                        onToggle = { vm.toggleTask(it) },
+                        onEdit   = onEditTask
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -294,6 +302,40 @@ private fun RestDayCard() {
     }
 }
 
+// ─── Lista animada de tareas ──────────────────────────────────────────────────
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AnimatedTaskList(
+    tasks: List<TaskUiState>,
+    onToggle: (String) -> Unit,
+    onEdit: (String) -> Unit
+) {
+    val sortedTasks = tasks.sortedBy { it.isCompleted }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(TaskRowHeight * sortedTasks.size),
+        userScrollEnabled = false
+    ) {
+        items(
+            items = sortedTasks,
+            key = { it.task.id }
+        ) { taskState ->
+            TaskCheckboxRow(
+                modifier = Modifier
+                    .height(TaskRowHeight)
+                    .animateItemPlacement(animationSpec = taskMoveSpec),
+                taskName  = taskState.task.name,
+                isChecked = taskState.isCompleted,
+                onChecked = { onToggle(taskState.task.id) },
+                onEdit    = { onEdit(taskState.task.id) }
+            )
+        }
+    }
+}
+
 // ─── Fila de tarea ────────────────────────────────────────────────────────────
 
 @Composable
@@ -301,14 +343,26 @@ private fun TaskCheckboxRow(
     taskName: String,
     isChecked: Boolean,
     onChecked: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isChecked) Color(0xFFDCFCE7) else Color(0xFFF8FAFC),
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "taskRowBg"
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (isChecked) Color(0xFF15803D) else Color(0xFF334155),
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "taskRowText"
+    )
+
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 6.dp)
             .background(
-                color = if (isChecked) Color(0xFFDCFCE7) else Color(0xFFF8FAFC),
+                color = backgroundColor,
                 shape = RoundedCornerShape(14.dp)
             )
             .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
@@ -325,9 +379,12 @@ private fun TaskCheckboxRow(
         Text(
             text = taskName,
             fontSize = 16.sp,
-            color  = if (isChecked) Color(0xFF15803D) else Color(0xFF334155),
+            color  = textColor,
             fontWeight = if (isChecked) FontWeight.Medium else FontWeight.Normal,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .clickable { onChecked() }
+                .padding(vertical = 4.dp)
         )
         IconButton(
             onClick = onEdit,
