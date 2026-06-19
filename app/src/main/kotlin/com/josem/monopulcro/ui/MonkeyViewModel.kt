@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.Task
+import com.josem.monopulcro.notifications.NotificationHelper
 import com.josem.monopulcro.widget.MonkeyWidgetReceiver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,6 +57,9 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
             val earned = manager.toggleTask(taskId)
             refreshState(justEarnedBanana = earned)
             updateWidget()
+            if (earned) {
+                NotificationHelper.showCelebrationNotification(getApplication())
+            }
         }
     }
 
