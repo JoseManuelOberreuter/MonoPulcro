@@ -15,12 +15,12 @@ class MonkeyStateManager(private val context: Context) {
     // ─── Tareas ────────────────────────────────────────────────────────────────
 
     fun loadTasks(): List<Task> {
-        val json = prefs.getString(KEY_TASKS, null) ?: return defaultTasks()
+        val json = prefs.getString(KEY_TASKS, null) ?: return emptyList()
         return try {
             val type = object : TypeToken<List<Task>>() {}.type
-            gson.fromJson(json, type) ?: defaultTasks()
+            gson.fromJson<List<Task>>(json, type) ?: emptyList()
         } catch (e: Exception) {
-            defaultTasks()
+            emptyList()
         }
     }
 
@@ -228,13 +228,6 @@ class MonkeyStateManager(private val context: Context) {
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private fun taskKey(taskId: String) = "done_$taskId"
-
-    private fun defaultTasks(): List<Task> = listOf(
-        Task("default_0", "Lavar platos",    listOf(1, 2, 3, 4, 5, 6, 7)),
-        Task("default_1", "Hacer la cama",   listOf(1, 2, 3, 4, 5, 6, 7)),
-        Task("default_2", "Sacar la basura", listOf(1, 2, 3, 4, 5, 6, 7)),
-        Task("default_3", "Limpiar el baño", listOf(1, 2, 3, 4, 5, 6, 7)),
-    )
 
     // ─── Constantes ────────────────────────────────────────────────────────────
 
