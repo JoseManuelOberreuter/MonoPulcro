@@ -23,7 +23,9 @@ object NotificationScheduler {
         alarmManager.cancel(pendingIntent)
 
         val triggerAt = nextTriggerMillis()
-        alarmManager.setExactAndAllowWhileIdle(
+        // setAndAllowWhileIdle no requiere permiso especial (SCHEDULE_EXACT_ALARM)
+        // La notificación puede llegar con ±15 min de margen, aceptable para un recordatorio
+        alarmManager.setAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
             triggerAt,
             pendingIntent

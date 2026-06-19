@@ -96,7 +96,7 @@ object NotificationHelper {
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         val triggerAt = System.currentTimeMillis() + 30 * 60 * 1000L
-        alarmManager.setExactAndAllowWhileIdle(
+        alarmManager.setAndAllowWhileIdle(
             android.app.AlarmManager.RTC_WAKEUP,
             triggerAt,
             pendingIntent
