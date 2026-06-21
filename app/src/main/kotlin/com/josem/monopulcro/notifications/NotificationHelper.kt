@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import com.josem.monopulcro.MainActivity
 import com.josem.monopulcro.R
 import com.josem.monopulcro.data.MonkeyStateManager
+import com.josem.monopulcro.ui.MonkeyImageResolver
 
 object NotificationHelper {
 
@@ -136,7 +137,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.mono_pulcro)
+            .setSmallIcon(MonkeyImageResolver.DEFAULT_PULCRO)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

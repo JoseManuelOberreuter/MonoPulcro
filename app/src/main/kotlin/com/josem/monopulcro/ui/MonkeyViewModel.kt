@@ -109,12 +109,6 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     /** Fuerza una re-lectura del estado. Llamar al volver a esta pantalla. */
     fun refresh() = refreshState()
 
-    // ─── DEBUG ─────────────────────────────────────────────────────────────────
-
-    fun debugMissedDay()    { viewModelScope.launch { manager.debugSimulateMissedDay();    refreshState(); updateWidget() } }
-    fun debugCompletedDay() { viewModelScope.launch { manager.debugSimulateCompletedDay(); refreshState(); updateWidget() } }
-    fun debugReset()        { viewModelScope.launch { manager.debugReset();                refreshState(); updateWidget() } }
-
     // ─── Helpers privados ──────────────────────────────────────────────────────
 
     private fun refreshState(justEarnedBanana: Boolean = false) {

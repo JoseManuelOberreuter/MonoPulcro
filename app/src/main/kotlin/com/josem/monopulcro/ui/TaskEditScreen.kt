@@ -177,7 +177,7 @@ fun TaskEditScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(R.drawable.mono_pulcro),
+                    painter = painterResource(MonkeyImageResolver.DEFAULT_PULCRO),
                     contentDescription = null,
                     modifier = Modifier.size(200.dp)
                 )

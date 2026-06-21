@@ -37,7 +37,7 @@ private data class OnboardingPage(
 
 private val ONBOARDING_PAGES = listOf(
     OnboardingPage(
-        imageRes = R.drawable.mono_pulcro,
+        imageRes = MonkeyImageResolver.DEFAULT_PULCRO,
         title = "Bienvenido a Mono Pulcro",
         description = "Tu mono te ayuda a mantener tus habitos de limpieza diarios"
     ),

@@ -130,9 +130,8 @@ private fun AccessoryCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Image(
-            painter = painterResource(accessoryDrawable(accessory.id)),
-            contentDescription = accessory.name,
+        AccessoryPreview(
+            accessoryId = accessory.id,
             modifier = Modifier.size(72.dp)
         )
 
@@ -209,10 +208,27 @@ private fun AccessoryCard(
     }
 }
 
+@Composable
+private fun AccessoryPreview(
+    accessoryId: String,
+    modifier: Modifier = Modifier
+) {
+    if (accessoryId == "gold") {
+        GoldMonkeyImage(modifier = modifier)
+    } else {
+        Image(
+            painter = painterResource(accessoryDrawable(accessoryId)),
+            contentDescription = null,
+            modifier = modifier
+        )
+    }
+}
+
 private fun accessoryDrawable(accessoryId: String): Int = when (accessoryId) {
     "glasses"   -> R.drawable.mono_cool
     "hat"       -> R.drawable.mono_gorro
     "crown"     -> R.drawable.mono_corona
     "astronaut" -> R.drawable.mono_astronauta
-    else        -> R.drawable.mono_pulcro
+    "gold"      -> R.drawable.mono_de_oro
+    else        -> MonkeyImageResolver.DEFAULT_PULCRO
 }

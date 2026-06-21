@@ -15,20 +15,19 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.josem.monopulcro.MainActivity
-import com.josem.monopulcro.R
-import com.josem.monopulcro.data.MonkeyStateManager
+import com.josem.monopulcro.ui.MonkeyImageResolver
 
 class MonkeyWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val manager = MonkeyStateManager(context)
+        val manager = com.josem.monopulcro.data.MonkeyStateManager(context)
 
         val streak            = manager.streakCount
         val equippedAccessory = manager.equippedAccessory
         val isClean           = manager.isCleanToday
         val streakBroken      = manager.streakBroken
         val missedDays        = manager.missedDaysCount
-        val imageRes          = resolveMonkeyImage(isClean, equippedAccessory, streakBroken, missedDays)
+        val imageRes          = MonkeyImageResolver.resolve(isClean, equippedAccessory, streakBroken, missedDays)
 
         provideContent {
             WidgetContent(streak = streak, isClean = isClean, monkeyImageRes = imageRes)
@@ -56,11 +55,9 @@ class MonkeyWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.size(72.dp)
             )
             Spacer(GlanceModifier.height(8.dp))
-
-            // Racha: ícono fuego + número (sin emoji para evitar crashes en OEM)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    provider = ImageProvider(R.drawable.fuego),
+                    provider = ImageProvider(com.josem.monopulcro.R.drawable.fuego),
                     contentDescription = null,
                     modifier = GlanceModifier.size(18.dp)
                 )
@@ -74,10 +71,7 @@ class MonkeyWidget : GlanceAppWidget() {
                     )
                 )
             }
-
             Spacer(GlanceModifier.height(4.dp))
-
-            // Estado (sin emoji)
             Text(
                 text = if (isClean) "Pulcro!" else "Tareas pendientes",
                 style = TextStyle(
@@ -89,30 +83,5 @@ class MonkeyWidget : GlanceAppWidget() {
                 )
             )
         }
-    }
-
-    private fun resolveMonkeyImage(
-        isClean: Boolean,
-        equippedAccessory: String?,
-        streakBroken: Boolean = false,
-        missedDays: Int = 0
-    ): Int {
-        if (isClean && equippedAccessory == "glasses")   return R.drawable.mono_cool
-        if (isClean && equippedAccessory == "hat")       return R.drawable.mono_gorro
-        if (isClean && equippedAccessory == "crown")     return R.drawable.mono_corona
-        if (isClean && equippedAccessory == "astronaut") return R.drawable.mono_astronauta
-        if (isClean) return R.drawable.mono_pulcro
-        if (missedDays >= 4) {
-            val states = listOf(
-                R.drawable.mono_sucio_cansado,
-                R.drawable.mono_sucio_enfermo,
-                R.drawable.mono_sucio_frustrado,
-                R.drawable.mono_sucio_llorando,
-            )
-            return states[java.util.Random(missedDays.toLong()).nextInt(states.size)]
-        }
-        if (missedDays == 3) return R.drawable.mono_sucio_3
-        if (streakBroken) return R.drawable.mono_sucio_2
-        return R.drawable.mono_sucio_1
     }
 }

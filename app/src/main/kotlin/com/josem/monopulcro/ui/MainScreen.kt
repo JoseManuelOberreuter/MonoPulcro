@@ -165,18 +165,25 @@ fun MainScreen(
                             )
                         )
                     }
-                    Image(
-                        painter = painterResource(
-                            id = resolveMonkeyImage(
-                                state.isCleanToday,
-                                state.equippedAccessory,
-                                state.streakBroken,
-                                state.missedDaysCount
-                            )
-                        ),
-                        contentDescription = "Mono Pulcro",
-                        modifier = Modifier.size(220.dp)
-                    )
+                    if (state.isCleanToday && state.equippedAccessory == "gold") {
+                        GoldMonkeyImage(
+                            contentDescription = "Mono Pulcro",
+                            showGoldStack = true
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(
+                                id = MonkeyImageResolver.resolve(
+                                    state.isCleanToday,
+                                    state.equippedAccessory,
+                                    state.streakBroken,
+                                    state.missedDaysCount
+                                )
+                            ),
+                            contentDescription = "Mono Pulcro",
+                            modifier = Modifier.size(220.dp)
+                        )
+                    }
                 }
 
                 Text(
@@ -557,9 +564,6 @@ private fun ShopButton(onClick: () -> Unit) {
     )
 }
 
-// ─── DEBUG ────────────────────────────────────────────────────────────────────
-
-
 // ─── Ondas decorativas ────────────────────────────────────────────────────────
 
 private fun DrawScope.drawBottomWaves(color: Color) {
@@ -593,30 +597,4 @@ private fun DrawScope.drawBottomWaves(color: Color) {
         },
         color = color.copy(alpha = 0.35f)
     )
-}
-
-// ─── Helper imagen del mono ───────────────────────────────────────────────────
-
-private val ESTADOS_EXTREMO = listOf(
-    R.drawable.mono_sucio_cansado,
-    R.drawable.mono_sucio_enfermo,
-    R.drawable.mono_sucio_frustrado,
-    R.drawable.mono_sucio_llorando,
-)
-
-private fun resolveMonkeyImage(
-    isClean: Boolean,
-    equippedAccessory: String?,
-    streakBroken: Boolean = false,
-    missedDays: Int = 0
-): Int = when {
-    isClean && equippedAccessory == "glasses"   -> R.drawable.mono_cool
-    isClean && equippedAccessory == "hat"       -> R.drawable.mono_gorro
-    isClean && equippedAccessory == "crown"     -> R.drawable.mono_corona
-    isClean && equippedAccessory == "astronaut" -> R.drawable.mono_astronauta
-    isClean                                     -> R.drawable.mono_pulcro
-    missedDays >= 4                             -> ESTADOS_EXTREMO[java.util.Random(missedDays.toLong()).nextInt(ESTADOS_EXTREMO.size)]
-    missedDays == 3                             -> R.drawable.mono_sucio_3
-    streakBroken                                -> R.drawable.mono_sucio_2
-    else                                        -> R.drawable.mono_sucio_1
 }

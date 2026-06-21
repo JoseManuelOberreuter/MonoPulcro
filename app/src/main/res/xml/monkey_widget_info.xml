@@ -10,5 +10,5 @@
     android:widgetCategory="home_screen"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_initial_layout"
-    android:previewImage="@drawable/mono_pulcro"
+    android:previewImage="@drawable/mono_pulcro_1"
     android:previewLayout="@layout/widget_initial_layout" />

@@ -193,38 +193,6 @@ class MonkeyStateManager(private val context: Context) {
         prefs.edit().putString(KEY_EQUIPPED_ACCESSORY, accessoryId).apply()
     }
 
-    // ─── DEBUG ─────────────────────────────────────────────────────────────────
-
-    fun debugSimulateMissedDay() {
-        prefs.edit().apply {
-            putInt(KEY_STREAK, 0)
-            putBoolean(KEY_STREAK_BROKEN, true)
-            putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
-            putBoolean(KEY_REWARD_GIVEN, false)
-            putBoolean(KEY_STREAK_COUNTED, false)
-            loadTasks().forEach { remove(taskKey(it.id)) }
-            putString(KEY_LAST_RESET, LocalDate.now().toString())
-            apply()
-        }
-    }
-
-    fun debugSimulateCompletedDay() {
-        val yesterday = LocalDate.now().minusDays(1).toString()
-        prefs.edit().apply {
-            putString(KEY_LAST_RESET, yesterday)
-            loadTasks().forEach { putBoolean(taskKey(it.id), true) }
-            putBoolean(KEY_REWARD_GIVEN, true)
-            putBoolean(KEY_STREAK_COUNTED, true)
-            putBoolean(KEY_STREAK_BROKEN, false)
-            apply()
-        }
-        checkAndResetForNewDay()
-    }
-
-    fun debugReset() {
-        prefs.edit().clear().apply()
-    }
-
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private fun taskKey(taskId: String) = "done_$taskId"
@@ -252,7 +220,8 @@ class MonkeyStateManager(private val context: Context) {
             AccessoryItem("glasses",   "Lentes",     3),
             AccessoryItem("hat",       "Gorro",       7),
             AccessoryItem("crown",     "Corona",     14),
-            AccessoryItem("astronaut", "Astronauta", 30)
+            AccessoryItem("astronaut", "Astronauta", 30),
+            AccessoryItem("gold",      "Mono de oro", 50)
         )
     }
 }

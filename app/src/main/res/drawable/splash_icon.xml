@@ -11,6 +11,6 @@
         android:bottom="26dp"
         android:left="26dp"
         android:right="26dp"
-        android:drawable="@drawable/mono_pulcro" />
+        android:drawable="@drawable/mono_pulcro_1" />
 
 </layer-list>

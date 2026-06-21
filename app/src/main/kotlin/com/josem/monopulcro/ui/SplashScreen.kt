@@ -64,7 +64,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(R.drawable.mono_pulcro),
+                painter = painterResource(MonkeyImageResolver.DEFAULT_PULCRO),
                 contentDescription = "Mono Pulcro",
                 modifier = Modifier.size(190.dp)
             )
