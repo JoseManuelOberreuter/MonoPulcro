@@ -56,7 +56,7 @@ private fun GoldMonkeyCore(
 ) {
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         Image(
-            painter = painterResource(R.drawable.mono_de_oro),
+            painter = painterResource(MonkeyImageResolver.previewForAccessory("gold")),
             contentDescription = contentDescription,
             modifier = Modifier.fillMaxSize()
         )

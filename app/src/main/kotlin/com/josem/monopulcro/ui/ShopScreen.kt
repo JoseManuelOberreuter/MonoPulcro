@@ -217,18 +217,9 @@ private fun AccessoryPreview(
         GoldMonkeyImage(modifier = modifier)
     } else {
         Image(
-            painter = painterResource(accessoryDrawable(accessoryId)),
+            painter = painterResource(MonkeyImageResolver.previewForAccessory(accessoryId)),
             contentDescription = null,
             modifier = modifier
         )
     }
-}
-
-private fun accessoryDrawable(accessoryId: String): Int = when (accessoryId) {
-    "glasses"   -> R.drawable.mono_cool
-    "hat"       -> R.drawable.mono_gorro
-    "crown"     -> R.drawable.mono_corona
-    "astronaut" -> R.drawable.mono_astronauta
-    "gold"      -> R.drawable.mono_de_oro
-    else        -> MonkeyImageResolver.DEFAULT_PULCRO
 }
