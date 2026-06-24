@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +40,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.josem.monopulcro.R
+import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -96,6 +98,8 @@ fun MainScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     var showCelebration by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val sounds  = remember { SoundManager.get(context) }
     val tipIndex    = remember { TIPS_PHRASES.indices.random() }
     val sucio1Index = remember { SUCIO1_PHRASES.indices.random() }
     val sucio2Index = remember { SUCIO2_PHRASES.indices.random() }
@@ -149,7 +153,9 @@ fun MainScreen(
                 // ── Imagen del mono ────────────────────────────────────────────
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(240.dp)
+                    modifier = Modifier
+                        .size(240.dp)
+                        .clickable { sounds.playCleaningSequence() }
                 ) {
                     Canvas(modifier = Modifier.size(230.dp)) {
                         drawCircle(
@@ -428,6 +434,8 @@ private val FIRE_PARTICLES = listOf(
 
 @Composable
 private fun FireCelebrationOverlay(onFinished: () -> Unit) {
+    val context = LocalContext.current
+    val sounds  = remember { SoundManager.get(context) }
     val overlayAlpha  = remember { Animatable(0f) }
     val travels = remember { FIRE_PARTICLES.map { Animatable(0f) } }
     val alphas  = remember { FIRE_PARTICLES.map { Animatable(0f) } }
@@ -435,6 +443,7 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
     val plusOneAlpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
+        sounds.playMonkeyCheer()
         overlayAlpha.animateTo(1f, tween(150))
 
         coroutineScope {

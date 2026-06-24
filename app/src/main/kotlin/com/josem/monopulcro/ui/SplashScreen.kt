@@ -14,31 +14,34 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.josem.monopulcro.R
+import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.delay
 
 private val SplashWaveColor = Color(0xFF7DD3FC)
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
+    val context = LocalContext.current
+    val sounds  = remember { SoundManager.get(context) }
 
     // Fade-in del contenido
     val alpha = remember { Animatable(0f) }
     val scale = remember { Animatable(0.88f) }
 
     LaunchedEffect(Unit) {
-        // Aparece suavemente
         alpha.animateTo(1f, animationSpec = tween(durationMillis = 700))
         scale.animateTo(1f, animationSpec = tween(durationMillis = 600))
-        // Espera y cede el paso a la pantalla principal
+        sounds.playIntroJingle()
         delay(1_600L)
         onFinished()
-    }
+    }   
 
     Box(
         modifier = Modifier

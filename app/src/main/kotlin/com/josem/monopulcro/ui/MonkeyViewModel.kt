@@ -3,6 +3,7 @@ package com.josem.monopulcro.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.josem.monopulcro.audio.SoundManager
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.Task
 import com.josem.monopulcro.notifications.NotificationHelper
@@ -41,6 +42,7 @@ data class MonkeyUiState(
 class MonkeyViewModel(application: Application) : AndroidViewModel(application) {
 
     private val manager = MonkeyStateManager(application)
+    private val sounds  = SoundManager.get(application)
 
     private val _uiState = MutableStateFlow(MonkeyUiState())
     val uiState: StateFlow<MonkeyUiState> = _uiState.asStateFlow()
@@ -53,13 +55,16 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     // ─── Tareas ────────────────────────────────────────────────────────────────
 
     fun toggleTask(taskId: String) {
-        viewModelScope.launch {
-            val earned = manager.toggleTask(taskId)
-            refreshState(justEarnedBanana = earned)
-            updateWidget()
-            if (earned) {
-                NotificationHelper.showCelebrationNotification(getApplication())
-            }
+        val wasDone = manager.isTaskCompleted(taskId)
+        if (!wasDone) sounds.playTaskPop()
+
+        val earned = manager.toggleTask(taskId)
+
+        refreshState(justEarnedBanana = earned)
+        updateWidget()
+
+        if (earned) {
+            NotificationHelper.showCelebrationNotification(getApplication())
         }
     }
 
