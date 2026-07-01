@@ -193,7 +193,128 @@ class MonkeyStateManager(private val context: Context) {
         prefs.edit().putString(KEY_EQUIPPED_ACCESSORY, accessoryId).apply()
     }
 
+    // ─── Motas de polvo ────────────────────────────────────────────────────────
+
+    val dustMotes: List<DustMote> get() = loadDustMotes()
+
+    val dustCount: Int get() = dustMotes.size
+
+    /** Sincroniza motas según horas transcurridas (máx. 5, +1 por hora). */
+    fun syncDustSpawns() {
+        val now = currentTimeMs()
+        val motes = loadDustMotes().toMutableList()
+        var lastSpawn = prefs.getLong(KEY_DUST_LAST_SPAWN_MS, 0L)
+
+        if (lastSpawn == 0L) {
+            prefs.edit().putLong(KEY_DUST_LAST_SPAWN_MS, now).apply()
+            return
+        }
+
+        var changed = false
+        while (motes.size < MAX_DUST_MOTES) {
+            val nextSpawn = lastSpawn + HOUR_MS
+            if (now < nextSpawn) break
+            motes.add(DustMote.SLOTS[motes.size])
+            lastSpawn = nextSpawn
+            changed = true
+        }
+
+        if (changed) {
+            saveDustMotes(motes)
+            prefs.edit().putLong(KEY_DUST_LAST_SPAWN_MS, lastSpawn).apply()
+        }
+    }
+
+    /** Limpia motas y otorga 1 banana. Devuelve true si había motas. */
+    fun rewardDustCleaning(): Boolean {
+        if (loadDustMotes().isEmpty()) return false
+        prefs.edit()
+            .putString(KEY_DUST_MOTES, "[]")
+            .remove(KEY_DUST_COUNT)
+            .putInt(KEY_BANANAS, bananas + 1)
+            .putLong(KEY_DUST_LAST_SPAWN_MS, currentTimeMs())
+            .apply()
+        return true
+    }
+
+    private fun loadDustMotes(): List<DustMote> {
+        val json = prefs.getString(KEY_DUST_MOTES, null)
+        val count = when {
+            json != null -> {
+                try {
+                    val type = object : TypeToken<List<DustMote>>() {}.type
+                    gson.fromJson<List<DustMote>>(json, type)?.size ?: 0
+                } catch (_: Exception) {
+                    0
+                }
+            }
+            else -> prefs.getInt(KEY_DUST_COUNT, 0)
+        }.coerceIn(0, MAX_DUST_MOTES)
+
+        val motes = dustMotesForCount(count, MAX_DUST_MOTES)
+        if (json != null || count > 0) {
+            val savedJson = prefs.getString(KEY_DUST_MOTES, null)
+            val needsSave = savedJson == null ||
+                savedJson != gson.toJson(motes)
+            if (needsSave) {
+                saveDustMotes(motes)
+                if (json == null) prefs.edit().remove(KEY_DUST_COUNT).apply()
+            }
+        }
+        return motes
+    }
+
+    private fun saveDustMotes(motes: List<DustMote>) {
+        val canonical = dustMotesForCount(motes.size, MAX_DUST_MOTES)
+        prefs.edit().putString(KEY_DUST_MOTES, gson.toJson(canonical)).apply()
+    }
+
+    // ─── DEBUG ─────────────────────────────────────────────────────────────────
+
+    fun debugSimulateMissedDay() {
+        prefs.edit().apply {
+            putInt(KEY_STREAK, 0)
+            putBoolean(KEY_STREAK_BROKEN, true)
+            putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
+            putBoolean(KEY_REWARD_GIVEN, false)
+            putBoolean(KEY_STREAK_COUNTED, false)
+            loadTasks().forEach { remove(taskKey(it.id)) }
+            putString(KEY_LAST_RESET, LocalDate.now().toString())
+            apply()
+        }
+    }
+
+    fun debugSimulateCompletedDay() {
+        val yesterday = LocalDate.now().minusDays(1).toString()
+        prefs.edit().apply {
+            putString(KEY_LAST_RESET, yesterday)
+            loadTasks().forEach { putBoolean(taskKey(it.id), true) }
+            putBoolean(KEY_REWARD_GIVEN, true)
+            putBoolean(KEY_STREAK_COUNTED, true)
+            putBoolean(KEY_STREAK_BROKEN, false)
+            apply()
+        }
+        checkAndResetForNewDay()
+    }
+
+    fun debugReset() {
+        prefs.edit().clear().apply()
+    }
+
+    fun debugAddBananas(amount: Int = 100) {
+        prefs.edit().putInt(KEY_BANANAS, bananas + amount).apply()
+    }
+
+    fun debugAdvanceOneHour() {
+        val lastSpawn = prefs.getLong(KEY_DUST_LAST_SPAWN_MS, currentTimeMs())
+        prefs.edit().putLong(KEY_DUST_LAST_SPAWN_MS, lastSpawn - HOUR_MS).apply()
+        syncDustSpawns()
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
+
+    private fun currentTimeMs(): Long =
+        System.currentTimeMillis() + prefs.getLong(KEY_DEBUG_TIME_OFFSET_MS, 0L)
 
     private fun taskKey(taskId: String) = "done_$taskId"
 
@@ -213,6 +334,13 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_EQUIPPED_ACCESSORY = "equippedAccessory"
         const val KEY_STREAK_BONUS_GIVEN = "streakBonusGiven"
         const val KEY_ONBOARDING_DONE    = "onboardingDone"
+        const val KEY_DUST_COUNT         = "dustCount"
+        const val KEY_DUST_MOTES         = "dustMotesJson"
+        const val KEY_DUST_LAST_SPAWN_MS = "dustLastSpawnMs"
+        const val KEY_DEBUG_TIME_OFFSET_MS = "debugTimeOffsetMs"
+
+        const val MAX_DUST_MOTES = 5
+        const val HOUR_MS = 3_600_000L
 
         data class AccessoryItem(val id: String, val name: String, val price: Int)
 

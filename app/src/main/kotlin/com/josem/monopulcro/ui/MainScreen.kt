@@ -98,6 +98,9 @@ fun MainScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     var showCelebration by remember { mutableStateOf(false) }
+    var isMonkeyCleaning by remember { mutableStateOf(false) }
+    var dustAtCleanStart by remember { mutableStateOf(emptyList<com.josem.monopulcro.data.DustMote>()) }
+    var showDustBananaReward by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val sounds  = remember { SoundManager.get(context) }
     val tipIndex    = remember { TIPS_PHRASES.indices.random() }
@@ -155,7 +158,11 @@ fun MainScreen(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(240.dp)
-                        .clickable { sounds.playCleaningSequence() }
+                        .clickable(enabled = !isMonkeyCleaning) {
+                            dustAtCleanStart = vm.dustMotesForCleaning()
+                            isMonkeyCleaning = true
+                            sounds.playCleaningSequence()
+                        }
                 ) {
                     Canvas(modifier = Modifier.size(230.dp)) {
                         drawCircle(
@@ -188,6 +195,21 @@ fun MainScreen(
                             ),
                             contentDescription = "Mono Pulcro",
                             modifier = Modifier.size(220.dp)
+                        )
+                    }
+                    if (!isMonkeyCleaning && state.dustMotes.isNotEmpty()) {
+                        DustMotesOverlay(motes = state.dustMotes)
+                    }
+                    if (isMonkeyCleaning) {
+                        MonkeyCleaningOverlay(
+                            dustMotesAtStart = dustAtCleanStart,
+                            onCleaningFinished = {
+                                isMonkeyCleaning = false
+                                if (dustAtCleanStart.isNotEmpty()) {
+                                    vm.completeDustCleaning()
+                                    showDustBananaReward = true
+                                }
+                            }
                         )
                     }
                 }
@@ -261,11 +283,18 @@ fun MainScreen(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
+
+                DebugPanel(vm)
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
 
         if (showCelebration) {
             FireCelebrationOverlay(onFinished = { showCelebration = false })
+        }
+        if (showDustBananaReward) {
+            BananaRewardOverlay(onFinished = { showDustBananaReward = false })
         }
     }
 }
@@ -571,6 +600,47 @@ private fun ShopButton(onClick: () -> Unit) {
             .size(40.dp)
             .clickable { onClick() }
     )
+}
+
+// ─── DEBUG ────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun DebugPanel(vm: MonkeyViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFFF3CD), RoundedCornerShape(12.dp))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = "DEBUG",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF856404)
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DebugButton("Dia perdido", Color(0xFFDC3545)) { vm.debugMissedDay() }
+            DebugButton("Dia ganado",  Color(0xFF198754)) { vm.debugCompletedDay() }
+            DebugButton("Reset",       Color(0xFF6C757D)) { vm.debugReset() }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DebugButton("100 bananas", Color(0xFFCC9A00)) { vm.debugAddBananas() }
+            DebugButton("+1 hora",     Color(0xFF0D6EFD)) { vm.debugAdvanceHour() }
+        }
+    }
+}
+
+@Composable
+private fun DebugButton(label: String, color: Color, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = color)
+    ) {
+        Text(label, fontSize = 11.sp, color = Color.White)
+    }
 }
 
 // ─── Ondas decorativas ────────────────────────────────────────────────────────

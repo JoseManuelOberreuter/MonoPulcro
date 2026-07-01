@@ -27,30 +27,39 @@ class SoundManager private constructor(context: Context) {
         .build()
 
     private val popSoundId: Int
+    private val cashRegisterSoundId: Int
 
     init {
-        popSoundId = try {
-            appContext.assets.openFd(SOUND_POP).use { afd -> soundPool.load(afd, 1) }
-        } catch (_: Exception) {
-            0
-        }
+        popSoundId = loadSound(SOUND_POP)
+        cashRegisterSoundId = loadSound(SOUND_CASH_REGISTER)
     }
 
-    /** 3 campanitas al splash; no bloquea la UI */
+    private fun loadSound(assetPath: String): Int = try {
+        appContext.assets.openFd(assetPath).use { afd -> soundPool.load(afd, 1) }
+    } catch (_: Exception) {
+        0
+    }
+
+    /** Campanita al splash; no bloquea la UI */
     fun playIntroJingle() {
-        scope.launch {
-            repeat(3) { playAndAwait(SOUND_INTRO) }
-        }
+        scope.launch { playAndAwait(SOUND_INTRO) }
     }
 
-    /** Pop instantáneo al marcar; SoundPool precargado, sin esperar animación del check */
+    /** Pop instantáneo al marcar; SoundPool precargado */
     fun playTaskPop() {
         if (popSoundId != 0) {
             soundPool.play(popSoundId, 1f, 1f, 0, 0, 1f)
         }
     }
 
-    /** Spray → limpieza al tocar el mono en pantalla principal */
+    /** Caja registradora al comprar en la tienda */
+    fun playCashRegister() {
+        if (cashRegisterSoundId != 0) {
+            soundPool.play(cashRegisterSoundId, 1f, 1f, 0, 0, 1f)
+        }
+    }
+
+    /** Spray termina → window_cleaning al instante. */
     fun playCleaningSequence() {
         scope.launch {
             playAndAwait(SOUND_SPRAY)
@@ -94,7 +103,8 @@ class SoundManager private constructor(context: Context) {
         private const val SOUND_POP    = "sounds/pop_tarea.mp3"
         private const val SOUND_SPRAY  = "sounds/spray_bottle.mp3"
         private const val SOUND_WINDOW = "sounds/window_cleaning.mp3"
-        private const val SOUND_CHEER  = "sounds/grito_mono.mp3"
+        private const val SOUND_CHEER         = "sounds/grito_mono.mp3"
+        private const val SOUND_CASH_REGISTER = "sounds/cash_register.mp3"
 
         @Volatile
         private var instance: SoundManager? = null

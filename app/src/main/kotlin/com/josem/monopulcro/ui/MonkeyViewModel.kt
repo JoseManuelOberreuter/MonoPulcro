@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.josem.monopulcro.audio.SoundManager
+import com.josem.monopulcro.data.DustMote
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.Task
 import com.josem.monopulcro.notifications.NotificationHelper
@@ -29,11 +30,9 @@ data class MonkeyUiState(
     val missedDaysCount: Int = 0,
     val ownedAccessories: Set<String> = emptySet(),
     val equippedAccessory: String? = null,
-    /** Tareas programadas para HOY con su estado de completado */
     val todayTasks: List<TaskUiState> = emptyList(),
-    /** Todas las tareas para la pantalla de gestión */
     val allTasks: List<Task> = emptyList(),
-    /** Evento puntual: se acaba de ganar una banana (dispara animación) */
+    val dustMotes: List<DustMote> = emptyList(),
     val justEarnedBanana: Boolean = false
 )
 
@@ -68,6 +67,15 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** Devuelve cuántas motas había al tocar (para animación y recompensa). */
+    fun dustMotesForCleaning(): List<DustMote> = _uiState.value.dustMotes
+
+    fun completeDustCleaning() {
+        manager.rewardDustCleaning()
+        refreshState()
+        updateWidget()
+    }
+
     fun addTask(task: Task) {
         viewModelScope.launch {
             manager.addTask(task)
@@ -92,8 +100,8 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     // ─── Tienda ───────────────────────────────────────────────────────────────
 
     fun buyAccessory(accessoryId: String) {
-        viewModelScope.launch {
-            manager.buyAccessory(accessoryId)
+        if (manager.buyAccessory(accessoryId)) {
+            sounds.playCashRegister()
             refreshState()
             updateWidget()
         }
@@ -111,12 +119,43 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(justEarnedBanana = false) }
     }
 
-    /** Fuerza una re-lectura del estado. Llamar al volver a esta pantalla. */
     fun refresh() = refreshState()
+
+    // ─── DEBUG ─────────────────────────────────────────────────────────────────
+
+    fun debugMissedDay() {
+        manager.debugSimulateMissedDay()
+        refreshState()
+        updateWidget()
+    }
+
+    fun debugCompletedDay() {
+        manager.debugSimulateCompletedDay()
+        refreshState()
+        updateWidget()
+    }
+
+    fun debugReset() {
+        manager.debugReset()
+        refreshState()
+        updateWidget()
+    }
+
+    fun debugAddBananas() {
+        manager.debugAddBananas(100)
+        refreshState()
+    }
+
+    fun debugAdvanceHour() {
+        manager.debugAdvanceOneHour()
+        refreshState()
+        updateWidget()
+    }
 
     // ─── Helpers privados ──────────────────────────────────────────────────────
 
     private fun refreshState(justEarnedBanana: Boolean = false) {
+        manager.syncDustSpawns()
         _uiState.update {
             MonkeyUiState(
                 streak            = manager.streakCount,
@@ -130,6 +169,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                     TaskUiState(task, done)
                 },
                 allTasks          = manager.loadTasks(),
+                dustMotes         = manager.dustMotes,
                 justEarnedBanana  = justEarnedBanana
             )
         }
