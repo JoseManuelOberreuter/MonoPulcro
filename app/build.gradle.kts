@@ -12,8 +12,8 @@ android {
         applicationId = "com.josem.monopulcro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 9
+        versionName = "1.0.8"
     }
 
     buildTypes {
@@ -54,11 +54,14 @@ dependencies {
     // Compose
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.runtime:runtime")
+    implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.foundation:foundation")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.4")
+    implementation("androidx.navigation:navigation-runtime-ktx:2.8.4")
 
     // JSON serialization
     implementation("com.google.code.gson:gson:2.11.0")

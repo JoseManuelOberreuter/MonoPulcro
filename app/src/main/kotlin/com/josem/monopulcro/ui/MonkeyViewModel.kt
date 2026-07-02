@@ -8,6 +8,7 @@ import com.josem.monopulcro.data.DustMote
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.Task
 import com.josem.monopulcro.notifications.NotificationHelper
+import com.josem.monopulcro.notifications.TaskNotificationScheduler
 import com.josem.monopulcro.widget.MonkeyWidgetReceiver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +50,11 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     init {
         manager.checkAndResetForNewDay()
         refreshState()
+        try {
+            TaskNotificationScheduler.scheduleAll(application)
+        } catch (_: Exception) {
+            // No bloquear el arranque si falla la programación de alarmas
+        }
     }
 
     // ─── Tareas ────────────────────────────────────────────────────────────────
@@ -79,6 +85,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     fun addTask(task: Task) {
         viewModelScope.launch {
             manager.addTask(task)
+            TaskNotificationScheduler.scheduleAll(getApplication())
             refreshState()
         }
     }
@@ -86,6 +93,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     fun updateTask(task: Task) {
         viewModelScope.launch {
             manager.updateTask(task)
+            TaskNotificationScheduler.scheduleAll(getApplication())
             refreshState()
         }
     }
@@ -93,6 +101,8 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     fun deleteTask(taskId: String) {
         viewModelScope.launch {
             manager.deleteTask(taskId)
+            TaskNotificationScheduler.cancelTask(getApplication(), taskId)
+            TaskNotificationScheduler.scheduleAll(getApplication())
             refreshState()
         }
     }
@@ -120,37 +130,6 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun refresh() = refreshState()
-
-    // ─── DEBUG ─────────────────────────────────────────────────────────────────
-
-    fun debugMissedDay() {
-        manager.debugSimulateMissedDay()
-        refreshState()
-        updateWidget()
-    }
-
-    fun debugCompletedDay() {
-        manager.debugSimulateCompletedDay()
-        refreshState()
-        updateWidget()
-    }
-
-    fun debugReset() {
-        manager.debugReset()
-        refreshState()
-        updateWidget()
-    }
-
-    fun debugAddBananas() {
-        manager.debugAddBananas(100)
-        refreshState()
-    }
-
-    fun debugAdvanceHour() {
-        manager.debugAdvanceOneHour()
-        refreshState()
-        updateWidget()
-    }
 
     // ─── Helpers privados ──────────────────────────────────────────────────────
 

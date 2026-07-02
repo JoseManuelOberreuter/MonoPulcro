@@ -9,5 +9,8 @@ import java.util.UUID
 data class Task(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
-    val scheduledDays: List<Int>   // e.g. [1,3,5] = Lun, Mié, Vie
+    val scheduledDays: List<Int>,   // e.g. [1,3,5] = Lun, Mié, Vie
+    val notificationEnabled: Boolean = false,
+    val notificationHour: Int = 9,
+    val notificationMinute: Int = 0,
 )

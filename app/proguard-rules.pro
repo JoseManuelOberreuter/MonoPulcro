@@ -2,8 +2,13 @@
 -keepclassmembers class * extends androidx.glance.appwidget.GlanceAppWidget { *; }
 -keepclassmembers class * extends androidx.glance.appwidget.GlanceAppWidgetReceiver { *; }
 
+# ViewModels (evita crash al instanciar en release)
+-keep class * extends androidx.lifecycle.ViewModel { *; }
+-keep class * extends androidx.lifecycle.AndroidViewModel { *; }
+
 # Gson: preservar clases de datos serializadas
 -keep class com.josem.monopulcro.data.Task { *; }
+-keep class com.josem.monopulcro.data.DustMote { *; }
 -keepattributes Signature
 -keepattributes *Annotation*
 -dontwarn sun.misc.**

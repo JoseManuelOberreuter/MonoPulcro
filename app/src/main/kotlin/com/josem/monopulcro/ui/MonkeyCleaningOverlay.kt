@@ -246,31 +246,29 @@ fun MonkeyCleaningOverlay(
     LaunchedEffect(Unit) {
         delay(SPRAY_DURATION_MS + CLOTH_START_DELAY_MS)
 
-        launch {
-            clothAlpha.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
-            coroutineScope {
-                if (dustMotesAtStart.isNotEmpty()) {
-                    launch {
-                        dustAlpha.animateTo(
-                            0f,
-                            tween(CLOTH_DURATION_MS, easing = LinearOutSlowInEasing)
-                        )
-                    }
-                }
+        clothAlpha.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
+
+        coroutineScope {
+            if (dustMotesAtStart.isNotEmpty()) {
                 launch {
-                    dropsAlpha.animateTo(
+                    dustAlpha.animateTo(
                         0f,
                         tween(CLOTH_DURATION_MS, easing = LinearOutSlowInEasing)
                     )
                 }
             }
-            animateClothZigzag(clothX, clothY, clothRotation)
+            launch {
+                dropsAlpha.animateTo(
+                    0f,
+                    tween(CLOTH_DURATION_MS, easing = LinearOutSlowInEasing)
+                )
+            }
+            launch {
+                animateClothZigzag(clothX, clothY, clothRotation)
+            }
         }
 
-        delay(CLOTH_DURATION_MS.toLong())
-
         clothAlpha.animateTo(0f, tween(FADE_OUT_MS, easing = LinearOutSlowInEasing))
-        delay(FADE_OUT_MS.toLong())
         onCleaningFinished()
     }
 

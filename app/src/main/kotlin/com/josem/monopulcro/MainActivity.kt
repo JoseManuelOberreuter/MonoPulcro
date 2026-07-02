@@ -10,7 +10,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.NavHost
@@ -19,12 +23,19 @@ import androidx.navigation.compose.rememberNavController
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.notifications.NotificationHelper
 import com.josem.monopulcro.notifications.NotificationScheduler
+import com.josem.monopulcro.notifications.TaskNotificationScheduler
 import com.josem.monopulcro.ui.MainScreen
 import com.josem.monopulcro.ui.OnboardingScreen
 import com.josem.monopulcro.ui.ShopScreen
 import com.josem.monopulcro.ui.SplashScreen
 import com.josem.monopulcro.ui.TaskEditScreen
 import com.josem.monopulcro.ui.theme.MonoPulcroTheme
+
+private const val ROUTE_ONBOARDING = "onboarding"
+private const val ROUTE_MAIN = "main"
+private const val ROUTE_TASK_NEW = "task_new"
+private const val ROUTE_TASK_EDIT = "task_edit/{taskId}"
+private const val ROUTE_SHOP = "shop"
 
 class MainActivity : ComponentActivity() {
 
@@ -34,8 +45,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            NotificationHelper.createChannels(this)
-            NotificationScheduler.schedule(this)
+            scheduleNotificationsSafely()
         }
     }
 
@@ -49,34 +59,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             MonoPulcroTheme {
                 var showSplash by remember { mutableStateOf(true) }
-                var showOnboarding by remember { mutableStateOf(!stateManager.onboardingCompleted) }
-                var openAddTaskOnStart by remember { mutableStateOf(false) }
+                val startOnboarding = remember { !stateManager.onboardingCompleted }
 
                 Crossfade(
                     targetState = showSplash,
                     animationSpec = tween(durationMillis = 500),
                     label = "splashTransition"
                 ) { isSplash ->
-                    when {
-                        isSplash -> {
-                            SplashScreen(onFinished = { showSplash = false })
-                        }
-                        showOnboarding -> {
-                            OnboardingScreen(
-                                onFinished = {
-                                    stateManager.completeOnboarding()
-                                    showOnboarding = false
-                                },
-                                onAddFirstTask = {
-                                    stateManager.completeOnboarding()
-                                    showOnboarding = false
-                                    openAddTaskOnStart = true
-                                }
-                            )
-                        }
-                        else -> {
-                            AppNavigation(openAddTaskOnStart = openAddTaskOnStart)
-                        }
+                    if (isSplash) {
+                        SplashScreen(onFinished = { showSplash = false })
+                    } else {
+                        AppNavigation(
+                            startOnboarding = startOnboarding,
+                            onOnboardingComplete = { stateManager.completeOnboarding() },
+                        )
                     }
                 }
             }
@@ -84,51 +80,103 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setupNotifications() {
-        NotificationHelper.createChannels(this)
+        try {
+            NotificationHelper.createChannels(this)
+        } catch (_: Exception) {
+            return
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(
                     this, Manifest.permission.POST_NOTIFICATIONS
                 ) == PackageManager.PERMISSION_GRANTED -> {
-                    NotificationScheduler.schedule(this)
+                    scheduleNotificationsSafely()
                 }
                 else -> {
                     requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
         } else {
+            scheduleNotificationsSafely()
+        }
+    }
+
+    private fun scheduleNotificationsSafely() {
+        try {
             NotificationScheduler.schedule(this)
+            TaskNotificationScheduler.scheduleAll(this)
+        } catch (_: Exception) {
+            // Evita crash al programar alarmas en dispositivos restrictivos
         }
     }
 }
 
 @Composable
-private fun AppNavigation(openAddTaskOnStart: Boolean = false) {
+private fun AppNavigation(
+    startOnboarding: Boolean,
+    onOnboardingComplete: () -> Unit,
+) {
     val navController = rememberNavController()
+    val startDestination = if (startOnboarding) ROUTE_ONBOARDING else ROUTE_MAIN
 
-    LaunchedEffect(openAddTaskOnStart) {
-        if (openAddTaskOnStart) {
-            navController.navigate("task_edit/new")
+    NavHost(navController = navController, startDestination = startDestination) {
+        composable(ROUTE_ONBOARDING) {
+            OnboardingScreen(
+                onFinished = {
+                    onOnboardingComplete()
+                    navController.navigate(ROUTE_MAIN) {
+                        popUpTo(ROUTE_ONBOARDING) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onAddFirstTask = {
+                    onOnboardingComplete()
+                    navController.navigate(ROUTE_MAIN) {
+                        popUpTo(ROUTE_ONBOARDING) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                    navController.navigate(ROUTE_TASK_NEW) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
-    }
-
-    NavHost(navController = navController, startDestination = "main") {
-        composable("main") {
+        composable(ROUTE_MAIN) {
             MainScreen(
-                onAddTask  = { navController.navigate("task_edit/new") },
-                onEditTask = { taskId -> navController.navigate("task_edit/$taskId") },
-                onOpenShop = { navController.navigate("shop") }
+                onAddTask = {
+                    navController.navigate(ROUTE_TASK_NEW) {
+                        launchSingleTop = true
+                    }
+                },
+                onEditTask = { taskId ->
+                    navController.navigate("task_edit/$taskId") {
+                        launchSingleTop = true
+                    }
+                },
+                onOpenShop = {
+                    navController.navigate(ROUTE_SHOP) {
+                        launchSingleTop = true
+                    }
+                },
             )
         }
-        composable("task_edit/{taskId}") { backStackEntry ->
-            val taskId = backStackEntry.arguments?.getString("taskId") ?: "new"
+        composable(ROUTE_TASK_NEW) {
             TaskEditScreen(
-                taskId         = taskId,
-                onNavigateBack = { navController.popBackStack() }
+                taskId = "new",
+                onNavigateBack = { navController.popBackStack() },
             )
         }
-        composable("shop") {
+        composable(ROUTE_TASK_EDIT) { backStackEntry ->
+            val taskId = backStackEntry.arguments?.getString("taskId")
+            if (taskId != null) {
+                TaskEditScreen(
+                    taskId = taskId,
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+        }
+        composable(ROUTE_SHOP) {
             ShopScreen(onNavigateBack = { navController.popBackStack() })
         }
     }

@@ -15,9 +15,11 @@ object NotificationHelper {
 
     private const val CHANNEL_REMINDER    = "mono_reminder_channel"
     private const val CHANNEL_CELEBRATION = "mono_celebration_channel"
+    private const val CHANNEL_TASK        = "mono_task_channel"
 
     private const val NOTIF_ID_REMINDER    = 1001
     private const val NOTIF_ID_CELEBRATION = 1002
+    private const val NOTIF_ID_TASK_BASE   = 5000
 
     // ─── Inicialización de canales (llamar una sola vez al inicio) ────────────
 
@@ -39,6 +41,15 @@ object NotificationHelper {
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Confirmacion de tareas completadas"
+            manager.createNotificationChannel(this)
+        }
+
+        NotificationChannel(
+            CHANNEL_TASK,
+            "Recordatorios de tareas",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Avisos personalizados por tarea"
             manager.createNotificationChannel(this)
         }
     }
@@ -78,6 +89,30 @@ object NotificationHelper {
 
         postNotification(context, NOTIF_ID_REMINDER, CHANNEL_REMINDER, title, body, highPriority = true)
     }
+
+    // ─── Recordatorio por tarea (hora personalizada) ─────────────────────────
+
+    fun showTaskReminderNotification(context: Context, taskId: String) {
+        val manager = MonkeyStateManager(context)
+        val task = manager.loadTasks().find { it.id == taskId } ?: return
+        if (!task.notificationEnabled) return
+        if (manager.todayTasks.none { it.id == taskId }) return
+        if (manager.isTaskCompleted(taskId)) return
+
+        val title = "Mono Pulcro"
+        val body = "Es hora de: ${task.name}"
+        postNotification(
+            context,
+            notifIdForTask(taskId),
+            CHANNEL_TASK,
+            title,
+            body,
+            highPriority = true,
+        )
+    }
+
+    private fun notifIdForTask(taskId: String): Int =
+        NOTIF_ID_TASK_BASE + (taskId.hashCode() and 0x7FFF)
 
     // ─── Celebración 30 min después de completar todas las tareas ────────────
 

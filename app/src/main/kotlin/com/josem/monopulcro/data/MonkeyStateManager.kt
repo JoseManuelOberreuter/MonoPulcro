@@ -269,52 +269,9 @@ class MonkeyStateManager(private val context: Context) {
         prefs.edit().putString(KEY_DUST_MOTES, gson.toJson(canonical)).apply()
     }
 
-    // ─── DEBUG ─────────────────────────────────────────────────────────────────
-
-    fun debugSimulateMissedDay() {
-        prefs.edit().apply {
-            putInt(KEY_STREAK, 0)
-            putBoolean(KEY_STREAK_BROKEN, true)
-            putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
-            putBoolean(KEY_REWARD_GIVEN, false)
-            putBoolean(KEY_STREAK_COUNTED, false)
-            loadTasks().forEach { remove(taskKey(it.id)) }
-            putString(KEY_LAST_RESET, LocalDate.now().toString())
-            apply()
-        }
-    }
-
-    fun debugSimulateCompletedDay() {
-        val yesterday = LocalDate.now().minusDays(1).toString()
-        prefs.edit().apply {
-            putString(KEY_LAST_RESET, yesterday)
-            loadTasks().forEach { putBoolean(taskKey(it.id), true) }
-            putBoolean(KEY_REWARD_GIVEN, true)
-            putBoolean(KEY_STREAK_COUNTED, true)
-            putBoolean(KEY_STREAK_BROKEN, false)
-            apply()
-        }
-        checkAndResetForNewDay()
-    }
-
-    fun debugReset() {
-        prefs.edit().clear().apply()
-    }
-
-    fun debugAddBananas(amount: Int = 100) {
-        prefs.edit().putInt(KEY_BANANAS, bananas + amount).apply()
-    }
-
-    fun debugAdvanceOneHour() {
-        val lastSpawn = prefs.getLong(KEY_DUST_LAST_SPAWN_MS, currentTimeMs())
-        prefs.edit().putLong(KEY_DUST_LAST_SPAWN_MS, lastSpawn - HOUR_MS).apply()
-        syncDustSpawns()
-    }
-
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
-    private fun currentTimeMs(): Long =
-        System.currentTimeMillis() + prefs.getLong(KEY_DEBUG_TIME_OFFSET_MS, 0L)
+    private fun currentTimeMs(): Long = System.currentTimeMillis()
 
     private fun taskKey(taskId: String) = "done_$taskId"
 
@@ -337,7 +294,6 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_DUST_COUNT         = "dustCount"
         const val KEY_DUST_MOTES         = "dustMotesJson"
         const val KEY_DUST_LAST_SPAWN_MS = "dustLastSpawnMs"
-        const val KEY_DEBUG_TIME_OFFSET_MS = "debugTimeOffsetMs"
 
         const val MAX_DUST_MOTES = 5
         const val HOUR_MS = 3_600_000L

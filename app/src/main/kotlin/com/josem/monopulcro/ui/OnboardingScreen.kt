@@ -39,22 +39,28 @@ private val ONBOARDING_PAGES = listOf(
     OnboardingPage(
         imageRes = MonkeyImageResolver.DEFAULT_PULCRO,
         title = "Bienvenido a Mono Pulcro",
-        description = "Tu mono te ayuda a mantener tus habitos de limpieza diarios"
+        description = "Tu mono te ayuda a mantener tus hábitos de limpieza cada día"
     ),
     OnboardingPage(
         imageRes = R.drawable.banana,
         title = "Gana bananas",
-        description = "Completa todas tus tareas del dia y gana 1 banana como recompensa"
+        description = "Completa todas tus tareas del día y gana 1 banana como recompensa"
     ),
     OnboardingPage(
         imageRes = R.drawable.fuego,
         title = "Construye tu racha",
-        description = "Cada dia que completes tus tareas aumenta tu racha. No la rompas!"
+        description = "Cada día que completes tus tareas aumenta tu racha. ¡No la rompas!"
+    ),
+    OnboardingPage(
+        imageRes = R.drawable.mota_polvo,
+        title = "Pelusas en tu mono",
+        description = "Con el tiempo aparecen motas de polvo sobre tu mono (1 por hora, hasta 5). " +
+            "Tócalo para limpiarlas con spray y paño y gana 1 banana extra."
     ),
     OnboardingPage(
         imageRes = R.drawable.cara_mono,
         title = "La tienda",
-        description = "Usa tus bananas para comprarle accesorios a tu mono. Aqui dentro de la tienda."
+        description = "Usa tus bananas en la tienda para comprarle accesorios a tu mono"
     )
 )
 

@@ -283,10 +283,6 @@ fun MainScreen(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
-
-                DebugPanel(vm)
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
 
@@ -600,47 +596,6 @@ private fun ShopButton(onClick: () -> Unit) {
             .size(40.dp)
             .clickable { onClick() }
     )
-}
-
-// ─── DEBUG ────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun DebugPanel(vm: MonkeyViewModel) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFFFF3CD), RoundedCornerShape(12.dp))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Text(
-            text = "DEBUG",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF856404)
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            DebugButton("Dia perdido", Color(0xFFDC3545)) { vm.debugMissedDay() }
-            DebugButton("Dia ganado",  Color(0xFF198754)) { vm.debugCompletedDay() }
-            DebugButton("Reset",       Color(0xFF6C757D)) { vm.debugReset() }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            DebugButton("100 bananas", Color(0xFFCC9A00)) { vm.debugAddBananas() }
-            DebugButton("+1 hora",     Color(0xFF0D6EFD)) { vm.debugAdvanceHour() }
-        }
-    }
-}
-
-@Composable
-private fun DebugButton(label: String, color: Color, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = color)
-    ) {
-        Text(label, fontSize = 11.sp, color = Color.White)
-    }
 }
 
 // ─── Ondas decorativas ────────────────────────────────────────────────────────
