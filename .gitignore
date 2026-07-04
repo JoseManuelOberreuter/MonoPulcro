@@ -17,7 +17,7 @@ local.properties
 *.keystore
 *.jks
 
-# IDE
+# IDE (Android Studio / IntelliJ) — no subir config local ni cachés
 .idea/
 *.iml
 .DS_Store
