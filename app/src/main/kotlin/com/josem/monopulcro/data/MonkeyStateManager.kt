@@ -301,9 +301,10 @@ class MonkeyStateManager(private val context: Context) {
         data class AccessoryItem(val id: String, val name: String, val price: Int)
 
         val ACCESSORIES = listOf(
-            AccessoryItem("glasses",   "Lentes",     3),
+            AccessoryItem("glasses",   "Lentes",      3),
             AccessoryItem("hat",       "Gorro",       7),
             AccessoryItem("crown",     "Corona",     14),
+            AccessoryItem("chaleco",   "Chaleco",    10),
             AccessoryItem("astronaut", "Astronauta", 30),
             AccessoryItem("gold",      "Mono de oro", 50)
         )
