@@ -1,10 +1,11 @@
 package com.josem.monopulcro.ui
 
 import com.josem.monopulcro.R
-import java.time.LocalDate
 import java.util.Random
 
 object MonkeyImageResolver {
+
+    private const val MS_PER_VARIANT_SLOT = 3 * 60 * 60 * 1000L
 
     private val PULCRO_STATES = listOf(
         R.drawable.mono_pulcro_1,
@@ -72,23 +73,24 @@ object MonkeyImageResolver {
         missedDays: Int = 0
     ): Int = when {
         isClean && equippedAccessory != null -> resolveCleanAccessory(equippedAccessory)
-        isClean                              -> dailyRandom(PULCRO_STATES)
+        isClean                              -> variantRandom(PULCRO_STATES)
         missedDays >= 4                      -> ESTADOS_EXTREMO[Random(missedDays.toLong()).nextInt(ESTADOS_EXTREMO.size)]
         missedDays == 3                      -> R.drawable.mono_sucio_3
         streakBroken                         -> R.drawable.mono_sucio_2
         else                                 -> R.drawable.mono_sucio_1
     }
 
-    /** Variante del accesorio para previews (tienda); misma lógica diaria que en juego */
+    /** Variante del accesorio para previews (tienda); misma lógica de rotación que en juego */
     fun previewForAccessory(accessoryId: String): Int = resolveCleanAccessory(accessoryId)
 
     private fun resolveCleanAccessory(accessoryId: String): Int =
-        ACCESSORY_STATES[accessoryId]?.let { dailyRandom(it, accessoryId) }
-            ?: dailyRandom(PULCRO_STATES)
+        ACCESSORY_STATES[accessoryId]?.let { variantRandom(it, accessoryId) }
+            ?: variantRandom(PULCRO_STATES)
 
-    /** Misma variante durante todo el día; cambia al día siguiente */
-    private fun dailyRandom(states: List<Int>, seedKey: String = ""): Int {
-        val seed = LocalDate.now().toEpochDay() xor seedKey.hashCode().toLong()
+    /** Misma variante durante 3 h; cambia al iniciar el siguiente bloque */
+    private fun variantRandom(states: List<Int>, seedKey: String = ""): Int {
+        val slot = System.currentTimeMillis() / MS_PER_VARIANT_SLOT
+        val seed = slot xor seedKey.hashCode().toLong()
         return states[Random(seed).nextInt(states.size)]
     }
 }
