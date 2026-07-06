@@ -34,6 +34,11 @@
                 android:resource="@xml/monkey_widget_info" />
         </receiver>
 
+        <!-- Widget hourly refresh -->
+        <receiver
+            android:name=".widget.WidgetUpdateReceiver"
+            android:exported="false" />
+
         <!-- Notification Receiver (alarm diaria + reboot) -->
         <receiver
             android:name=".notifications.NotificationReceiver"

@@ -3,7 +3,11 @@ package com.josem.monopulcro.notifications
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import com.josem.monopulcro.data.MonkeyStateManager
+import com.josem.monopulcro.widget.MonkeyWidget
+import com.josem.monopulcro.widget.WidgetUpdateScheduler
+import kotlinx.coroutines.runBlocking
 
 class NotificationReceiver : BroadcastReceiver() {
 
@@ -12,6 +16,9 @@ class NotificationReceiver : BroadcastReceiver() {
             Intent.ACTION_BOOT_COMPLETED -> {
                 NotificationScheduler.schedule(context)
                 TaskNotificationScheduler.scheduleAll(context)
+                if (hasInstalledWidgets(context)) {
+                    WidgetUpdateScheduler.schedule(context)
+                }
             }
             ACTION_DAILY_REMINDER -> {
                 NotificationHelper.showReminderNotification(context)
@@ -29,6 +36,12 @@ class NotificationReceiver : BroadcastReceiver() {
                 NotificationHelper.postCelebrationNotification(context)
             }
         }
+    }
+
+    private fun hasInstalledWidgets(context: Context): Boolean = runBlocking {
+        GlanceAppWidgetManager(context)
+            .getGlanceIds(MonkeyWidget::class.java)
+            .isNotEmpty()
     }
 
     companion object {

@@ -10,6 +10,9 @@ import com.josem.monopulcro.data.Task
 import com.josem.monopulcro.notifications.NotificationHelper
 import com.josem.monopulcro.notifications.TaskNotificationScheduler
 import com.josem.monopulcro.widget.MonkeyWidgetReceiver
+import com.josem.monopulcro.widget.WidgetUpdateScheduler
+import androidx.glance.appwidget.GlanceAppWidgetManager
+import com.josem.monopulcro.widget.MonkeyWidget
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +53,12 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     init {
         manager.checkAndResetForNewDay()
         refreshState()
+        viewModelScope.launch {
+            val hasWidget = GlanceAppWidgetManager(getApplication())
+                .getGlanceIds(MonkeyWidget::class.java)
+                .isNotEmpty()
+            if (hasWidget) WidgetUpdateScheduler.schedule(getApplication())
+        }
         try {
             TaskNotificationScheduler.scheduleAll(application)
         } catch (_: Exception) {
