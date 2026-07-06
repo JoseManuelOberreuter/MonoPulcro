@@ -54,8 +54,7 @@ private val ONBOARDING_PAGES = listOf(
     OnboardingPage(
         imageRes = R.drawable.mota_polvo,
         title = "Pelusas en tu mono",
-        description = "Con el tiempo aparecen motas de polvo sobre tu mono (1 por hora, hasta 5). " +
-            "Tócalo para limpiarlas con spray y paño y gana 1 banana extra."
+        description = "Con el tiempo se ensucia. Tócalo para limpiarlo y gana una banana extra."
     ),
     OnboardingPage(
         imageRes = R.drawable.cara_mono,
