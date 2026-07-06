@@ -68,7 +68,7 @@ Dependencias Gradle:
   provideGlance()
       |
       +-- MonkeyStateManager(context)
-      +-- syncDustSpawns()     // sincroniza motas (+1/hora, máx. 5)
+      +-- syncDustSpawns()     // sincroniza motas (+1 cada 2 h, máx. 5)
       |
       +-- Lee: streak, equippedAccessory, isCleanToday,
       |         streakBroken, missedDaysCount, dustMotes

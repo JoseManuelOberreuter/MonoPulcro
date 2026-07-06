@@ -199,7 +199,7 @@ class MonkeyStateManager(private val context: Context) {
 
     val dustCount: Int get() = dustMotes.size
 
-    /** Sincroniza motas según horas transcurridas (máx. 5, +1 por hora). */
+    /** Sincroniza motas según tiempo transcurrido (máx. 5, +1 cada 2 horas). */
     fun syncDustSpawns() {
         val now = currentTimeMs()
         val motes = loadDustMotes().toMutableList()
@@ -212,7 +212,7 @@ class MonkeyStateManager(private val context: Context) {
 
         var changed = false
         while (motes.size < MAX_DUST_MOTES) {
-            val nextSpawn = lastSpawn + HOUR_MS
+            val nextSpawn = lastSpawn + DUST_SPAWN_INTERVAL_MS
             if (now < nextSpawn) break
             motes.add(DustMote.SLOTS[motes.size])
             lastSpawn = nextSpawn
@@ -296,7 +296,7 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_DUST_LAST_SPAWN_MS = "dustLastSpawnMs"
 
         const val MAX_DUST_MOTES = 5
-        const val HOUR_MS = 3_600_000L
+        const val DUST_SPAWN_INTERVAL_MS = 7_200_000L // 2 horas
 
         data class AccessoryItem(val id: String, val name: String, val price: Int)
 

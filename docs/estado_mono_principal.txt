@@ -182,7 +182,7 @@ Muestra la misma imagen de estado y las motas de polvo (sin limpieza).
   Día ganado    — Simula ayer completado y ejecuta reset → nuevo día limpio.
   Reset         — Borra todas las preferencias.
   100 bananas   — Añade bananas para la tienda.
-  +1 hora       — Solo afecta motas de polvo, no el estado limpio/sucio.
+  +2 horas      — Solo afecta motas de polvo, no el estado limpio/sucio.
 
 
 13. FLUJO RESUMIDO

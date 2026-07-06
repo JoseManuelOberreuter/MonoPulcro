@@ -13,11 +13,11 @@ sin recompensa.
 
 1. APARICIÓN Y LÍMITE
 ---------------------
-- Cada hora real transcurrida se añade 1 mota (máximo 5).
+- Cada 2 horas reales transcurridas se añade 1 mota (máximo 5).
 - La primera vez que se sincroniza solo se guarda la hora de referencia; la
-  primera mota aparece tras pasar 1 hora desde ese momento.
+  primera mota aparece tras pasar 2 horas desde ese momento.
 - Al limpiar, el contador de motas se pone a 0 y el reloj de spawn se reinicia
-  (vuelve a contar 1 hora para la siguiente mota).
+  (vuelve a contar 2 horas para la siguiente mota).
 - syncDustSpawns() se ejecuta al refrescar el estado de la app y al actualizar
   el widget.
 
@@ -74,7 +74,7 @@ Claves en MonkeyStateManager:
 
 Constantes:
   MAX_DUST_MOTES = 5
-  HOUR_MS = 3_600_000 (1 hora)
+  DUST_SPAWN_INTERVAL_MS = 7_200_000 (2 horas)
 
 
 6. ARCHIVOS PRINCIPALES
@@ -90,7 +90,7 @@ Constantes:
 
 7. DEBUG (panel amarillo en MainScreen)
 ---------------------------------------
-  +1 hora  — Avanza el tiempo simulado 1 hora y puede spawnear una mota.
+  +2 horas — Avanza el tiempo simulado 2 horas y puede spawnear una mota.
   Reset    — Reinicia estado; útil para probar spawn desde cero.
 
 
@@ -100,7 +100,7 @@ Constantes:
   [App abre / refresh]
          │
          ▼
-  syncDustSpawns() ──¿pasó 1h desde último spawn?──► +1 mota (hasta 5)
+  syncDustSpawns() ──¿pasaron 2h desde último spawn?──► +1 mota (hasta 5)
          │
          ▼
   Usuario ve motas en mono (app + widget)

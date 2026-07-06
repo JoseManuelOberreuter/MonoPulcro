@@ -9,7 +9,7 @@ data class DustMote(
 ) {
     companion object {
         /**
-         * Pelusas fijas alrededor del mono (+1 por hora, en este orden).
+         * Pelusas fijas alrededor del mono (+1 cada 2 horas, en este orden).
          * xFrac/yFrac = centro de la mota (0..1) sobre el cuadro del mono (~240 dp).
          */
         val SLOTS: List<DustMote> = listOf(
