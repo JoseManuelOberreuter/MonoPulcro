@@ -86,6 +86,24 @@ class MonkeyStateManager(private val context: Context) {
         prefs.edit().putBoolean(KEY_ONBOARDING_DONE, true).apply()
     }
 
+    val shouldShowMainTour: Boolean
+        get() = prefs.getBoolean(KEY_MAIN_TOUR_PENDING, false) && !onboardingCompleted
+
+    fun markMainTourPending() {
+        prefs.edit().putBoolean(KEY_MAIN_TOUR_PENDING, true).apply()
+    }
+
+    fun clearMainTourPending() {
+        prefs.edit().remove(KEY_MAIN_TOUR_PENDING).apply()
+    }
+
+    fun completeMainTour() {
+        prefs.edit()
+            .remove(KEY_MAIN_TOUR_PENDING)
+            .putBoolean(KEY_ONBOARDING_DONE, true)
+            .apply()
+    }
+
     // ─── Reset diario ──────────────────────────────────────────────────────────
 
     fun checkAndResetForNewDay() {
@@ -196,7 +214,7 @@ class MonkeyStateManager(private val context: Context) {
     // ─── Hint tienda (primera vez que alcanza el accesorio más barato) ─────────
 
     fun shouldShowShopAffordHint(): Boolean {
-        if (shopAffordHintConsumed) return false
+        if (!onboardingCompleted || shopAffordHintConsumed) return false
         return canAffordCheapestUnownedAccessory()
     }
 
@@ -313,6 +331,7 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_EQUIPPED_ACCESSORY = "equippedAccessory"
         const val KEY_STREAK_BONUS_GIVEN = "streakBonusGiven"
         const val KEY_ONBOARDING_DONE    = "onboardingDone"
+        const val KEY_MAIN_TOUR_PENDING  = "mainTourPending"
         const val KEY_SHOP_AFFORD_HINT_CONSUMED = "shopAffordHintConsumed"
         const val KEY_DUST_COUNT         = "dustCount"
         const val KEY_DUST_MOTES         = "dustMotesJson"

@@ -59,7 +59,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             MonoPulcroTheme {
                 var showSplash by remember { mutableStateOf(true) }
-                val startOnboarding = remember { !stateManager.onboardingCompleted }
+                val startOnboarding = remember {
+                    !stateManager.onboardingCompleted && !stateManager.shouldShowMainTour
+                }
 
                 Crossfade(
                     targetState = showSplash,
@@ -71,7 +73,6 @@ class MainActivity : ComponentActivity() {
                     } else {
                         AppNavigation(
                             startOnboarding = startOnboarding,
-                            onOnboardingComplete = { stateManager.completeOnboarding() },
                         )
                     }
                 }
@@ -115,7 +116,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppNavigation(
     startOnboarding: Boolean,
-    onOnboardingComplete: () -> Unit,
 ) {
     val navController = rememberNavController()
     val startDestination = if (startOnboarding) ROUTE_ONBOARDING else ROUTE_MAIN
@@ -123,15 +123,7 @@ private fun AppNavigation(
     NavHost(navController = navController, startDestination = startDestination) {
         composable(ROUTE_ONBOARDING) {
             OnboardingScreen(
-                onFinished = {
-                    onOnboardingComplete()
-                    navController.navigate(ROUTE_MAIN) {
-                        popUpTo(ROUTE_ONBOARDING) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
                 onAddFirstTask = {
-                    onOnboardingComplete()
                     navController.navigate(ROUTE_MAIN) {
                         popUpTo(ROUTE_ONBOARDING) { inclusive = true }
                         launchSingleTop = true

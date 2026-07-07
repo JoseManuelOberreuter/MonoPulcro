@@ -1,5 +1,6 @@
 package com.josem.monopulcro.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.*
@@ -24,6 +25,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -122,6 +127,26 @@ fun MainScreen(
         label = "monkeyPressScale"
     )
 
+    val showTour = state.showMainTour
+    var tourStep by remember { mutableIntStateOf(0) }
+    val tourBounds = remember { mutableStateMapOf<MainTourStep, Rect>() }
+    val tourScrollY = remember { mutableStateMapOf<MainTourStep, Float>() }
+    val scrollState = rememberScrollState()
+    val density = LocalDensity.current
+
+    LaunchedEffect(showTour) {
+        if (showTour) tourStep = 0
+    }
+
+    LaunchedEffect(showTour, tourStep) {
+        if (!showTour) return@LaunchedEffect
+        val step = MainTourStep.entries.getOrNull(tourStep) ?: return@LaunchedEffect
+        delay(50)
+        val targetY = tourScrollY[step] ?: return@LaunchedEffect
+        val offsetPx = with(density) { 72.dp.toPx() }
+        scrollState.animateScrollTo((targetY - offsetPx).coerceAtLeast(0f).toInt())
+    }
+
     // Refresca el estado al volver a esta pantalla (ej. después de editar/borrar una tarea)
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -151,7 +176,7 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -161,15 +186,40 @@ fun MainScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    BananaCounter(count = state.bananas)
-                    ShopButton(
-                        onClick = {
-                            if (state.showShopAffordHint) vm.onShopOpened()
-                            onOpenShop()
-                        },
-                        highlighted = state.showShopAffordHint
-                    )
-                    StreakCounter(streak = state.streak)
+                    Box(
+                        modifier = Modifier.mainTourAnchor(
+                            MainTourStep.BANANAS,
+                            tourBounds,
+                            tourScrollY
+                        )
+                    ) {
+                        BananaCounter(count = state.bananas)
+                    }
+                    Box(
+                        modifier = Modifier.mainTourAnchor(
+                            MainTourStep.SHOP,
+                            tourBounds,
+                            tourScrollY
+                        )
+                    ) {
+                        ShopButton(
+                            onClick = {
+                                if (showTour) return@ShopButton
+                                if (state.showShopAffordHint) vm.onShopOpened()
+                                onOpenShop()
+                            },
+                            highlighted = state.showShopAffordHint && !showTour
+                        )
+                    }
+                    Box(
+                        modifier = Modifier.mainTourAnchor(
+                            MainTourStep.STREAK,
+                            tourBounds,
+                            tourScrollY
+                        )
+                    ) {
+                        StreakCounter(streak = state.streak)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -179,10 +229,11 @@ fun MainScreen(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(240.dp)
+                        .mainTourAnchor(MainTourStep.MONKEY, tourBounds, tourScrollY)
                         .clickable(
                             interactionSource = monkeyInteractionSource,
                             indication = null,
-                            enabled = !isMonkeyCleaning,
+                            enabled = !isMonkeyCleaning && !showTour,
                             onClick = {
                                 dustAtCleanStart = vm.dustMotesForCleaning()
                                 isMonkeyCleaning = true
@@ -288,8 +339,9 @@ fun MainScreen(
                     Box(
                         modifier = Modifier
                             .size(36.dp)
+                            .mainTourAnchor(MainTourStep.ADD_TASK, tourBounds, tourScrollY)
                             .background(WaveColor, RoundedCornerShape(10.dp))
-                            .clickable { onAddTask() },
+                            .clickable(enabled = !showTour) { onAddTask() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -303,17 +355,22 @@ fun MainScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Lista dinámica de tareas de hoy
-                if (state.allTasks.isEmpty()) {
-                    EmptyTasksHint(onAddTask)
-                } else if (state.todayTasks.isEmpty()) {
-                    RestDayCard()
-                } else {
-                    AnimatedTaskList(
-                        tasks    = state.todayTasks,
-                        onToggle = { vm.toggleTask(it) },
-                        onEdit   = onEditTask
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .mainTourAnchor(MainTourStep.TASKS, tourBounds, tourScrollY)
+                ) {
+                    if (state.allTasks.isEmpty()) {
+                        EmptyTasksHint(onAddTask = { if (!showTour) onAddTask() })
+                    } else if (state.todayTasks.isEmpty()) {
+                        RestDayCard()
+                    } else {
+                        AnimatedTaskList(
+                            tasks = state.todayTasks,
+                            onToggle = { if (!showTour) vm.toggleTask(it) },
+                            onEdit = { if (!showTour) onEditTask(it) }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -326,7 +383,26 @@ fun MainScreen(
         if (showDustBananaReward) {
             BananaRewardOverlay(onFinished = { showDustBananaReward = false })
         }
+        if (showTour) {
+            BackHandler { /* bloquea navegación atrás durante el tour */ }
+            val currentTourStep = MainTourStep.entries.getOrNull(tourStep)
+            MainScreenTourOverlay(
+                stepIndex = tourStep,
+                targetBounds = currentTourStep?.let { tourBounds[it] },
+                onNext = { tourStep++ },
+                onFinish = { vm.completeMainTour() }
+            )
+        }
     }
+}
+
+private fun Modifier.mainTourAnchor(
+    step: MainTourStep,
+    bounds: MutableMap<MainTourStep, Rect>,
+    scrollY: MutableMap<MainTourStep, Float>,
+): Modifier = onGloballyPositioned { coordinates ->
+    bounds[step] = coordinates.boundsInWindow()
+    scrollY[step] = coordinates.positionInParent().y
 }
 
 // ─── Estados vacíos ───────────────────────────────────────────────────────────

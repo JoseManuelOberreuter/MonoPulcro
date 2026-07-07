@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -65,7 +64,6 @@ private val ONBOARDING_PAGES = listOf(
 
 @Composable
 fun OnboardingScreen(
-    onFinished: () -> Unit,
     onAddFirstTask: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { ONBOARDING_PAGES.size })
@@ -84,19 +82,6 @@ fun OnboardingScreen(
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onFinished) {
-                    Text(
-                        text = "Omitir",
-                        color = Color(0xFF94A3B8),
-                        fontSize = 14.sp
-                    )
-                }
-            }
-
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier

@@ -38,7 +38,8 @@ data class MonkeyUiState(
     val allTasks: List<Task> = emptyList(),
     val dustMotes: List<DustMote> = emptyList(),
     val justEarnedBanana: Boolean = false,
-    val showShopAffordHint: Boolean = false
+    val showShopAffordHint: Boolean = false,
+    val showMainTour: Boolean = false
 )
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
@@ -94,7 +95,12 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     fun addTask(task: Task) {
         viewModelScope.launch {
+            val wasFirstTaskDuringOnboarding =
+                !manager.onboardingCompleted && manager.loadTasks().isEmpty()
             manager.addTask(task)
+            if (wasFirstTaskDuringOnboarding) {
+                manager.markMainTourPending()
+            }
             TaskNotificationScheduler.scheduleAll(getApplication())
             refreshState()
         }
@@ -145,6 +151,11 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(showShopAffordHint = false) }
     }
 
+    fun completeMainTour() {
+        manager.completeMainTour()
+        refreshState()
+    }
+
     fun refresh() = refreshState()
 
     // ─── Helpers privados ──────────────────────────────────────────────────────
@@ -166,7 +177,8 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 allTasks          = manager.loadTasks(),
                 dustMotes         = manager.dustMotes,
                 justEarnedBanana  = justEarnedBanana,
-                showShopAffordHint = manager.shouldShowShopAffordHint()
+                showShopAffordHint = manager.shouldShowShopAffordHint(),
+                showMainTour      = manager.shouldShowMainTour
             )
         }
     }
