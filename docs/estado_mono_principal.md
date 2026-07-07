@@ -1,6 +1,4 @@
-================================================================================
-  ESTADO PRINCIPAL DEL MONO — Mono Pulcro
-================================================================================
+# Estado principal del mono — Mono Pulcro
 
 Resumen
 -------
@@ -10,7 +8,7 @@ CALCULA en tiempo real a partir de tareas, racha y días perdidos, y luego
 MonkeyImageResolver elige qué drawable mostrar.
 
 Las motas de polvo son independientes: se dibujan encima del mono (limpio o
-sucio). Ver docs/motas_de_polvo.txt.
+sucio). Ver docs/motas_de_polvo.md.
 
 
 1. ¿CUÁNDO ESTÁ LIMPIO O SUCIÓ? (isCleanToday)
@@ -216,5 +214,5 @@ Completar el día resetea missedDaysCount y streakBroken a valores sanos.
 
 
 ================================================================================
-  Relacionado: docs/motas_de_polvo.txt (capa visual encima del mono)
+  Relacionado: docs/motas_de_polvo.md (capa visual encima del mono)
 ================================================================================

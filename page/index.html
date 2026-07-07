@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6A1B9A">
+  <title>Mono Pulcro — Hábitos de limpieza con tu mono</title>
+  <meta name="description" content="Completa tus tareas, mantén tu racha y gana bananas. App Android de hábitos de limpieza del hogar.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #fff8f0;
+      --text: #1a1a1a;
+      --muted: #5c534a;
+      --primary: #6a1b9a;
+      --green: #4caf50;
+      --orange: #ff6d00;
+      --wave: #7dd3fc;
+      --card: #ffffff;
+      --border: #e8dfd4;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1816;
+        --text: #f2ebe3;
+        --muted: #b0a89e;
+        --primary: #b388ff;
+        --card: #242018;
+        --border: #3a342c;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Nunito", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .page {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 2.5rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .waves {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 120px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .content {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+    }
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .tagline {
+      margin: 0.5rem 0 1.5rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .demo {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 1.5rem 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 24px rgba(106, 27, 154, 0.08);
+    }
+    .demo-hint {
+      margin: 0 0 0.75rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .monkey-stage {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin: 0 auto;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .monkey-stage img.monkey {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: transform 0.25s ease;
+    }
+    .monkey-stage:active img.monkey {
+      transform: scale(0.96);
+    }
+    .mote {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      pointer-events: none;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      animation: float 3s ease-in-out infinite;
+    }
+    .mote:nth-child(2) { animation-delay: -0.8s; }
+    .mote:nth-child(3) { animation-delay: -1.6s; }
+    .mote.gone {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .banana-counter {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+      padding: 0.4rem 0.9rem;
+      background: rgba(255, 109, 0, 0.12);
+      border-radius: 999px;
+      font-weight: 700;
+      color: var(--orange);
+      font-size: 1rem;
+    }
+    .banana-counter img {
+      width: 22px;
+      height: 22px;
+    }
+    .banana-counter.pop {
+      animation: pop 0.35s ease;
+    }
+    @keyframes pop {
+      50% { transform: scale(1.15); }
+    }
+    .features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.75rem;
+      text-align: left;
+    }
+    .features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      margin-bottom: 0.85rem;
+      font-weight: 600;
+      font-size: 0.98rem;
+    }
+    .features .icon {
+      flex-shrink: 0;
+      width: 1.5rem;
+      text-align: center;
+      font-size: 1.1rem;
+    }
+    .cta {
+      display: inline-block;
+      padding: 0.85rem 1.75rem;
+      background: var(--primary);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      transition: transform 0.15s ease, opacity 0.15s;
+    }
+    .cta:hover { opacity: 0.92; }
+    .cta:active { transform: scale(0.98); }
+    footer {
+      margin-top: auto;
+      padding-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    footer a:hover { text-decoration: underline; }
+    footer span { margin: 0 0.35rem; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <svg class="waves" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,62 C88,48 200,78 400,58 L400,120 L0,120 Z" fill="var(--wave)" fill-opacity="0.35"/>
+      <path d="M0,78 C100,64 220,92 400,72 L400,120 L0,120 Z" fill="var(--wave)" fill-opacity="0.55"/>
+      <path d="M0,92 C120,80 240,108 400,88 L400,120 L0,120 Z" fill="var(--wave)" fill-opacity="0.8"/>
+    </svg>
+
+    <div class="content">
+      <h1>Mono Pulcro</h1>
+      <p class="tagline">Tu mono te ayuda a mantener hábitos de limpieza cada día</p>
+
+      <div class="demo">
+        <p class="demo-hint" id="demo-hint">Toca el mono para limpiar las pelusas</p>
+        <div class="monkey-stage" id="monkey-stage" role="button" tabindex="0" aria-label="Limpiar al mono">
+          <img class="monkey" id="monkey-img" src="assets/mono_sucio_3.png" alt="Mono con pelusas" width="200" height="200">
+        </div>
+        <div class="banana-counter" id="banana-counter">
+          <img src="assets/banana.png" alt="" width="22" height="22">
+          <span id="banana-count">0</span>
+        </div>
+      </div>
+
+      <ul class="features">
+        <li><span class="icon">✅</span> Completa tus tareas diarias de limpieza</li>
+        <li><span class="icon">🍌</span> Gana bananas y desbloquea accesorios</li>
+        <li><span class="icon">🔥</span> Construye tu racha día a día</li>
+      </ul>
+
+      <a class="cta" href="https://github.com/JoseManuelOberreuter/MonoPulcro" rel="noopener">Próximamente en Google Play</a>
+
+      <footer>
+        <a href="privacidad.html">Privacidad</a>
+        <span>·</span>
+        <a href="https://github.com/JoseManuelOberreuter/MonoPulcro">GitHub</a>
+        <br>
+        © 2026 José Manuel Oberreuter
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const MOTE_SLOTS = [
+      { left: "58%", top: "18%" },
+      { left: "22%", top: "42%" },
+      { left: "62%", top: "48%" },
+    ];
+    const stage = document.getElementById("monkey-stage");
+    const monkeyImg = document.getElementById("monkey-img");
+    const hint = document.getElementById("demo-hint");
+    const bananaCountEl = document.getElementById("banana-count");
+    const bananaCounter = document.getElementById("banana-counter");
+
+    let motesLeft = 0;
+    let bananas = 0;
+    let cleaned = false;
+
+    function spawnMotes() {
+      stage.querySelectorAll(".mote").forEach((el) => el.remove());
+      motesLeft = MOTE_SLOTS.length;
+      MOTE_SLOTS.forEach((slot) => {
+        const img = document.createElement("img");
+        img.src = "assets/mota_polvo.png";
+        img.alt = "";
+        img.className = "mote";
+        img.style.left = slot.left;
+        img.style.top = slot.top;
+        stage.appendChild(img);
+      });
+    }
+
+    function clean() {
+      if (cleaned) return;
+      const motes = stage.querySelectorAll(".mote");
+      if (motesLeft === 0) return;
+
+      motes.forEach((mote, i) => {
+        setTimeout(() => mote.classList.add("gone"), i * 120);
+      });
+
+      motesLeft = 0;
+      bananas += 1;
+      bananaCountEl.textContent = String(bananas);
+      bananaCounter.classList.remove("pop");
+      void bananaCounter.offsetWidth;
+      bananaCounter.classList.add("pop");
+
+      setTimeout(() => {
+        monkeyImg.src = "assets/mono_pulcro_1.png";
+        monkeyImg.alt = "Mono limpio y feliz";
+        hint.textContent = "¡Así se siente en la app!";
+        cleaned = true;
+      }, 500);
+    }
+
+    stage.addEventListener("click", clean);
+    stage.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        clean();
+      }
+    });
+
+    spawnMotes();
+  </script>
+</body>
+</html>

@@ -20,6 +20,16 @@ Aplicación Android nativa para mantener hábitos de limpieza del hogar. Cada d�
 ## Estructura del proyecto
 
 ```
+page/                                # Sitio público (GitHub Pages)
+├── index.html                       # Landing
+├── privacidad.html                  # Política de privacidad
+└── assets/                          # Imágenes del sitio
+
+docs/                                # Documentación técnica interna
+├── estado_mono_principal.md
+├── estado_widget.md
+└── motas_de_polvo.md
+
 app/src/main/
 ├── kotlin/com/josem/monopulcro/
 │   ├── MainActivity.kt              # Entry point

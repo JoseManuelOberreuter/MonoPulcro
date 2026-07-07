@@ -1,6 +1,4 @@
-================================================================================
-  WIDGET DE PANTALLA DE INICIO — Mono Pulcro
-================================================================================
+# Widget de pantalla de inicio — Mono Pulcro
 
 Documentación del estado actual del widget (Glance). Versión de app: 1.0.8
 (versionCode 9).
@@ -114,7 +112,7 @@ Usa la misma función que la pantalla principal:
 
   MonkeyImageResolver.resolve(isClean, equippedAccessory, streakBroken, missedDays)
 
-Prioridad de resolución (ver docs/estado_mono_principal.txt y MonkeyImageResolver.kt):
+Prioridad de resolución (ver docs/estado_mono_principal.md y MonkeyImageResolver.kt):
 
   1. Limpio + accesorio     -> variante del accesorio (rotación cada 3 h)
   2. Limpio sin accesorio   -> mono_pulcro_1 / _2 / _3
@@ -146,7 +144,7 @@ Diferencias respecto a MainScreen:
     posicionada vía padding(start, top).
 
 Las motas se muestran tanto si el mono está limpio como sucio (igual que en la app).
-Ver también docs/motas_de_polvo.txt.
+Ver también docs/motas_de_polvo.md.
 
 
 7. ACTUALIZACIÓN DEL WIDGET
@@ -239,6 +237,6 @@ selector de widgets.
 
 Referencias cruzadas
 --------------------
-  docs/estado_mono_principal.txt  — Estado del mono e imágenes.
-  docs/motas_de_polvo.txt       — Spawn y recompensa de motas.
+  docs/estado_mono_principal.md  — Estado del mono e imágenes.
+  docs/motas_de_polvo.md       — Spawn y recompensa de motas.
   app/.../widget/               — Código del widget.
