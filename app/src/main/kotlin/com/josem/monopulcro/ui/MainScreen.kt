@@ -1,12 +1,15 @@
 package com.josem.monopulcro.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -109,6 +112,16 @@ fun MainScreen(
     val tipIndex    = remember { TIPS_PHRASES.indices.random() }
     val sucio1Index = remember { SUCIO1_PHRASES.indices.random() }
     val sucio2Index = remember { SUCIO2_PHRASES.indices.random() }
+    val monkeyInteractionSource = remember { MutableInteractionSource() }
+    val isMonkeyPressed by monkeyInteractionSource.collectIsPressedAsState()
+    val monkeyPressScale by animateFloatAsState(
+        targetValue = if (isMonkeyPressed) 0.94f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "monkeyPressScale"
+    )
 
     // Refresca el estado al volver a esta pantalla (ej. después de editar/borrar una tarea)
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -167,11 +180,16 @@ fun MainScreen(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(240.dp)
-                        .clickable(enabled = !isMonkeyCleaning) {
-                            dustAtCleanStart = vm.dustMotesForCleaning()
-                            isMonkeyCleaning = true
-                            sounds.playCleaningSequence()
-                        }
+                        .clickable(
+                            interactionSource = monkeyInteractionSource,
+                            indication = null,
+                            enabled = !isMonkeyCleaning,
+                            onClick = {
+                                dustAtCleanStart = vm.dustMotesForCleaning()
+                                isMonkeyCleaning = true
+                                sounds.playCleaningSequence()
+                            }
+                        )
                 ) {
                     Canvas(modifier = Modifier.size(230.dp)) {
                         drawCircle(
@@ -187,27 +205,35 @@ fun MainScreen(
                             )
                         )
                     }
-                    if (state.isCleanToday && state.equippedAccessory == "gold") {
-                        GoldMonkeyImage(
-                            contentDescription = "Mono Pulcro",
-                            showGoldStack = true
-                        )
-                    } else {
-                        Image(
-                            painter = painterResource(
-                                id = MonkeyImageResolver.resolve(
-                                    state.isCleanToday,
-                                    state.equippedAccessory,
-                                    state.streakBroken,
-                                    state.missedDaysCount
-                                )
-                            ),
-                            contentDescription = "Mono Pulcro",
-                            modifier = Modifier.size(220.dp)
-                        )
-                    }
-                    if (!isMonkeyCleaning && state.dustMotes.isNotEmpty()) {
-                        DustMotesOverlay(motes = state.dustMotes)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = monkeyPressScale
+                            scaleY = monkeyPressScale
+                        }
+                    ) {
+                        if (state.isCleanToday && state.equippedAccessory == "gold") {
+                            GoldMonkeyImage(
+                                contentDescription = "Mono Pulcro",
+                                showGoldStack = true
+                            )
+                        } else {
+                            Image(
+                                painter = painterResource(
+                                    id = MonkeyImageResolver.resolve(
+                                        state.isCleanToday,
+                                        state.equippedAccessory,
+                                        state.streakBroken,
+                                        state.missedDaysCount
+                                    )
+                                ),
+                                contentDescription = "Mono Pulcro",
+                                modifier = Modifier.size(220.dp)
+                            )
+                        }
+                        if (!isMonkeyCleaning && state.dustMotes.isNotEmpty()) {
+                            DustMotesOverlay(motes = state.dustMotes)
+                        }
                     }
                     if (isMonkeyCleaning) {
                         MonkeyCleaningOverlay(
