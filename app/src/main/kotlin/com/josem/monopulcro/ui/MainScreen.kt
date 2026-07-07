@@ -49,6 +49,7 @@ import kotlinx.coroutines.launch
 
 private val WaveColor = Color(0xFF7DD3FC)
 private val TaskRowHeight = 72.dp
+private val HeaderIconSize = 52.dp
 
 private val taskMoveSpec = spring<IntOffset>(
     dampingRatio = Spring.DampingRatioLowBouncy,
@@ -570,7 +571,7 @@ private fun BananaCounter(count: Int) {
         Image(
             painter = painterResource(R.drawable.banana),
             contentDescription = "Bananas",
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(HeaderIconSize)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
@@ -588,7 +589,7 @@ private fun StreakCounter(streak: Int) {
         Image(
             painter = painterResource(R.drawable.fuego),
             contentDescription = null,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(HeaderIconSize)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
@@ -607,7 +608,7 @@ private fun ShopButton(
 ) {
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(HeaderIconSize)
             .graphicsLayer { clip = false }
             .clickable { onClick() },
         contentAlignment = Alignment.Center
@@ -618,7 +619,7 @@ private fun ShopButton(
             Image(
                 painter = painterResource(R.drawable.cara_mono),
                 contentDescription = "Tienda",
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(HeaderIconSize)
             )
         }
     }
@@ -650,7 +651,7 @@ private fun BoxScope.ShopButtonHighlighted() {
         painter = painterResource(R.drawable.cara_mono),
         contentDescription = "Tienda",
         modifier = Modifier
-            .size(40.dp)
+            .size(HeaderIconSize)
             .graphicsLayer {
                 scaleX = pulseScale
                 scaleY = pulseScale
@@ -662,7 +663,7 @@ private fun BoxScope.ShopButtonHighlighted() {
         modifier = Modifier
             .align(Alignment.Center)
             .offset(x = arrowX.dp, y = arrowY.dp)
-            .size(54.dp)
+            .size(64.dp)
             .graphicsLayer { rotationZ = -45f }
     )
 }
