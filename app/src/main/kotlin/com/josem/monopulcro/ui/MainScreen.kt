@@ -43,7 +43,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.josem.monopulcro.BuildConfig
 import com.josem.monopulcro.R
 import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.coroutineScope
@@ -318,11 +317,6 @@ fun MainScreen(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
-
-                if (BuildConfig.DEBUG) {
-                    DebugBananasPanel(onAdd = { vm.debugAddBananas(it) })
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
             }
         }
 
@@ -692,40 +686,6 @@ private fun BoxScope.ShopButtonHighlighted() {
             .size(64.dp)
             .graphicsLayer { rotationZ = -45f }
     )
-}
-
-// ─── Debug (solo builds debug) ────────────────────────────────────────────────
-
-@Composable
-private fun DebugBananasPanel(onAdd: (Int) -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFFFF9C4), RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "Debug — bananas",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF854D0E)
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(1, 3, 10, 100).forEach { amount ->
-                OutlinedButton(
-                    onClick = { onAdd(amount) },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-                ) {
-                    Text("+$amount", fontSize = 12.sp)
-                }
-            }
-        }
-    }
 }
 
 // ─── Ondas decorativas ────────────────────────────────────────────────────────
