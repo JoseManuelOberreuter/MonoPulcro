@@ -193,6 +193,34 @@ class MonkeyStateManager(private val context: Context) {
         prefs.edit().putString(KEY_EQUIPPED_ACCESSORY, accessoryId).apply()
     }
 
+    // ─── Hint tienda (primera vez que alcanza el accesorio más barato) ─────────
+
+    fun shouldShowShopAffordHint(): Boolean {
+        if (shopAffordHintConsumed) return false
+        return canAffordCheapestUnownedAccessory()
+    }
+
+    fun consumeShopAffordHint() {
+        prefs.edit().putBoolean(KEY_SHOP_AFFORD_HINT_CONSUMED, true).apply()
+    }
+
+    private val shopAffordHintConsumed: Boolean
+        get() = prefs.getBoolean(KEY_SHOP_AFFORD_HINT_CONSUMED, false)
+
+    private fun canAffordCheapestUnownedAccessory(): Boolean {
+        val cheapest = ACCESSORIES
+            .filter { it.id !in ownedAccessories }
+            .minByOrNull { it.price }
+            ?: return false
+        return bananas >= cheapest.price
+    }
+
+    /** Solo debug: añade bananas al contador. */
+    fun debugAddBananas(amount: Int) {
+        if (amount <= 0) return
+        prefs.edit().putInt(KEY_BANANAS, bananas + amount).apply()
+    }
+
     // ─── Motas de polvo ────────────────────────────────────────────────────────
 
     val dustMotes: List<DustMote> get() = loadDustMotes()
@@ -291,6 +319,7 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_EQUIPPED_ACCESSORY = "equippedAccessory"
         const val KEY_STREAK_BONUS_GIVEN = "streakBonusGiven"
         const val KEY_ONBOARDING_DONE    = "onboardingDone"
+        const val KEY_SHOP_AFFORD_HINT_CONSUMED = "shopAffordHintConsumed"
         const val KEY_DUST_COUNT         = "dustCount"
         const val KEY_DUST_MOTES         = "dustMotesJson"
         const val KEY_DUST_LAST_SPAWN_MS = "dustLastSpawnMs"

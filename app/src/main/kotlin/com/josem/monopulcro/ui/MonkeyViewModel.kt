@@ -3,6 +3,7 @@ package com.josem.monopulcro.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.josem.monopulcro.BuildConfig
 import com.josem.monopulcro.audio.SoundManager
 import com.josem.monopulcro.data.DustMote
 import com.josem.monopulcro.data.MonkeyStateManager
@@ -37,7 +38,8 @@ data class MonkeyUiState(
     val todayTasks: List<TaskUiState> = emptyList(),
     val allTasks: List<Task> = emptyList(),
     val dustMotes: List<DustMote> = emptyList(),
-    val justEarnedBanana: Boolean = false
+    val justEarnedBanana: Boolean = false,
+    val showShopAffordHint: Boolean = false
 )
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
@@ -138,6 +140,19 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(justEarnedBanana = false) }
     }
 
+    /** Marca el hint de tienda como visto (solo ocurre una vez en la vida de la app). */
+    fun onShopOpened() {
+        manager.consumeShopAffordHint()
+        _uiState.update { it.copy(showShopAffordHint = false) }
+    }
+
+    fun debugAddBananas(amount: Int) {
+        if (!BuildConfig.DEBUG) return
+        manager.debugAddBananas(amount)
+        refreshState()
+        updateWidget()
+    }
+
     fun refresh() = refreshState()
 
     // ─── Helpers privados ──────────────────────────────────────────────────────
@@ -158,7 +173,8 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 },
                 allTasks          = manager.loadTasks(),
                 dustMotes         = manager.dustMotes,
-                justEarnedBanana  = justEarnedBanana
+                justEarnedBanana  = justEarnedBanana,
+                showShopAffordHint = manager.shouldShowShopAffordHint()
             )
         }
     }
