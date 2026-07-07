@@ -70,17 +70,17 @@ object NotificationHelper {
 
         val (title, body) = when {
             allTasks.isEmpty() -> Pair(
-                "El mono te necesita \uD83D\uDC12",
+                "El mono te necesita",
                 "Agrega tus primeras tareas para empezar tu racha"
             )
             missedDays >= 2 -> Pair(
-                "\u26A0\uFE0F Tu racha esta en peligro",
+                "Tu racha esta en peligro",
                 "Llevas $missedDays dias sin limpiar. El mono esta muy triste"
             )
             todayTasks.isNotEmpty() -> {
                 val pending = todayTasks.count { !manager.isTaskCompleted(it.id) }
                 Pair(
-                    "El mono te espera \uD83D\uDC12",
+                    "El mono te espera",
                     "Te quedan $pending tarea${if (pending != 1) "s" else ""} por completar hoy"
                 )
             }
@@ -144,7 +144,7 @@ object NotificationHelper {
         val manager = MonkeyStateManager(context)
         val streak  = manager.streakCount
 
-        val title = "\uD83C\uDF89 Todas las tareas completadas"
+        val title = "Todas las tareas completadas"
         val body  = if (streak > 1)
             "Racha de $streak dias. El mono esta feliz!"
         else

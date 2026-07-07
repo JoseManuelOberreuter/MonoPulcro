@@ -251,7 +251,7 @@ fun MainScreen(
                 Text(
                     text = when {
                         state.allTasks.isEmpty()                          -> "¡Agrega tareas para empezar!"
-                        state.todayTasks.isEmpty()                        -> "¡Hoy es día de descanso! 😎"
+                        state.todayTasks.isEmpty()                        -> "¡Hoy es día de descanso!"
                         state.isCleanToday                                -> TIPS_PHRASES[tipIndex]
                         state.missedDaysCount >= 2 || state.streakBroken  -> SUCIO2_PHRASES[sucio2Index]
                         state.missedDaysCount == 1                        -> SUCIO1_PHRASES[sucio1Index]
@@ -341,7 +341,11 @@ private fun EmptyTasksHint(onAddTask: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("🐒", fontSize = 36.sp)
+        Image(
+            painter = painterResource(MonkeyImageResolver.DEFAULT_PULCRO),
+            contentDescription = null,
+            modifier = Modifier.size(48.dp)
+        )
         Text(
             text = "Aún no tienes tareas. ¡Agrega la primera!",
             fontSize = 14.sp,
@@ -365,7 +369,7 @@ private fun RestDayCard() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "No hay tareas programadas para hoy. ¡Disfruta tu descanso! 🎉",
+            text = "No hay tareas programadas para hoy. ¡Disfruta tu descanso!",
             fontSize = 14.sp,
             color = Color(0xFF16A34A),
             textAlign = TextAlign.Center,
