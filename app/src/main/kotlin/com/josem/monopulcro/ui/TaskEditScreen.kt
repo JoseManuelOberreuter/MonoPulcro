@@ -25,7 +25,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.res.painterResource
 import com.josem.monopulcro.R
@@ -46,7 +45,6 @@ fun TaskEditScreen(
     onNavigateBack: () -> Unit,
     vm: MonkeyViewModel = viewModel()
 ) {
-    val state by vm.uiState.collectAsStateWithLifecycle()
     val isNew = taskId == "new"
 
     // Inicializamos el formulario una sola vez con los datos existentes
@@ -72,17 +70,8 @@ fun TaskEditScreen(
     }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    val takenNames = remember(state.allTasks, taskId) {
-        state.allTasks
-            .filter { it.id != taskId }
-            .map { it.name }
-            .toSet()
-    }
-
     val trimmedName = taskName.trim()
-    val isValid = trimmedName.isNotBlank() &&
-        selectedDays.isNotEmpty() &&
-        trimmedName !in takenNames
+    val isValid = trimmedName.isNotBlank() && selectedDays.isNotEmpty()
 
     Scaffold(
         containerColor = Color.White,
@@ -152,7 +141,6 @@ fun TaskEditScreen(
                                 taskName = ""
                             }
                         },
-                        takenNames = takenNames,
                     )
                 }
 
@@ -388,14 +376,11 @@ private fun TaskNameSelector(
     isCustomTask: Boolean,
     onTaskNameChange: (String) -> Unit,
     onCustomModeChange: (Boolean) -> Unit,
-    takenNames: Set<String>,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val predefinedOptions = remember(takenNames, taskName) {
-        PredefinedTasks.names.filter { it !in takenNames || it == taskName }
-    }
+    val predefinedOptions = PredefinedTasks.names
     val dropdownValue = if (isCustomTask) CUSTOM_TASK_LABEL else taskName
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
