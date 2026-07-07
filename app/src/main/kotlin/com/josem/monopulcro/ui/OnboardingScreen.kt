@@ -39,7 +39,7 @@ private val ONBOARDING_PAGES = listOf(
     OnboardingPage(
         imageRes = MonkeyImageResolver.DEFAULT_PULCRO,
         title = "Bienvenido a Mono Pulcro",
-        description = "Tu mono te ayuda a mantener tus hábitos de limpieza cada día"
+        description = "Tu app de hábitos de limpieza para el hogar."
     ),
     OnboardingPage(
         imageRes = R.drawable.banana,
