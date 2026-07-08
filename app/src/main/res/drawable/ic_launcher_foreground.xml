@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Mismo encuadre que splash_icon / icono de Play Store -->
+<!-- Cara del mono — mismo asset que tienda / Play Store -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/mono_pulcro_1"
+    android:drawable="@drawable/cara_mono"
     android:inset="26dp" />
