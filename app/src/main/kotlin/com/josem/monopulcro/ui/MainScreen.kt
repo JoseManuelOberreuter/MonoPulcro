@@ -262,25 +262,18 @@ fun MainScreen(
                             scaleY = monkeyPressScale
                         }
                     ) {
-                        if (state.isCleanToday && state.equippedAccessory == "gold") {
-                            GoldMonkeyImage(
-                                contentDescription = "Mono Pulcro",
-                                showGoldStack = true
-                            )
-                        } else {
-                            Image(
-                                painter = painterResource(
-                                    id = MonkeyImageResolver.resolve(
-                                        state.isCleanToday,
-                                        state.equippedAccessory,
-                                        state.streakBroken,
-                                        state.missedDaysCount
-                                    )
-                                ),
-                                contentDescription = "Mono Pulcro",
-                                modifier = Modifier.size(220.dp)
-                            )
-                        }
+                        Image(
+                            painter = painterResource(
+                                id = MonkeyImageResolver.resolve(
+                                    state.isCleanToday,
+                                    state.equippedAccessory,
+                                    state.streakBroken,
+                                    state.missedDaysCount
+                                )
+                            ),
+                            contentDescription = "Mono Pulcro",
+                            modifier = Modifier.size(220.dp)
+                        )
                         if (!isMonkeyCleaning && state.dustMotes.isNotEmpty()) {
                             DustMotesOverlay(motes = state.dustMotes)
                         }

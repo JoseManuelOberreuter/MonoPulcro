@@ -12,6 +12,20 @@ class MonkeyStateManager(private val context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val gson = Gson()
 
+    init {
+        migrateRemoveGoldAccessory()
+    }
+
+    private fun migrateRemoveGoldAccessory() {
+        if (prefs.getString(KEY_EQUIPPED_ACCESSORY, "") == "gold") {
+            prefs.edit().remove(KEY_EQUIPPED_ACCESSORY).apply()
+        }
+        val owned = prefs.getStringSet(KEY_OWNED_ACCESSORIES, emptySet()) ?: emptySet()
+        if ("gold" in owned) {
+            prefs.edit().putStringSet(KEY_OWNED_ACCESSORIES, owned - "gold").apply()
+        }
+    }
+
     // ─── Tareas ────────────────────────────────────────────────────────────────
 
     fun loadTasks(): List<Task> {
@@ -347,8 +361,7 @@ class MonkeyStateManager(private val context: Context) {
             AccessoryItem("hat",       "Gorro",       7),
             AccessoryItem("crown",     "Corona",     14),
             AccessoryItem("chaleco",   "Chaleco",    10),
-            AccessoryItem("astronaut", "Astronauta", 30),
-            AccessoryItem("gold",      "Mono de oro", 50)
+            AccessoryItem("astronaut", "Astronauta", 30)
         )
     }
 }

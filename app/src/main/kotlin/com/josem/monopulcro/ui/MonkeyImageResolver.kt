@@ -42,18 +42,12 @@ object MonkeyImageResolver {
         R.drawable.mono_astronauta,
     )
 
-    /** Añadir mono_de_oro_1/2/3 cuando estén disponibles */
-    private val ORO_STATES = listOf(
-        R.drawable.mono_de_oro,
-    )
-
     private val ACCESSORY_STATES = mapOf(
         "glasses"   to COOL_STATES,
         "hat"       to GORRO_STATES,
         "crown"     to CORONA_STATES,
         "chaleco"   to CHALECO_STATES,
         "astronaut" to ASTRONAUT_STATES,
-        "gold"      to ORO_STATES,
     )
 
     private val ESTADOS_EXTREMO = listOf(

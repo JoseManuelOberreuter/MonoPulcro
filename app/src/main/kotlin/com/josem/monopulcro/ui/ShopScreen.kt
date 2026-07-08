@@ -213,13 +213,9 @@ private fun AccessoryPreview(
     accessoryId: String,
     modifier: Modifier = Modifier
 ) {
-    if (accessoryId == "gold") {
-        GoldMonkeyImage(modifier = modifier)
-    } else {
-        Image(
-            painter = painterResource(MonkeyImageResolver.previewForAccessory(accessoryId)),
-            contentDescription = null,
-            modifier = modifier
-        )
-    }
+    Image(
+        painter = painterResource(MonkeyImageResolver.previewForAccessory(accessoryId)),
+        contentDescription = null,
+        modifier = modifier
+    )
 }
