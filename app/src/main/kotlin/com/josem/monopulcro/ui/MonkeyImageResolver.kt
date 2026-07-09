@@ -37,6 +37,12 @@ object MonkeyImageResolver {
         R.drawable.mono_chaleco_3,
     )
 
+    private val PAYASO_STATES = listOf(
+        R.drawable.mono_payaso_1,
+        R.drawable.mono_payaso_2,
+        R.drawable.mono_payaso_3,
+    )
+
     /** Añadir mono_astronauta_1/2/3 cuando estén disponibles */
     private val ASTRONAUT_STATES = listOf(
         R.drawable.mono_astronauta,
@@ -47,6 +53,7 @@ object MonkeyImageResolver {
         "hat"       to GORRO_STATES,
         "crown"     to CORONA_STATES,
         "chaleco"   to CHALECO_STATES,
+        "payaso"    to PAYASO_STATES,
         "astronaut" to ASTRONAUT_STATES,
     )
 
