@@ -3,6 +3,7 @@ package com.josem.monopulcro.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.josem.monopulcro.BuildConfig
 import com.josem.monopulcro.audio.SoundManager
 import com.josem.monopulcro.data.DustMote
 import com.josem.monopulcro.data.MonkeyStateManager
@@ -201,6 +202,13 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     fun completeMainTour() {
         manager.completeMainTour()
         refreshState()
+    }
+
+    fun debugAddBananas(amount: Int) {
+        if (!BuildConfig.DEBUG) return
+        manager.debugAddBananas(amount)
+        refreshState()
+        updateWidget()
     }
 
     fun refresh() = refreshState()

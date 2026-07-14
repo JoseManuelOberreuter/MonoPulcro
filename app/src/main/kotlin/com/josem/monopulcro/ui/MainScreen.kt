@@ -58,6 +58,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.josem.monopulcro.BuildConfig
 import com.josem.monopulcro.R
 import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.coroutineScope
@@ -140,6 +141,18 @@ fun MainScreen(
             stiffness = Spring.StiffnessMedium
         ),
         label = "monkeyPressScale"
+    )
+    val isAstronautFloating =
+        state.isCleanToday && state.equippedAccessory == "astronaut"
+    val astronautFloat = rememberInfiniteTransition(label = "astronautFloat")
+    val astronautFloatY by astronautFloat.animateFloat(
+        initialValue = 0f,
+        targetValue = -10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "astronautFloatY"
     )
     // En pantallas bajas el mono cede espacio a la lista; en el resto se mantiene igual.
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
@@ -265,6 +278,7 @@ fun MainScreen(
                         modifier = Modifier.graphicsLayer {
                             scaleX = monkeyPressScale
                             scaleY = monkeyPressScale
+                            translationY = if (isAstronautFloating) astronautFloatY else 0f
                         }
                     ) {
                         Image(
@@ -415,6 +429,11 @@ fun MainScreen(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
+
+                if (BuildConfig.DEBUG) {
+                    DebugBananasPanel(onAdd = { vm.debugAddBananas(it) })
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
 
@@ -1285,6 +1304,40 @@ private fun BoxScope.ShopButtonHighlighted() {
             .size(64.dp)
             .graphicsLayer { rotationZ = -45f }
     )
+}
+
+// ─── Debug (solo builds debug) ────────────────────────────────────────────────
+
+@Composable
+private fun DebugBananasPanel(onAdd: (Int) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFFF9C4), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Debug — bananas",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF854D0E)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(1, 3, 10, 100).forEach { amount ->
+                OutlinedButton(
+                    onClick = { onAdd(amount) },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                ) {
+                    Text("+$amount", fontSize = 12.sp)
+                }
+            }
+        }
+    }
 }
 
 // ─── Ondas decorativas ────────────────────────────────────────────────────────

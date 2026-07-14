@@ -43,9 +43,10 @@ object MonkeyImageResolver {
         R.drawable.mono_payaso_3,
     )
 
-    /** Añadir mono_astronauta_1/2/3 cuando estén disponibles */
     private val ASTRONAUT_STATES = listOf(
-        R.drawable.mono_astronauta,
+        R.drawable.mono_astronauta_1,
+        R.drawable.mono_astronauta_2,
+        R.drawable.mono_astronauta_3,
     )
 
     private val ACCESSORY_STATES = mapOf(
