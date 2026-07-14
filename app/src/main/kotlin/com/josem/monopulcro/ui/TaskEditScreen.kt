@@ -4,10 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -117,10 +115,7 @@ fun TaskEditScreen(
                 .padding(horizontal = 24.dp),
         ) {
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(top = 20.dp),
+                modifier = Modifier.padding(top = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(28.dp),
             ) {
                 // ── Nombre de la tarea ─────────────────────────────────────────
@@ -185,57 +180,63 @@ fun TaskEditScreen(
                 )
             }
 
-            Column(
-                modifier = Modifier.padding(top = 16.dp, bottom = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            // El mono ocupa solo el espacio libre entre formulario y CTA.
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
             ) {
-                Image(
-                    painter = painterResource(MonkeyImageResolver.DEFAULT_PULCRO),
-                    contentDescription = null,
-                    modifier = Modifier.size(160.dp)
-                )
-
-                Button(
-                    onClick = {
-                        val task = if (isNew) {
-                            Task(
-                                id = UUID.randomUUID().toString(),
-                                name = trimmedName,
-                                scheduledDays = selectedDays.sorted(),
-                                notificationEnabled = notificationEnabled,
-                                notificationHour = notificationHour,
-                                notificationMinute = notificationMinute,
-                            )
-                        } else {
-                            existingTask!!.copy(
-                                name = trimmedName,
-                                scheduledDays = selectedDays.sorted(),
-                                notificationEnabled = notificationEnabled,
-                                notificationHour = notificationHour,
-                                notificationMinute = notificationMinute,
-                            )
-                        }
-                        if (isNew) vm.addTask(task) else vm.updateTask(task)
-                        onNavigateBack()
-                    },
-                    enabled = isValid,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF0EA5E9),
-                        disabledContainerColor = Color(0xFFE2E8F0)
-                    )
-                ) {
-                    Text(
-                        text = if (isNew) "Agregar tarea" else "Guardar cambios",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isValid) Color.White else Color(0xFF94A3B8)
+                val monkeySize = maxHeight.coerceIn(0.dp, 160.dp)
+                if (monkeySize >= 64.dp) {
+                    Image(
+                        painter = painterResource(MonkeyImageResolver.DEFAULT_PULCRO),
+                        contentDescription = null,
+                        modifier = Modifier.size(monkeySize),
                     )
                 }
+            }
+
+            Button(
+                onClick = {
+                    val task = if (isNew) {
+                        Task(
+                            id = UUID.randomUUID().toString(),
+                            name = trimmedName,
+                            scheduledDays = selectedDays.sorted(),
+                            notificationEnabled = notificationEnabled,
+                            notificationHour = notificationHour,
+                            notificationMinute = notificationMinute,
+                        )
+                    } else {
+                        existingTask!!.copy(
+                            name = trimmedName,
+                            scheduledDays = selectedDays.sorted(),
+                            notificationEnabled = notificationEnabled,
+                            notificationHour = notificationHour,
+                            notificationMinute = notificationMinute,
+                        )
+                    }
+                    if (isNew) vm.addTask(task) else vm.updateTask(task)
+                    onNavigateBack()
+                },
+                enabled = isValid,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 20.dp)
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0EA5E9),
+                    disabledContainerColor = Color(0xFFE2E8F0)
+                )
+            ) {
+                Text(
+                    text = if (isNew) "Agregar tarea" else "Guardar cambios",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isValid) Color.White else Color(0xFF94A3B8)
+                )
             }
         }
     }

@@ -113,13 +113,17 @@ fun MainScreenTourOverlay(
         label = "tourRingAlpha"
     )
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures { /* bloquea taps en el scrim */ }
             }
     ) {
+        // Si el target está abajo, la tarjeta va arriba (y viceversa) para no taparlo.
+        val cardOnTop = targetBounds != null &&
+            targetBounds.center.y > constraints.maxHeight * 0.45f
+
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (targetBounds != null) {
                 val hole = Rect(
@@ -160,9 +164,12 @@ fun MainScreenTourOverlay(
 
         Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .align(if (cardOnTop) Alignment.TopCenter else Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 32.dp)
+                .windowInsetsPadding(
+                    if (cardOnTop) WindowInsets.statusBars else WindowInsets.navigationBars
+                )
+                .padding(horizontal = 24.dp, vertical = 24.dp)
                 .background(Color.White, RoundedCornerShape(16.dp))
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

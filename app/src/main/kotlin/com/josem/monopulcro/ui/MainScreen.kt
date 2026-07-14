@@ -141,6 +141,10 @@ fun MainScreen(
         ),
         label = "monkeyPressScale"
     )
+    // En pantallas bajas el mono cede espacio a la lista; en el resto se mantiene igual.
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+    val monkeyBoxSize = if (screenHeightDp < 700) 168.dp else 240.dp
+    val monkeyImageSize = if (screenHeightDp < 700) 154.dp else 220.dp
 
     val showTour = state.showMainTour
     var tourStep by remember { mutableIntStateOf(0) }
@@ -243,7 +247,7 @@ fun MainScreen(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(240.dp)
+                        .size(monkeyBoxSize)
                         .mainTourAnchor(MainTourStep.MONKEY, tourBounds, tourScrollY)
                         .clickable(
                             interactionSource = monkeyInteractionSource,
@@ -273,7 +277,7 @@ fun MainScreen(
                                 )
                             ),
                             contentDescription = "Mono Pulcro",
-                            modifier = Modifier.size(220.dp)
+                            modifier = Modifier.size(monkeyImageSize)
                         )
                         if (!isMonkeyCleaning && state.dustMotes.isNotEmpty()) {
                             DustMotesOverlay(motes = state.dustMotes)
