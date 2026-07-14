@@ -26,6 +26,14 @@ data class TaskUiState(
     val isCompleted: Boolean
 )
 
+/** Evento de celebración al completar todas las tareas del día. */
+data class StreakCelebration(
+    val previousStreak: Int,
+    val newStreak: Int,
+    val bonusBananas: Int,
+    val isMilestone: Boolean
+)
+
 data class MonkeyUiState(
     val streak: Int = 0,
     val bananas: Int = 0,
@@ -37,7 +45,7 @@ data class MonkeyUiState(
     val todayTasks: List<TaskUiState> = emptyList(),
     val allTasks: List<Task> = emptyList(),
     val dustMotes: List<DustMote> = emptyList(),
-    val justEarnedBanana: Boolean = false,
+    val celebration: StreakCelebration? = null,
     val showShopAffordHint: Boolean = false,
     val showMainTour: Boolean = false
 )
@@ -74,9 +82,20 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         val wasDone = manager.isTaskCompleted(taskId)
         if (!wasDone) sounds.playTaskPop()
 
+        val previousStreak = manager.streakCount
         val earned = manager.toggleTask(taskId)
+        val newStreak = manager.streakCount
 
-        refreshState(justEarnedBanana = earned)
+        val celebration = if (earned) {
+            StreakCelebration(
+                previousStreak = previousStreak,
+                newStreak = newStreak,
+                bonusBananas = if (newStreak % 7 == 0) 3 else 0,
+                isMilestone = newStreak % 7 == 0
+            )
+        } else null
+
+        refreshState(celebration = celebration)
         updateWidget()
 
         if (earned) {
@@ -141,8 +160,8 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun consumeBananaEvent() {
-        _uiState.update { it.copy(justEarnedBanana = false) }
+    fun consumeCelebration() {
+        _uiState.update { it.copy(celebration = null) }
     }
 
     /** Marca el hint de tienda como visto (solo ocurre una vez en la vida de la app). */
@@ -160,7 +179,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     // ─── Helpers privados ──────────────────────────────────────────────────────
 
-    private fun refreshState(justEarnedBanana: Boolean = false) {
+    private fun refreshState(celebration: StreakCelebration? = null) {
         manager.syncDustSpawns()
         _uiState.update {
             MonkeyUiState(
@@ -176,7 +195,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 },
                 allTasks          = manager.loadTasks(),
                 dustMotes         = manager.dustMotes,
-                justEarnedBanana  = justEarnedBanana,
+                celebration       = celebration,
                 showShopAffordHint = manager.shouldShowShopAffordHint(),
                 showMainTour      = manager.shouldShowMainTour
             )

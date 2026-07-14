@@ -34,9 +34,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +55,7 @@ import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private val WaveColor = Color(0xFF7DD3FC)
 private val TaskRowHeight = 72.dp
@@ -107,7 +110,7 @@ fun MainScreen(
     vm: MonkeyViewModel = viewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
-    var showCelebration by remember { mutableStateOf(false) }
+    var celebration by remember { mutableStateOf<StreakCelebration?>(null) }
     var isMonkeyCleaning by remember { mutableStateOf(false) }
     var dustAtCleanStart by remember { mutableStateOf(emptyList<com.josem.monopulcro.data.DustMote>()) }
     var showDustBananaReward by remember { mutableStateOf(false) }
@@ -157,10 +160,10 @@ fun MainScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(state.justEarnedBanana) {
-        if (state.justEarnedBanana) {
-            showCelebration = true
-            vm.consumeBananaEvent()
+    LaunchedEffect(state.celebration) {
+        state.celebration?.let {
+            celebration = it
+            vm.consumeCelebration()
         }
     }
 
@@ -370,8 +373,11 @@ fun MainScreen(
             }
         }
 
-        if (showCelebration) {
-            FireCelebrationOverlay(onFinished = { showCelebration = false })
+        celebration?.let { event ->
+            StreakCelebrationOverlay(
+                event = event,
+                onFinished = { celebration = null }
+            )
         }
         if (showDustBananaReward) {
             BananaRewardOverlay(onFinished = { showDustBananaReward = false })
@@ -564,21 +570,73 @@ private val FIRE_PARTICLES = listOf(
     FireParticle(xFrac = 0.92f, sizeDp = 110f, delayMs = 220L, durationMs = 1020),
 )
 
+private val StreakBgTop    = Color(0xFFFF9F1C)
+private val StreakBgBottom = Color(0xFFF25C05)
+private val StreakGlow      = Color(0xFFFFE29A)
+
 @Composable
-private fun FireCelebrationOverlay(onFinished: () -> Unit) {
+private fun StreakCelebrationOverlay(
+    event: StreakCelebration,
+    onFinished: () -> Unit
+) {
     val context = LocalContext.current
     val sounds  = remember { SoundManager.get(context) }
-    val overlayAlpha  = remember { Animatable(0f) }
+    val haptic  = LocalHapticFeedback.current
+    val scope   = rememberCoroutineScope()
+
+    val overlayAlpha = remember { Animatable(0f) }
+    val iconScale    = remember { Animatable(0.3f) }
+    val counter      = remember { Animatable(event.previousStreak.toFloat()) }
+    val headlineAlpha = remember { Animatable(0f) }
+    val headlineY     = remember { Animatable(28f) }
+    val rewardAlpha   = remember { Animatable(0f) }
+    val rewardScale   = remember { Animatable(0.6f) }
+    val ctaAlpha      = remember { Animatable(0f) }
+
+    // Partículas del burst (reutiliza el layout de FIRE_PARTICLES)
     val travels = remember { FIRE_PARTICLES.map { Animatable(0f) } }
     val alphas  = remember { FIRE_PARTICLES.map { Animatable(0f) } }
-    val plusOneY     = remember { Animatable(0f) }
-    val plusOneAlpha = remember { Animatable(0f) }
+
+    var dismissing by remember { mutableStateOf(false) }
+    fun dismiss() {
+        if (dismissing) return
+        dismissing = true
+        scope.launch {
+            overlayAlpha.animateTo(0f, tween(300))
+            onFinished()
+        }
+    }
 
     LaunchedEffect(Unit) {
-        sounds.playMonkeyCheer()
-        overlayAlpha.animateTo(1f, tween(150))
+        // 1) Entrada del fondo
+        overlayAlpha.animateTo(1f, tween(250, easing = FastOutSlowInEasing))
 
+        // 2) Entrada del ícono con rebote
+        iconScale.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        )
+
+        // 3) Conteo ascendente previous → new
+        counter.animateTo(
+            event.newStreak.toFloat(),
+            tween(
+                durationMillis = if (event.previousStreak == event.newStreak) 0 else 650,
+                easing = FastOutSlowInEasing
+            )
+        )
+
+        // 4) Punch + partículas + sonido + haptic en el clímax
+        sounds.playMonkeyCheer()
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         coroutineScope {
+            launch {
+                iconScale.animateTo(1.28f, tween(120, easing = EaseOut))
+                iconScale.animateTo(
+                    1f,
+                    spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+                )
+            }
             FIRE_PARTICLES.forEachIndexed { i, p ->
                 launch {
                     delay(p.delayMs)
@@ -587,27 +645,39 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
                     alphas[i].animateTo(0f, tween(220))
                 }
             }
-            launch {
-                delay(160L)
-                plusOneAlpha.animateTo(1f, tween(140))
-                plusOneY.animateTo(-280f, tween(1050, easing = EaseOut))
-            }
         }
 
-        delay(150)
-        overlayAlpha.animateTo(0f, tween(350))
-        onFinished()
+        // 5) Titular
+        launch { headlineAlpha.animateTo(1f, tween(240)) }
+        headlineY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
+
+        // 6) Recompensa (bananas)
+        launch { rewardAlpha.animateTo(1f, tween(180)) }
+        rewardScale.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+        )
+
+        // 7) CTA
+        ctaAlpha.animateTo(1f, tween(220))
     }
+
+    val bananasEarned = 1 + event.bonusBananas
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer { alpha = overlayAlpha.value }
-            .background(Color.Black.copy(alpha = 0.18f))
+            .background(Brush.verticalGradient(listOf(StreakBgTop, StreakBgBottom)))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { if (ctaAlpha.value > 0.5f) dismiss() }
     ) {
         val widthDp = LocalConfiguration.current.screenWidthDp.dp
         val density = LocalDensity.current
 
+        // Partículas de fuego subiendo desde la base
         FIRE_PARTICLES.forEachIndexed { i, p ->
             val sizeDp = p.sizeDp.dp
             val xOffset = widthDp * p.xFrac - sizeDp / 2
@@ -625,33 +695,122 @@ private fun FireCelebrationOverlay(onFinished: () -> Unit) {
             )
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 60.dp)
-                .graphicsLayer {
-                    translationY = with(density) { plusOneY.value.dp.toPx() }
-                    alpha = plusOneAlpha.value
-                }
+                .align(Alignment.Center)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(R.drawable.banana),
-                    contentDescription = null,
-                    modifier = Modifier.size(60.dp)
-                )
-                Text("+1", fontSize = 62.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Ícono + número protagonista
+            Box(contentAlignment = Alignment.Center) {
+                Canvas(modifier = Modifier.size(220.dp)) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colorStops = arrayOf(
+                                0.0f to StreakGlow.copy(alpha = 0.55f),
+                                0.6f to StreakGlow.copy(alpha = 0.12f),
+                                1.0f to Color.Transparent
+                            ),
+                            center = center,
+                            radius = size.minDimension / 2
+                        )
+                    )
+                }
                 Image(
                     painter = painterResource(R.drawable.fuego),
                     contentDescription = null,
-                    modifier = Modifier.size(70.dp)
+                    modifier = Modifier
+                        .size(160.dp)
+                        .graphicsLayer {
+                            scaleX = iconScale.value
+                            scaleY = iconScale.value
+                        }
                 )
-                Text("+1", fontSize = 62.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
             }
+
+            Text(
+                text = "${counter.value.roundToInt()}",
+                fontSize = 96.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+            Text(
+                text = if (event.newStreak == 1) "día de racha" else "días de racha",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.9f)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Titular
+            Text(
+                text = if (event.isMilestone) "¡Meta alcanzada! Tu mono está orgulloso"
+                       else "¡Tu mono sigue impecable!",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = Color.White,
+                modifier = Modifier.graphicsLayer {
+                    alpha = headlineAlpha.value
+                    translationY = with(density) { headlineY.value.dp.toPx() }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Recompensa de bananas
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .graphicsLayer {
+                        alpha = rewardAlpha.value
+                        scaleX = rewardScale.value
+                        scaleY = rewardScale.value
+                    }
+                    .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(20.dp))
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.banana),
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "+$bananasEarned",
+                    fontSize = 34.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+                if (event.isMilestone) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "¡bonus x7!",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFFF3C4)
+                    )
+                }
+            }
+        }
+
+        // CTA inferior
+        Button(
+            onClick = { dismiss() },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = StreakBgBottom
+            ),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 40.dp)
+                .height(54.dp)
+                .graphicsLayer { alpha = ctaAlpha.value }
+        ) {
+            Text("¡Seguir!", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
         }
     }
 }
