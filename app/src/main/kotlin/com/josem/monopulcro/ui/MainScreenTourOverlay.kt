@@ -39,6 +39,7 @@ enum class MainTourStep {
     STREAK,
     MONKEY,
     ADD_TASK,
+    VIEW_MODE,
     TASKS,
 }
 
@@ -67,6 +68,10 @@ val MAIN_TOUR_STEPS = listOf(
     MainTourStepContent(
         title = "Más tareas",
         description = "Agrega nuevas tareas desde aquí."
+    ),
+    MainTourStepContent(
+        title = "Vista semanal",
+        description = "Cambia entre la lista de hoy y el calendario de la semana para ver qué toca cada día."
     ),
     MainTourStepContent(
         title = "Tareas de hoy",

@@ -335,12 +335,20 @@ fun MainScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (state.allTasks.isNotEmpty()) {
-                            TasksViewModeToggle(
-                                mode = state.tasksViewMode,
-                                enabled = !showTour,
-                                onModeChange = { vm.setTasksViewMode(it) }
-                            )
+                        if (state.allTasks.isNotEmpty() || showTour) {
+                            Box(
+                                modifier = Modifier.mainTourAnchor(
+                                    MainTourStep.VIEW_MODE,
+                                    tourBounds,
+                                    tourScrollY
+                                )
+                            ) {
+                                TasksViewModeToggle(
+                                    mode = state.tasksViewMode,
+                                    enabled = !showTour,
+                                    onModeChange = { vm.setTasksViewMode(it) }
+                                )
+                            }
                         }
                         Box(
                             modifier = Modifier
