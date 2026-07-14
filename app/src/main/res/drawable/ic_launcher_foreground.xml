@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cara del mono — mismo asset que tienda / Play Store -->
+<!-- Inset ~safe zone del adaptive icon para que se vean las orejas -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/cara_mono"
-    android:inset="26dp" />
+    android:inset="14dp" />
