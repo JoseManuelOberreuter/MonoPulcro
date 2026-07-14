@@ -118,6 +118,15 @@ class MonkeyStateManager(private val context: Context) {
             .apply()
     }
 
+    // ─── Vista de tareas (lista / semana) ───────────────────────────────────────
+
+    val tasksViewMode: String
+        get() = prefs.getString(KEY_TASKS_VIEW_MODE, VIEW_MODE_TODAY) ?: VIEW_MODE_TODAY
+
+    fun setTasksViewMode(mode: String) {
+        prefs.edit().putString(KEY_TASKS_VIEW_MODE, mode).apply()
+    }
+
     // ─── Reset diario ──────────────────────────────────────────────────────────
 
     fun checkAndResetForNewDay() {
@@ -350,6 +359,10 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_DUST_COUNT         = "dustCount"
         const val KEY_DUST_MOTES         = "dustMotesJson"
         const val KEY_DUST_LAST_SPAWN_MS = "dustLastSpawnMs"
+        const val KEY_TASKS_VIEW_MODE    = "tasksViewMode"
+
+        const val VIEW_MODE_TODAY = "today"
+        const val VIEW_MODE_WEEK  = "week"
 
         const val MAX_DUST_MOTES = 5
         const val DUST_SPAWN_INTERVAL_MS = 7_200_000L // 2 horas

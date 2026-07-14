@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 // ─── Modelos de estado ────────────────────────────────────────────────────────
 
@@ -34,6 +35,22 @@ data class StreakCelebration(
     val isMilestone: Boolean
 )
 
+enum class TasksViewMode { TODAY, WEEK }
+
+data class WeekDayUi(
+    val dayOfWeek: Int,          // 1=Lun … 7=Dom
+    val shortLabel: String,      // Lun, Mar…
+    val dayOfMonth: Int,
+    val isToday: Boolean,
+    val tasks: List<TaskUiState>,
+    val doneCount: Int,
+    val totalCount: Int
+) {
+    val isRestDay: Boolean get() = totalCount == 0
+    val allDone: Boolean get() = totalCount > 0 && doneCount == totalCount
+    val previewTitles: List<String> get() = tasks.take(2).map { it.task.name }
+}
+
 data class MonkeyUiState(
     val streak: Int = 0,
     val bananas: Int = 0,
@@ -44,6 +61,8 @@ data class MonkeyUiState(
     val equippedAccessory: String? = null,
     val todayTasks: List<TaskUiState> = emptyList(),
     val allTasks: List<Task> = emptyList(),
+    val weekDays: List<WeekDayUi> = emptyList(),
+    val tasksViewMode: TasksViewMode = TasksViewMode.TODAY,
     val dustMotes: List<DustMote> = emptyList(),
     val celebration: StreakCelebration? = null,
     val showShopAffordHint: Boolean = false,
@@ -101,6 +120,15 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         if (earned) {
             NotificationHelper.showCelebrationNotification(getApplication())
         }
+    }
+
+    fun setTasksViewMode(mode: TasksViewMode) {
+        val stored = when (mode) {
+            TasksViewMode.TODAY -> MonkeyStateManager.VIEW_MODE_TODAY
+            TasksViewMode.WEEK  -> MonkeyStateManager.VIEW_MODE_WEEK
+        }
+        manager.setTasksViewMode(stored)
+        _uiState.update { it.copy(tasksViewMode = mode) }
     }
 
     /** Devuelve cuántas motas había al tocar (para animación y recompensa). */
@@ -181,6 +209,11 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun refreshState(celebration: StreakCelebration? = null) {
         manager.syncDustSpawns()
+        val allTasks = manager.loadTasks()
+        val viewMode = when (manager.tasksViewMode) {
+            MonkeyStateManager.VIEW_MODE_WEEK -> TasksViewMode.WEEK
+            else -> TasksViewMode.TODAY
+        }
         _uiState.update {
             MonkeyUiState(
                 streak            = manager.streakCount,
@@ -193,7 +226,9 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 todayTasks        = manager.todayTaskStates.map { (task, done) ->
                     TaskUiState(task, done)
                 },
-                allTasks          = manager.loadTasks(),
+                allTasks          = allTasks,
+                weekDays          = buildWeekDays(allTasks),
+                tasksViewMode     = viewMode,
                 dustMotes         = manager.dustMotes,
                 celebration       = celebration,
                 showShopAffordHint = manager.shouldShowShopAffordHint(),
@@ -202,7 +237,38 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    private fun buildWeekDays(allTasks: List<Task>): List<WeekDayUi> {
+        val today = LocalDate.now()
+        val monday = today.minusDays((today.dayOfWeek.value - 1).toLong())
+        return (1..7).map { dow ->
+            val date = monday.plusDays((dow - 1).toLong())
+            val isToday = dow == today.dayOfWeek.value
+            val dayTasks = allTasks
+                .filter { dow in it.scheduledDays }
+                .map { task ->
+                    TaskUiState(
+                        task = task,
+                        isCompleted = if (isToday) manager.isTaskCompleted(task.id) else false
+                    )
+                }
+            val done = if (isToday) dayTasks.count { it.isCompleted } else 0
+            WeekDayUi(
+                dayOfWeek = dow,
+                shortLabel = DAY_LABELS[dow - 1],
+                dayOfMonth = date.dayOfMonth,
+                isToday = isToday,
+                tasks = dayTasks,
+                doneCount = done,
+                totalCount = dayTasks.size
+            )
+        }
+    }
+
     private fun updateWidget() {
         MonkeyWidgetReceiver.updateWidget(getApplication())
+    }
+
+    companion object {
+        private val DAY_LABELS = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
     }
 }

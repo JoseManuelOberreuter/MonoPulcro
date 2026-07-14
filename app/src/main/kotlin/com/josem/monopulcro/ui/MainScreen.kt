@@ -1,13 +1,18 @@
 package com.josem.monopulcro.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -20,7 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +49,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -114,6 +122,10 @@ fun MainScreen(
     var isMonkeyCleaning by remember { mutableStateOf(false) }
     var dustAtCleanStart by remember { mutableStateOf(emptyList<com.josem.monopulcro.data.DustMote>()) }
     var showDustBananaReward by remember { mutableStateOf(false) }
+    var selectedDayOfWeek by remember { mutableStateOf<Int?>(null) }
+    val selectedWeekDay = selectedDayOfWeek?.let { dow ->
+        state.weekDays.find { it.dayOfWeek == dow }
+    }
     val context = LocalContext.current
     val sounds  = remember { SoundManager.get(context) }
     val tipIndex    = remember { TIPS_PHRASES.indices.random() }
@@ -313,25 +325,38 @@ fun MainScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Tareas de hoy",
+                        text = if (state.tasksViewMode == TasksViewMode.WEEK)
+                            "Esta semana" else "Tareas de hoy",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF1E293B)
                     )
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .mainTourAnchor(MainTourStep.ADD_TASK, tourBounds, tourScrollY)
-                            .background(WaveColor, RoundedCornerShape(10.dp))
-                            .clickable(enabled = !showTour) { onAddTask() },
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Agregar tarea",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        if (state.allTasks.isNotEmpty()) {
+                            TasksViewModeToggle(
+                                mode = state.tasksViewMode,
+                                enabled = !showTour,
+                                onModeChange = { vm.setTasksViewMode(it) }
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .mainTourAnchor(MainTourStep.ADD_TASK, tourBounds, tourScrollY)
+                                .background(WaveColor, RoundedCornerShape(10.dp))
+                                .clickable(enabled = !showTour) { onAddTask() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Agregar tarea",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
 
@@ -344,19 +369,53 @@ fun MainScreen(
                 ) {
                     if (state.allTasks.isEmpty()) {
                         EmptyTasksHint(onAddTask = { if (!showTour) onAddTask() })
-                    } else if (state.todayTasks.isEmpty()) {
-                        RestDayCard()
                     } else {
-                        AnimatedTaskList(
-                            tasks = state.todayTasks,
-                            onToggle = { if (!showTour) vm.toggleTask(it) },
-                            onEdit = { if (!showTour) onEditTask(it) }
-                        )
+                        AnimatedContent(
+                            targetState = state.tasksViewMode,
+                            transitionSpec = {
+                                fadeIn(tween(200)) togetherWith fadeOut(tween(160))
+                            },
+                            label = "tasksViewMode"
+                        ) { mode ->
+                            when (mode) {
+                                TasksViewMode.TODAY -> {
+                                    if (state.todayTasks.isEmpty()) {
+                                        RestDayCard()
+                                    } else {
+                                        AnimatedTaskList(
+                                            tasks = state.todayTasks,
+                                            onToggle = { if (!showTour) vm.toggleTask(it) },
+                                            onEdit = { if (!showTour) onEditTask(it) }
+                                        )
+                                    }
+                                }
+                                TasksViewMode.WEEK -> {
+                                    WeekCalendarView(
+                                        days = state.weekDays,
+                                        onDayClick = { day ->
+                                            if (!showTour) selectedDayOfWeek = day.dayOfWeek
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
             }
+        }
+
+        selectedWeekDay?.let { day ->
+            WeekDayDetailSheet(
+                day = day,
+                onDismiss = { selectedDayOfWeek = null },
+                onToggle = { if (!showTour) vm.toggleTask(it) },
+                onEdit = { taskId ->
+                    selectedDayOfWeek = null
+                    if (!showTour) onEditTask(taskId)
+                }
+            )
         }
 
         celebration?.let { event ->
@@ -436,6 +495,316 @@ private fun RestDayCard() {
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+@Composable
+private fun TasksViewModeToggle(
+    mode: TasksViewMode,
+    enabled: Boolean,
+    onModeChange: (TasksViewMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .background(Color(0xFFF1F5F9), RoundedCornerShape(10.dp))
+            .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        ViewModeIconButton(
+            selected = mode == TasksViewMode.TODAY,
+            enabled = enabled,
+            icon = Icons.Default.Menu,
+            contentDescription = "Vista lista",
+            onClick = { onModeChange(TasksViewMode.TODAY) }
+        )
+        ViewModeIconButton(
+            selected = mode == TasksViewMode.WEEK,
+            enabled = enabled,
+            icon = Icons.Default.DateRange,
+            contentDescription = "Vista semanal",
+            onClick = { onModeChange(TasksViewMode.WEEK) }
+        )
+    }
+}
+
+@Composable
+private fun ViewModeIconButton(
+    selected: Boolean,
+    enabled: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .background(
+                color = if (selected) Color.White else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (selected) Color(0xFF0EA5E9) else Color(0xFF94A3B8),
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun WeekCalendarView(
+    days: List<WeekDayUi>,
+    onDayClick: (WeekDayUi) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        days.forEach { day ->
+            WeekDayRow(day = day, onClick = { onDayClick(day) })
+        }
+    }
+}
+
+@Composable
+private fun WeekDayRow(
+    day: WeekDayUi,
+    onClick: () -> Unit
+) {
+    val bg = when {
+        day.isToday && day.allDone -> Color(0xFFDCFCE7)
+        day.isToday -> Color(0xFFE0F2FE)
+        day.isRestDay -> Color(0xFFF8FAFC)
+        day.allDone -> Color(0xFFF0FDF4)
+        else -> Color(0xFFF8FAFC)
+    }
+    val borderColor = when {
+        day.isToday -> WaveColor
+        else -> Color.Transparent
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(bg, RoundedCornerShape(14.dp))
+            .then(
+                if (day.isToday) Modifier.border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
+                else Modifier
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(44.dp)
+        ) {
+            Text(
+                text = day.shortLabel,
+                fontSize = 12.sp,
+                fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Medium,
+                color = if (day.isToday) Color(0xFF0369A1) else Color(0xFF64748B)
+            )
+            Text(
+                text = "${day.dayOfMonth}",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (day.isToday) Color(0xFF0EA5E9) else Color(0xFF1E293B)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            when {
+                day.isRestDay -> {
+                    Text(
+                        text = "Descanso",
+                        fontSize = 14.sp,
+                        color = Color(0xFF94A3B8),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                else -> {
+                    if (day.isToday) {
+                        Text(
+                            text = "${day.doneCount}/${day.totalCount} completadas",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (day.allDone) Color(0xFF16A34A) else Color(0xFF0369A1)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        WeekDayProgressBar(
+                            progress = day.doneCount.toFloat() / day.totalCount.toFloat(),
+                            done = day.allDone
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    } else {
+                        Text(
+                            text = "${day.totalCount} tarea${if (day.totalCount == 1) "" else "s"}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF64748B)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    day.previewTitles.forEach { title ->
+                        Text(
+                            text = title,
+                            fontSize = 13.sp,
+                            color = Color(0xFF334155),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (day.totalCount > 2) {
+                        Text(
+                            text = "+${day.totalCount - 2} más",
+                            fontSize = 12.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (day.isToday && day.allDone) {
+            Text("✓", fontSize = 18.sp, color = Color(0xFF16A34A), fontWeight = FontWeight.Bold)
+        } else if (day.isToday) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(Color(0xFF0EA5E9), CircleShape)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeekDayProgressBar(progress: Float, done: Boolean) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(4.dp)
+            .background(Color(0xFFE2E8F0), RoundedCornerShape(2.dp))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(progress.coerceIn(0f, 1f))
+                .height(4.dp)
+                .background(
+                    if (done) Color(0xFF16A34A) else WaveColor,
+                    RoundedCornerShape(2.dp)
+                )
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WeekDayDetailSheet(
+    day: WeekDayUi,
+    onDismiss: () -> Unit,
+    onToggle: (String) -> Unit,
+    onEdit: (String) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    BackHandler(onBack = onDismiss)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = if (day.isToday) "Hoy · ${day.shortLabel} ${day.dayOfMonth}"
+                       else "${day.shortLabel} ${day.dayOfMonth}",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E293B)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = when {
+                    day.isRestDay -> "Día de descanso"
+                    day.isToday -> "${day.doneCount} de ${day.totalCount} completadas"
+                    else -> "${day.totalCount} tarea${if (day.totalCount == 1) "" else "s"} programada${if (day.totalCount == 1) "" else "s"}"
+                },
+                fontSize = 14.sp,
+                color = Color(0xFF64748B)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (day.isRestDay) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFF0FDF4), RoundedCornerShape(14.dp))
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = "No hay tareas este día. ¡Aprovecha para descansar!",
+                        fontSize = 14.sp,
+                        color = Color(0xFF16A34A),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            } else if (day.isToday) {
+                day.tasks.forEach { taskState ->
+                    TaskCheckboxRow(
+                        taskName = taskState.task.name,
+                        isChecked = taskState.isCompleted,
+                        onChecked = { onToggle(taskState.task.id) },
+                        onEdit = { onEdit(taskState.task.id) },
+                        modifier = Modifier.height(TaskRowHeight)
+                    )
+                }
+            } else {
+                day.tasks.forEach { taskState ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                            .background(Color(0xFFF8FAFC), RoundedCornerShape(14.dp))
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = taskState.task.name,
+                            fontSize = 16.sp,
+                            color = Color(0xFF334155),
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { onEdit(taskState.task.id) },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Editar",
+                                tint = Color(0xFFCBD5E1),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Solo puedes marcar tareas el día de hoy",
+                    fontSize = 12.sp,
+                    color = Color(0xFF94A3B8)
+                )
+            }
+        }
     }
 }
 
