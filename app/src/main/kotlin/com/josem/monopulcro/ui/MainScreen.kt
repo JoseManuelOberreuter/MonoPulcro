@@ -244,20 +244,6 @@ fun MainScreen(
                             }
                         )
                 ) {
-                    Canvas(modifier = Modifier.size(230.dp)) {
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color(0x40000000),
-                                    0.45f to Color(0x22000000),
-                                    0.75f to Color(0x0C000000),
-                                    1.0f to Color.Transparent
-                                ),
-                                center = center,
-                                radius = size.minDimension / 2
-                            )
-                        )
-                    }
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.graphicsLayer {
