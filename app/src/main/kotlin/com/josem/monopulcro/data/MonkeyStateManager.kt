@@ -256,12 +256,6 @@ class MonkeyStateManager(private val context: Context) {
         return bananas >= cheapest.price
     }
 
-    /** Solo debug: añade bananas al contador. */
-    fun debugAddBananas(amount: Int) {
-        if (amount <= 0) return
-        prefs.edit().putInt(KEY_BANANAS, bananas + amount).apply()
-    }
-
     // ─── Motas de polvo ────────────────────────────────────────────────────────
 
     val dustMotes: List<DustMote> get() = loadDustMotes()
