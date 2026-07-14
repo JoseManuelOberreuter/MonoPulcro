@@ -82,8 +82,9 @@ object MonkeyImageResolver {
         else                                 -> R.drawable.mono_sucio_1
     }
 
-    /** Variante del accesorio para previews (tienda); misma lógica de rotación que en juego */
-    fun previewForAccessory(accessoryId: String): Int = resolveCleanAccessory(accessoryId)
+    /** Variante _1 fija de cada accesorio para la tienda */
+    fun previewForAccessory(accessoryId: String): Int =
+        ACCESSORY_STATES[accessoryId]?.firstOrNull() ?: DEFAULT_PULCRO
 
     private fun resolveCleanAccessory(accessoryId: String): Int =
         ACCESSORY_STATES[accessoryId]?.let { variantRandom(it, accessoryId) }
