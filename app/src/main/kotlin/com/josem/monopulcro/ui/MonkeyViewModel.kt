@@ -31,7 +31,7 @@ data class TaskUiState(
 data class StreakCelebration(
     val previousStreak: Int,
     val newStreak: Int,
-    val bonusBananas: Int,
+    val bananasEarned: Int,
     val isMilestone: Boolean
 )
 
@@ -109,7 +109,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
             StreakCelebration(
                 previousStreak = previousStreak,
                 newStreak = newStreak,
-                bonusBananas = if (newStreak % 7 == 0) 3 else 0,
+                bananasEarned = manager.lastRewardBananas,
                 isMilestone = newStreak % 7 == 0
             )
         } else null

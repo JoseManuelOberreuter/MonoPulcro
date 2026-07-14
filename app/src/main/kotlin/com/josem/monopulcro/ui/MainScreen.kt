@@ -2,6 +2,7 @@ package com.josem.monopulcro.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.*
@@ -14,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -42,6 +44,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -63,7 +67,10 @@ import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.cos
 import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlin.random.Random
 
 private val WaveColor = Color(0xFF7DD3FC)
 private val TaskRowHeight = 72.dp
@@ -119,6 +126,7 @@ fun MainScreen(
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
     var celebration by remember { mutableStateOf<StreakCelebration?>(null) }
+    var chestCelebration by remember { mutableStateOf<StreakCelebration?>(null) }
     var isMonkeyCleaning by remember { mutableStateOf(false) }
     var dustAtCleanStart by remember { mutableStateOf(emptyList<com.josem.monopulcro.data.DustMote>()) }
     var showDustBananaReward by remember { mutableStateOf(false) }
@@ -159,6 +167,8 @@ fun MainScreen(
     val monkeyImageSize = if (screenHeightDp < 700) 154.dp else 220.dp
 
     val showTour = state.showMainTour
+    val rewardFlowActive = celebration != null || chestCelebration != null
+    val interactionLocked = showTour || rewardFlowActive
     var tourStep by remember { mutableIntStateOf(0) }
     val tourBounds = remember { mutableStateMapOf<MainTourStep, Rect>() }
     val tourScrollY = remember { mutableStateMapOf<MainTourStep, Float>() }
@@ -191,6 +201,7 @@ fun MainScreen(
     LaunchedEffect(state.celebration) {
         state.celebration?.let {
             celebration = it
+            selectedDayOfWeek = null
             vm.consumeCelebration()
         }
     }
@@ -207,7 +218,7 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(scrollState)
+                    .verticalScroll(scrollState, enabled = !interactionLocked)
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -235,11 +246,11 @@ fun MainScreen(
                     ) {
                         ShopButton(
                             onClick = {
-                                if (showTour) return@ShopButton
+                                if (interactionLocked) return@ShopButton
                                 if (state.showShopAffordHint) vm.onShopOpened()
                                 onOpenShop()
                             },
-                            highlighted = state.showShopAffordHint && !showTour
+                            highlighted = state.showShopAffordHint && !interactionLocked
                         )
                     }
                     Box(
@@ -264,7 +275,7 @@ fun MainScreen(
                         .clickable(
                             interactionSource = monkeyInteractionSource,
                             indication = null,
-                            enabled = !isMonkeyCleaning && !showTour,
+                            enabled = !isMonkeyCleaning && !interactionLocked,
                             onClick = {
                                 dustAtCleanStart = vm.dustMotesForCleaning()
                                 isMonkeyCleaning = true
@@ -362,7 +373,7 @@ fun MainScreen(
                             ) {
                                 TasksViewModeToggle(
                                     mode = state.tasksViewMode,
-                                    enabled = !showTour,
+                                    enabled = !interactionLocked,
                                     onModeChange = { vm.setTasksViewMode(it) }
                                 )
                             }
@@ -372,7 +383,7 @@ fun MainScreen(
                                 .size(36.dp)
                                 .mainTourAnchor(MainTourStep.ADD_TASK, tourBounds, tourScrollY)
                                 .background(WaveColor, RoundedCornerShape(10.dp))
-                                .clickable(enabled = !showTour) { onAddTask() },
+                                .clickable(enabled = !interactionLocked) { onAddTask() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -393,7 +404,7 @@ fun MainScreen(
                         .mainTourAnchor(MainTourStep.TASKS, tourBounds, tourScrollY)
                 ) {
                     if (state.allTasks.isEmpty()) {
-                        EmptyTasksHint(onAddTask = { if (!showTour) onAddTask() })
+                        EmptyTasksHint(onAddTask = { if (!interactionLocked) onAddTask() })
                     } else {
                         AnimatedContent(
                             targetState = state.tasksViewMode,
@@ -409,8 +420,8 @@ fun MainScreen(
                                     } else {
                                         AnimatedTaskList(
                                             tasks = state.todayTasks,
-                                            onToggle = { if (!showTour) vm.toggleTask(it) },
-                                            onEdit = { if (!showTour) onEditTask(it) }
+                                            onToggle = { if (!interactionLocked) vm.toggleTask(it) },
+                                            onEdit = { if (!interactionLocked) onEditTask(it) }
                                         )
                                     }
                                 }
@@ -418,7 +429,7 @@ fun MainScreen(
                                     WeekCalendarView(
                                         days = state.weekDays,
                                         onDayClick = { day ->
-                                            if (!showTour) selectedDayOfWeek = day.dayOfWeek
+                                            if (!interactionLocked) selectedDayOfWeek = day.dayOfWeek
                                         }
                                     )
                                 }
@@ -435,10 +446,10 @@ fun MainScreen(
             WeekDayDetailSheet(
                 day = day,
                 onDismiss = { selectedDayOfWeek = null },
-                onToggle = { if (!showTour) vm.toggleTask(it) },
+                onToggle = { if (!interactionLocked) vm.toggleTask(it) },
                 onEdit = { taskId ->
                     selectedDayOfWeek = null
-                    if (!showTour) onEditTask(taskId)
+                    if (!interactionLocked) onEditTask(taskId)
                 }
             )
         }
@@ -446,11 +457,24 @@ fun MainScreen(
         celebration?.let { event ->
             StreakCelebrationOverlay(
                 event = event,
-                onFinished = { celebration = null }
+                onOpenChest = {
+                    celebration = null
+                    chestCelebration = event
+                }
+            )
+        }
+        chestCelebration?.let { event ->
+            ChestCelebrationOverlay(
+                bananasEarned = event.bananasEarned,
+                isMilestone = event.isMilestone,
+                onFinished = { chestCelebration = null }
             )
         }
         if (showDustBananaReward) {
             BananaRewardOverlay(onFinished = { showDustBananaReward = false })
+        }
+        if (rewardFlowActive) {
+            BackHandler { /* bloquea navegación atrás durante racha/cofre */ }
         }
         if (showTour) {
             BackHandler { /* bloquea navegación atrás durante el tour */ }
@@ -954,10 +978,18 @@ private val StreakBgTop    = Color(0xFFFF9F1C)
 private val StreakBgBottom = Color(0xFFF25C05)
 private val StreakGlow      = Color(0xFFFFE29A)
 
+/** Bloquea toques al contenido debajo; los hijos del Box siguen recibiendo taps. */
+private fun Modifier.modalOverlayScrim(onBackgroundTap: () -> Unit = {}): Modifier =
+    fillMaxSize()
+        .zIndex(100f)
+        .pointerInput(Unit) {
+            detectTapGestures(onTap = { onBackgroundTap() })
+        }
+
 @Composable
 private fun StreakCelebrationOverlay(
     event: StreakCelebration,
-    onFinished: () -> Unit
+    onOpenChest: () -> Unit
 ) {
     val context = LocalContext.current
     val sounds  = remember { SoundManager.get(context) }
@@ -973,31 +1005,25 @@ private fun StreakCelebrationOverlay(
     val rewardScale   = remember { Animatable(0.6f) }
     val ctaAlpha      = remember { Animatable(0f) }
 
-    // Partículas del burst (reutiliza el layout de FIRE_PARTICLES)
     val travels = remember { FIRE_PARTICLES.map { Animatable(0f) } }
     val alphas  = remember { FIRE_PARTICLES.map { Animatable(0f) } }
 
-    var dismissing by remember { mutableStateOf(false) }
-    fun dismiss() {
-        if (dismissing) return
-        dismissing = true
+    var navigating by remember { mutableStateOf(false) }
+    fun goToChest() {
+        if (navigating || ctaAlpha.value < 0.5f) return
+        navigating = true
         scope.launch {
-            overlayAlpha.animateTo(0f, tween(300))
-            onFinished()
+            overlayAlpha.animateTo(0f, tween(280))
+            onOpenChest()
         }
     }
 
     LaunchedEffect(Unit) {
-        // 1) Entrada del fondo
         overlayAlpha.animateTo(1f, tween(250, easing = FastOutSlowInEasing))
-
-        // 2) Entrada del ícono con rebote
         iconScale.animateTo(
             1f,
             spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
         )
-
-        // 3) Conteo ascendente previous → new
         counter.animateTo(
             event.newStreak.toFloat(),
             tween(
@@ -1005,8 +1031,6 @@ private fun StreakCelebrationOverlay(
                 easing = FastOutSlowInEasing
             )
         )
-
-        // 4) Punch + partículas + sonido + haptic en el clímax
         sounds.playMonkeyCheer()
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         coroutineScope {
@@ -1026,38 +1050,36 @@ private fun StreakCelebrationOverlay(
                 }
             }
         }
-
-        // 5) Titular
         launch { headlineAlpha.animateTo(1f, tween(240)) }
         headlineY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow))
-
-        // 6) Recompensa (bananas)
         launch { rewardAlpha.animateTo(1f, tween(180)) }
         rewardScale.animateTo(
             1f,
             spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
         )
-
-        // 7) CTA
         ctaAlpha.animateTo(1f, tween(220))
     }
 
-    val bananasEarned = 1 + event.bonusBananas
+    val chestBreath = rememberInfiniteTransition(label = "streakChestBreath")
+    val breathScale by chestBreath.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "streakChestBreathScale"
+    )
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .modalOverlayScrim()
             .graphicsLayer { alpha = overlayAlpha.value }
             .background(Brush.verticalGradient(listOf(StreakBgTop, StreakBgBottom)))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { if (ctaAlpha.value > 0.5f) dismiss() }
     ) {
         val widthDp = LocalConfiguration.current.screenWidthDp.dp
         val density = LocalDensity.current
 
-        // Partículas de fuego subiendo desde la base
         FIRE_PARTICLES.forEachIndexed { i, p ->
             val sizeDp = p.sizeDp.dp
             val xOffset = widthDp * p.xFrac - sizeDp / 2
@@ -1081,7 +1103,6 @@ private fun StreakCelebrationOverlay(
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Ícono + número protagonista
             Box(contentAlignment = Alignment.Center) {
                 Canvas(modifier = Modifier.size(220.dp)) {
                     drawCircle(
@@ -1123,7 +1144,6 @@ private fun StreakCelebrationOverlay(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Titular
             Text(
                 text = if (event.isMilestone) "¡Meta alcanzada! Tu mono está orgulloso"
                        else "¡Tu mono sigue impecable!",
@@ -1139,45 +1159,36 @@ private fun StreakCelebrationOverlay(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Recompensa de bananas
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .graphicsLayer {
-                        alpha = rewardAlpha.value
-                        scaleX = rewardScale.value
-                        scaleY = rewardScale.value
-                    }
-                    .background(Color.White.copy(alpha = 0.18f), RoundedCornerShape(20.dp))
-                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.graphicsLayer {
+                    alpha = rewardAlpha.value
+                    scaleX = rewardScale.value
+                    scaleY = rewardScale.value
+                }
             ) {
                 Image(
-                    painter = painterResource(R.drawable.banana),
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp)
+                    painter = painterResource(R.drawable.cofre_cerrado),
+                    contentDescription = "Cofre de recompensa",
+                    modifier = Modifier
+                        .size(110.dp)
+                        .graphicsLayer {
+                            scaleX = breathScale
+                            scaleY = breathScale
+                        }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "+$bananasEarned",
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
+                    text = "¡Ganaste un cofre!",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White.copy(alpha = 0.9f)
                 )
-                if (event.isMilestone) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "¡bonus x7!",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFF3C4)
-                    )
-                }
             }
         }
 
-        // CTA inferior
         Button(
-            onClick = { dismiss() },
+            onClick = { goToChest() },
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
                 contentColor = StreakBgBottom
@@ -1190,7 +1201,308 @@ private fun StreakCelebrationOverlay(
                 .height(54.dp)
                 .graphicsLayer { alpha = ctaAlpha.value }
         ) {
-            Text("¡Seguir!", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text("Abrir cofre", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        }
+    }
+}
+
+// ─── Celebración del cofre (pantalla dedicada) ─────────────────────────────────
+
+private val ChestBgTop    = Color(0xFFFBBF24)
+private val ChestBgBottom = Color(0xFFB45309)
+private val ChestGlow     = Color(0xFFFFF3C4)
+
+private data class BananaBurstParticle(
+    val angleRad: Float,
+    val distanceDp: Float,
+    val sizeDp: Float,
+    val delayMs: Long,
+    val spinDeg: Float
+)
+
+private fun bananaBurstParticles(lootCount: Int): List<BananaBurstParticle> {
+    val visualCount = maxOf(lootCount, 6).coerceAtMost(12)
+    return List(visualCount) { i ->
+        val baseAngle = (i.toFloat() / visualCount) * (2f * Math.PI.toFloat())
+        BananaBurstParticle(
+            angleRad = baseAngle + Random.nextFloat() * 0.5f - 0.25f,
+            distanceDp = 90f + Random.nextFloat() * 110f,
+            sizeDp = 26f + Random.nextFloat() * 22f,
+            delayMs = (i * 35).toLong(),
+            spinDeg = Random.nextFloat() * 280f - 140f
+        )
+    }
+}
+
+@Composable
+private fun ChestCelebrationOverlay(
+    bananasEarned: Int,
+    isMilestone: Boolean,
+    onFinished: () -> Unit
+) {
+    val context = LocalContext.current
+    val sounds  = remember { SoundManager.get(context) }
+    val haptic  = LocalHapticFeedback.current
+    val scope   = rememberCoroutineScope()
+    val density = LocalDensity.current
+
+    val overlayAlpha = remember { Animatable(0f) }
+    val chestScale   = remember { Animatable(0.5f) }
+    val headlineAlpha = remember { Animatable(0f) }
+    val chestShakeX  = remember { Animatable(0f) }
+    val chestPunch   = remember { Animatable(1f) }
+    val lootAlpha    = remember { Animatable(0f) }
+    val lootScale    = remember { Animatable(0.4f) }
+    val ctaAlpha     = remember { Animatable(0f) }
+
+    var chestOpened  by remember { mutableStateOf(false) }
+    var chestOpening by remember { mutableStateOf(false) }
+    var dismissing   by remember { mutableStateOf(false) }
+
+    val particles = remember(bananasEarned) { bananaBurstParticles(bananasEarned) }
+    val burstProgress = remember { particles.map { Animatable(0f) } }
+    val burstAlpha    = remember { particles.map { Animatable(0f) } }
+
+    fun dismiss() {
+        if (dismissing) return
+        dismissing = true
+        scope.launch {
+            overlayAlpha.animateTo(0f, tween(300))
+            onFinished()
+        }
+    }
+
+    fun openChest() {
+        if (chestOpening || chestOpened || dismissing) return
+        chestOpening = true
+        scope.launch {
+            repeat(4) {
+                chestShakeX.animateTo(-9f, tween(40))
+                chestShakeX.animateTo(9f, tween(40))
+            }
+            chestShakeX.animateTo(0f, tween(35))
+            chestOpened = true
+            sounds.playCashRegister()
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            launch {
+                chestPunch.animateTo(1.28f, tween(140, easing = EaseOut))
+                chestPunch.animateTo(
+                    1f,
+                    spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+                )
+            }
+            particles.forEachIndexed { i, _ ->
+                launch {
+                    delay(particles[i].delayMs)
+                    burstAlpha[i].animateTo(1f, tween(60))
+                    burstProgress[i].animateTo(1f, tween(520, easing = EaseOut))
+                    delay(180)
+                    burstAlpha[i].animateTo(0f, tween(280))
+                }
+            }
+            launch { lootAlpha.animateTo(1f, tween(220)) }
+            lootScale.animateTo(
+                1f,
+                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+            )
+            ctaAlpha.animateTo(1f, tween(240))
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        overlayAlpha.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
+        chestScale.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        )
+        headlineAlpha.animateTo(1f, tween(300))
+    }
+
+    val chestBreath = rememberInfiniteTransition(label = "chestScreenBreath")
+    val breathScale by chestBreath.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(850, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "chestScreenBreathScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .modalOverlayScrim {
+                if (!chestOpened && headlineAlpha.value > 0.5f) openChest()
+                else if (chestOpened && ctaAlpha.value > 0.5f) dismiss()
+            }
+            .graphicsLayer { alpha = overlayAlpha.value }
+            .background(Brush.verticalGradient(listOf(ChestBgTop, ChestBgBottom)))
+    ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = if (chestOpened) "¡Tesoro encontrado!" else "¡Tu cofre te espera!",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+                color = Color.White,
+                modifier = Modifier.graphicsLayer { alpha = headlineAlpha.value }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (!chestOpened) {
+                Text(
+                    text = "Toca el cofre para abrirlo",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.graphicsLayer { alpha = headlineAlpha.value }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(36.dp))
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(260.dp)
+            ) {
+                if (!chestOpened) {
+                    Canvas(modifier = Modifier.size(240.dp)) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.0f to ChestGlow.copy(alpha = 0.5f),
+                                    0.65f to ChestGlow.copy(alpha = 0.1f),
+                                    1.0f to Color.Transparent
+                                ),
+                                center = center,
+                                radius = size.minDimension / 2
+                            )
+                        )
+                    }
+                }
+
+                particles.forEachIndexed { i, p ->
+                    if (chestOpened) {
+                        val progress = burstProgress[i].value
+                        val distPx = with(density) { (p.distanceDp * progress).dp.toPx() }
+                        val offsetX = cos(p.angleRad) * distPx
+                        val offsetY = -sin(p.angleRad).coerceAtLeast(0.15f) * distPx - progress * 60f
+                        Image(
+                            painter = painterResource(R.drawable.banana),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(p.sizeDp.dp)
+                                .graphicsLayer {
+                                    translationX = offsetX
+                                    translationY = offsetY
+                                    alpha = burstAlpha[i].value
+                                    rotationZ = p.spinDeg * progress
+                                    scaleX = 0.5f + progress * 0.5f
+                                    scaleY = 0.5f + progress * 0.5f
+                                }
+                        )
+                    }
+                }
+
+                Image(
+                    painter = painterResource(
+                        if (chestOpened) R.drawable.cofre_abierto else R.drawable.cofre_cerrado
+                    ),
+                    contentDescription = if (chestOpened) "Cofre abierto" else "Cofre cerrado",
+                    modifier = Modifier
+                        .size(180.dp)
+                        .graphicsLayer {
+                            scaleX = chestScale.value * chestPunch.value *
+                                if (!chestOpened && !chestOpening) breathScale else 1f
+                            scaleY = chestScale.value * chestPunch.value *
+                                if (!chestOpened && !chestOpening) breathScale else 1f
+                            translationX = with(density) { chestShakeX.value.dp.toPx() }
+                        }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { openChest() }
+                )
+            }
+
+            if (chestOpened) {
+                Spacer(modifier = Modifier.height(28.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = lootAlpha.value
+                            scaleX = lootScale.value
+                            scaleY = lootScale.value
+                        }
+                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.banana),
+                        contentDescription = null,
+                        modifier = Modifier.size(44.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "+$bananasEarned",
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                    if (isMilestone) {
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "¡bonus x7!",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFF3C4)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (!chestOpened) {
+            Button(
+                onClick = { openChest() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = ChestBgBottom
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 40.dp)
+                    .height(54.dp)
+                    .graphicsLayer { alpha = headlineAlpha.value }
+            ) {
+                Text("Abrir cofre", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            }
+        } else {
+            Button(
+                onClick = { dismiss() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = ChestBgBottom
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 40.dp)
+                    .height(54.dp)
+                    .graphicsLayer { alpha = ctaAlpha.value }
+            ) {
+                Text("¡Seguir!", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            }
         }
     }
 }
