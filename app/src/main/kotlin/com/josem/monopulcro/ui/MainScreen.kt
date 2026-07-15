@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -1576,42 +1577,26 @@ private fun ChestCelebrationOverlay(
                 )
 
                 if (showDoubleOffer) {
-                    OutlinedButton(
-                        onClick = onRequestDouble,
+                    DoubleRewardButton(
                         enabled = adReady && !adLoading,
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                    ) {
-                        Text(
-                            text = when {
-                                adLoading -> "Cargando anuncio…"
-                                adReady -> "Ver anuncio para duplicar"
-                                phase == ChestRewardPhase.AdUnavailable ->
-                                    "Anuncio no disponible"
-                                else -> "Preparando anuncio…"
-                            },
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
+                        adReady = adReady,
+                        adLoading = adLoading,
+                        phase = phase,
+                        extraBananas = bananasEarned,
+                        onClick = onRequestDouble
+                    )
                 }
 
-                Button(
+                TextButton(
                     onClick = { dismiss() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = ChestBgBottom
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("¡Seguir!", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(
+                        "¡Seguir!",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White.copy(alpha = 0.88f)
+                    )
                 }
             }
         }
@@ -1619,6 +1604,109 @@ private fun ChestCelebrationOverlay(
 }
 
 // ─── Sub-composables ──────────────────────────────────────────────────────────
+
+private val DoubleRewardGreen = Color(0xFF16A34A)
+private val DoubleRewardGreenDark = Color(0xFF15803D)
+
+@Composable
+private fun DoubleRewardButton(
+    enabled: Boolean,
+    adReady: Boolean,
+    adLoading: Boolean,
+    phase: ChestRewardPhase,
+    extraBananas: Int,
+    onClick: () -> Unit
+) {
+    val pulseTransition = rememberInfiniteTransition(label = "doubleRewardPulse")
+    val pulseScale by pulseTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (enabled && adReady) 1.05f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(650, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "doubleRewardScale"
+    )
+
+    val subtitle = when {
+        adLoading -> "Cargando anuncio…"
+        adReady -> "Ver anuncio · gana +$extraBananas más"
+        phase == ChestRewardPhase.AdUnavailable -> "Anuncio no disponible"
+        else -> "Preparando anuncio…"
+    }
+
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = DoubleRewardGreen,
+            disabledContainerColor = DoubleRewardGreen.copy(alpha = 0.5f),
+            contentColor = Color.White
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 10.dp,
+            pressedElevation = 4.dp,
+            disabledElevation = 0.dp
+        ),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(62.dp)
+            .graphicsLayer {
+                scaleX = pulseScale
+                scaleY = pulseScale
+            }
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color.White.copy(alpha = 0.22f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Duplicar bananas",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Text(
+                        text = subtitle,
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.88f)
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .background(DoubleRewardGreenDark, RoundedCornerShape(10.dp))
+                    .border(2.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "x2",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun BananaCounter(count: Int) {
