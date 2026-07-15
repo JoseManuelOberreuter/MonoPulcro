@@ -70,5 +70,8 @@ dependencies {
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
 
+    // AdMob
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

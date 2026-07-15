@@ -20,6 +20,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.google.android.gms.ads.MobileAds
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.notifications.NotificationHelper
 import com.josem.monopulcro.notifications.NotificationScheduler
@@ -53,6 +54,8 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        MobileAds.initialize(this) {}
 
         setupNotifications()
 

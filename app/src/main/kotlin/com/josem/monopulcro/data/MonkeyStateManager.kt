@@ -172,6 +172,7 @@ class MonkeyStateManager(private val context: Context) {
             putBoolean(KEY_STREAK_COUNTED, false)
             putBoolean(KEY_STREAK_BONUS_GIVEN, false)
             putInt(KEY_REWARD_BANANAS, 0)
+            putBoolean(KEY_REWARD_DOUBLED, false)
             putString(KEY_LAST_RESET, today)
             apply()
         }
@@ -228,6 +229,23 @@ class MonkeyStateManager(private val context: Context) {
     /** Bananas pagadas por el cofre de hoy (0 si aún no se completó el día). */
     val lastRewardBananas: Int
         get() = prefs.getInt(KEY_REWARD_BANANAS, 0)
+
+    val rewardDoubledToday: Boolean
+        get() = prefs.getBoolean(KEY_REWARD_DOUBLED, false)
+
+    /** Duplica el loot del cofre de hoy (+X bananas extra). */
+    fun doubleChestReward(): Boolean {
+        if (!prefs.getBoolean(KEY_REWARD_GIVEN, false)) return false
+        if (prefs.getBoolean(KEY_REWARD_DOUBLED, false)) return false
+        val awarded = prefs.getInt(KEY_REWARD_BANANAS, 0)
+        if (awarded <= 0) return false
+        prefs.edit()
+            .putInt(KEY_BANANAS, bananas + awarded)
+            .putInt(KEY_REWARD_BANANAS, awarded * 2)
+            .putBoolean(KEY_REWARD_DOUBLED, true)
+            .apply()
+        return true
+    }
 
     fun buyAccessory(accessoryId: String): Boolean {
         val item = ACCESSORIES.find { it.id == accessoryId } ?: return false
@@ -364,6 +382,7 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_EQUIPPED_ACCESSORY = "equippedAccessory"
         const val KEY_STREAK_BONUS_GIVEN = "streakBonusGiven"
         const val KEY_REWARD_BANANAS     = "rewardBananasToday"
+        const val KEY_REWARD_DOUBLED     = "rewardDoubledToday"
         const val KEY_ONBOARDING_DONE    = "onboardingDone"
         const val KEY_MAIN_TOUR_PENDING  = "mainTourPending"
         const val KEY_SHOP_AFFORD_HINT_CONSUMED = "shopAffordHintConsumed"

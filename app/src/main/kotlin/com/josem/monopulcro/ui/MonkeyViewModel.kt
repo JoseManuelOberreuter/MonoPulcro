@@ -13,8 +13,11 @@ import com.josem.monopulcro.widget.MonkeyWidgetReceiver
 import com.josem.monopulcro.widget.WidgetUpdateScheduler
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import com.josem.monopulcro.widget.MonkeyWidget
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -51,6 +54,20 @@ data class WeekDayUi(
     val previewTitles: List<String> get() = tasks.take(2).map { it.task.name }
 }
 
+enum class ChestRewardPhase {
+    Idle, Revealed, AdLoading, Doubled, AdUnavailable
+}
+
+data class ChestRewardUiState(
+    val displayedBananas: Int = 0,
+    val phase: ChestRewardPhase = ChestRewardPhase.Idle,
+    val canOfferDouble: Boolean = true,
+)
+
+sealed interface MonkeyUiEffect {
+    data object ShowRewardedAdForDouble : MonkeyUiEffect
+}
+
 data class MonkeyUiState(
     val streak: Int = 0,
     val bananas: Int = 0,
@@ -78,6 +95,12 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _uiState = MutableStateFlow(MonkeyUiState())
     val uiState: StateFlow<MonkeyUiState> = _uiState.asStateFlow()
+
+    private val _chestReward = MutableStateFlow(ChestRewardUiState())
+    val chestReward: StateFlow<ChestRewardUiState> = _chestReward.asStateFlow()
+
+    private val _effects = MutableSharedFlow<MonkeyUiEffect>(extraBufferCapacity = 1)
+    val effects: SharedFlow<MonkeyUiEffect> = _effects.asSharedFlow()
 
     init {
         manager.checkAndResetForNewDay()
@@ -204,6 +227,72 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun refresh() = refreshState()
+
+    // ─── Cofre + duplicar recompensa (AdMob) ───────────────────────────────────
+
+    fun beginChestFlow(baseBananas: Int) {
+        _chestReward.value = ChestRewardUiState(
+            displayedBananas = baseBananas,
+            phase = ChestRewardPhase.Idle,
+            canOfferDouble = !manager.rewardDoubledToday,
+        )
+    }
+
+    fun onChestRevealed() {
+        val base = manager.lastRewardBananas
+        _chestReward.update {
+            it.copy(
+                displayedBananas = base,
+                phase = ChestRewardPhase.Revealed,
+                canOfferDouble = !manager.rewardDoubledToday,
+            )
+        }
+    }
+
+    fun requestDoubleReward() {
+        val state = _chestReward.value
+        if (state.phase != ChestRewardPhase.Revealed || !state.canOfferDouble) return
+        _chestReward.update { it.copy(phase = ChestRewardPhase.AdLoading) }
+        _effects.tryEmit(MonkeyUiEffect.ShowRewardedAdForDouble)
+    }
+
+    /** Llamar solo desde onUserEarnedReward del RewardedAd. */
+    fun onAdRewardEarnedForDouble() {
+        if (!manager.doubleChestReward()) {
+            _chestReward.update { it.copy(phase = ChestRewardPhase.AdUnavailable) }
+            return
+        }
+        refreshState()
+        updateWidget()
+        _chestReward.update {
+            it.copy(
+                displayedBananas = manager.lastRewardBananas,
+                phase = ChestRewardPhase.Doubled,
+                canOfferDouble = false,
+            )
+        }
+    }
+
+    fun onAdDismissedWithoutReward() {
+        _chestReward.update {
+            when (it.phase) {
+                ChestRewardPhase.AdLoading -> it.copy(phase = ChestRewardPhase.Revealed)
+                else -> it
+            }
+        }
+    }
+
+    fun onAdFailedToLoadOrShow() {
+        _chestReward.update {
+            if (it.phase == ChestRewardPhase.AdLoading) {
+                it.copy(phase = ChestRewardPhase.AdUnavailable)
+            } else it
+        }
+    }
+
+    fun resetChestRewardUi() {
+        _chestReward.value = ChestRewardUiState()
+    }
 
     // ─── Helpers privados ──────────────────────────────────────────────────────
 

@@ -62,7 +62,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.ComponentActivity
 import com.josem.monopulcro.R
+import com.josem.monopulcro.ads.AdLoadState
+import com.josem.monopulcro.ads.RewardedAdManager
 import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -135,6 +138,10 @@ fun MainScreen(
         state.weekDays.find { it.dayOfWeek == dow }
     }
     val context = LocalContext.current
+    val activity = context as ComponentActivity
+    val adManager = remember(activity) { RewardedAdManager(activity) }
+    val chestRewardState by vm.chestReward.collectAsStateWithLifecycle()
+    val adLoadState by adManager.adState.collectAsStateWithLifecycle()
     val sounds  = remember { SoundManager.get(context) }
     val tipIndex    = remember { TIPS_PHRASES.indices.random() }
     val sucio1Index = remember { SUCIO1_PHRASES.indices.random() }
@@ -203,6 +210,34 @@ fun MainScreen(
             celebration = it
             selectedDayOfWeek = null
             vm.consumeCelebration()
+        }
+    }
+
+    LaunchedEffect(celebration, chestCelebration) {
+        if (celebration != null || chestCelebration != null) {
+            adManager.preload()
+        }
+    }
+
+    LaunchedEffect(chestCelebration) {
+        if (chestCelebration != null) {
+            vm.beginChestFlow(chestCelebration!!.bananasEarned)
+        } else {
+            vm.resetChestRewardUi()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        vm.effects.collect { effect ->
+            when (effect) {
+                MonkeyUiEffect.ShowRewardedAdForDouble -> {
+                    adManager.show(
+                        onEarned = { vm.onAdRewardEarnedForDouble() },
+                        onDismissed = { vm.onAdDismissedWithoutReward() },
+                        onFailedToShow = { vm.onAdFailedToLoadOrShow() },
+                    )
+                }
+            }
         }
     }
 
@@ -465,9 +500,20 @@ fun MainScreen(
         }
         chestCelebration?.let { event ->
             ChestCelebrationOverlay(
-                bananasEarned = event.bananasEarned,
+                bananasEarned = chestRewardState.displayedBananas
+                    .takeIf { it > 0 } ?: event.bananasEarned,
                 isMilestone = event.isMilestone,
-                onFinished = { chestCelebration = null }
+                phase = chestRewardState.phase,
+                adReady = adLoadState is AdLoadState.Ready,
+                adLoading = adLoadState is AdLoadState.Loading ||
+                    chestRewardState.phase == ChestRewardPhase.AdLoading,
+                canOfferDouble = chestRewardState.canOfferDouble,
+                onChestRevealed = { vm.onChestRevealed() },
+                onRequestDouble = { vm.requestDoubleReward() },
+                onFinished = {
+                    vm.resetChestRewardUi()
+                    chestCelebration = null
+                }
             )
         }
         if (showDustBananaReward) {
@@ -1238,6 +1284,12 @@ private fun bananaBurstParticles(lootCount: Int): List<BananaBurstParticle> {
 private fun ChestCelebrationOverlay(
     bananasEarned: Int,
     isMilestone: Boolean,
+    phase: ChestRewardPhase,
+    adReady: Boolean,
+    adLoading: Boolean,
+    canOfferDouble: Boolean,
+    onChestRevealed: () -> Unit,
+    onRequestDouble: () -> Unit,
     onFinished: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1306,6 +1358,17 @@ private fun ChestCelebrationOverlay(
                 spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
             )
             ctaAlpha.animateTo(1f, tween(240))
+            onChestRevealed()
+        }
+    }
+
+    LaunchedEffect(phase) {
+        if (phase == ChestRewardPhase.Doubled) {
+            lootScale.animateTo(1.18f, tween(160, easing = EaseOut))
+            lootScale.animateTo(
+                1f,
+                spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+            )
         }
     }
 
@@ -1333,7 +1396,6 @@ private fun ChestCelebrationOverlay(
         modifier = Modifier
             .modalOverlayScrim {
                 if (!chestOpened && headlineAlpha.value > 0.5f) openChest()
-                else if (chestOpened && ctaAlpha.value > 0.5f) dismiss()
             }
             .graphicsLayer { alpha = overlayAlpha.value }
             .background(Brush.verticalGradient(listOf(ChestBgTop, ChestBgBottom)))
@@ -1456,7 +1518,7 @@ private fun ChestCelebrationOverlay(
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.White
                     )
-                    if (isMilestone) {
+                    if (isMilestone && phase != ChestRewardPhase.Doubled) {
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = "¡bonus x7!",
@@ -1465,6 +1527,19 @@ private fun ChestCelebrationOverlay(
                             color = Color(0xFFFFF3C4)
                         )
                     }
+                }
+
+                if (phase == ChestRewardPhase.Doubled) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "¡Recompensa duplicada!",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFFF3C4),
+                        modifier = Modifier.graphicsLayer {
+                            alpha = lootAlpha.value
+                        }
+                    )
                 }
             }
         }
@@ -1487,21 +1562,57 @@ private fun ChestCelebrationOverlay(
                 Text("Abrir cofre", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
             }
         } else {
-            Button(
-                onClick = { dismiss() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = ChestBgBottom
-                ),
-                shape = RoundedCornerShape(16.dp),
+            Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp, vertical = 40.dp)
-                    .height(54.dp)
-                    .graphicsLayer { alpha = ctaAlpha.value }
+                    .padding(horizontal = 32.dp, vertical = 32.dp)
+                    .graphicsLayer { alpha = ctaAlpha.value },
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text("¡Seguir!", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                val showDoubleOffer = canOfferDouble && (
+                    phase == ChestRewardPhase.Revealed ||
+                    phase == ChestRewardPhase.AdLoading
+                )
+
+                if (showDoubleOffer) {
+                    OutlinedButton(
+                        onClick = onRequestDouble,
+                        enabled = adReady && !adLoading,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        Text(
+                            text = when {
+                                adLoading -> "Cargando anuncio…"
+                                adReady -> "Ver anuncio para duplicar"
+                                phase == ChestRewardPhase.AdUnavailable ->
+                                    "Anuncio no disponible"
+                                else -> "Preparando anuncio…"
+                            },
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = { dismiss() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = ChestBgBottom
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                ) {
+                    Text("¡Seguir!", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                }
             }
         }
     }
