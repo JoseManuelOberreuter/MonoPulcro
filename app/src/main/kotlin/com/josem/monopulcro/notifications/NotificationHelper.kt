@@ -9,7 +9,6 @@ import androidx.core.app.NotificationCompat
 import com.josem.monopulcro.MainActivity
 import com.josem.monopulcro.R
 import com.josem.monopulcro.data.MonkeyStateManager
-import com.josem.monopulcro.ui.MonkeyImageResolver
 
 object NotificationHelper {
 
@@ -59,14 +58,13 @@ object NotificationHelper {
     fun showReminderNotification(context: Context) {
         val manager = MonkeyStateManager(context)
 
+        // Solo si el mono del estado principal NO está limpio
+        // (limpio = todas las tareas de hoy hechas, o día de descanso)
+        if (manager.isCleanToday) return
+
         val allTasks   = manager.loadTasks()
         val todayTasks = manager.todayTasks
-        val isClean    = manager.isCleanToday
         val missedDays = manager.missedDaysCount
-
-        // Si ya completó todo hoy o es día de descanso (tiene tareas otros días), no notificar
-        if (isClean && allTasks.isNotEmpty() && todayTasks.isEmpty()) return
-        if (isClean) return
 
         val (title, body) = when {
             allTasks.isEmpty() -> Pair(
@@ -77,14 +75,13 @@ object NotificationHelper {
                 "Tu racha esta en peligro",
                 "Llevas $missedDays dias sin limpiar. El mono esta muy triste"
             )
-            todayTasks.isNotEmpty() -> {
+            else -> {
                 val pending = todayTasks.count { !manager.isTaskCompleted(it.id) }
                 Pair(
                     "El mono te espera",
                     "Te quedan $pending tarea${if (pending != 1) "s" else ""} por completar hoy"
                 )
             }
-            else -> return
         }
 
         postNotification(context, NOTIF_ID_REMINDER, CHANNEL_REMINDER, title, body, highPriority = true)
@@ -172,7 +169,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(MonkeyImageResolver.DEFAULT_PULCRO)
+            .setSmallIcon(R.drawable.cara_mono)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
