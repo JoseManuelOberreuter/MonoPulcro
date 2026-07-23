@@ -129,7 +129,8 @@ Reglas:
 Tienda (`ShopScreen`) con pestañas (tap o swipe):
 
   Atuendos — accesorios cosméticos.
-  Objetos  — Escudo de Pulcritud (100 bananas, `SHIELD_SHOP_PRICE`).
+  Objetos  — Cofre de bananas: ver anuncio → +5 bananas (máx. 3/día).
+             Escudo de Pulcritud (100 bananas, `SHIELD_SHOP_PRICE`).
              Muestra "Tienes N/3". Comprar o "Máximo" si ya hay 3.
 
 Bananas disponibles: arriba a la derecha en el TopAppBar.

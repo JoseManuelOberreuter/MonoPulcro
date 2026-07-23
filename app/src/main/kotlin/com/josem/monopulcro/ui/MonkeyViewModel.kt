@@ -65,18 +65,9 @@ data class ChestRewardUiState(
 
 sealed interface MonkeyUiEffect {
     data object ShowRewardedAdForDouble : MonkeyUiEffect
+    data object ShowRewardedAdForShopChest : MonkeyUiEffect
     data object ShowShieldProtectedMessage : MonkeyUiEffect
 }
-
-data class DebugUiState(
-    val gameDate: String = "",
-    val lastResetDate: String = "",
-    val dayOffset: Int = 0,
-    val streakCountedToday: Boolean = false,
-    val lastShieldProtectedDate: String = "",
-    val todayTaskCount: Int = 0,
-    val todayDoneCount: Int = 0,
-)
 
 data class MonkeyUiState(
     val streak: Int = 0,
@@ -96,7 +87,8 @@ data class MonkeyUiState(
     val celebration: StreakCelebration? = null,
     val showShopAffordHint: Boolean = false,
     val showMainTour: Boolean = false,
-    val debug: DebugUiState = DebugUiState(),
+    val shopChestOpensToday: Int = 0,
+    val shopChestRemainingToday: Int = MonkeyStateManager.MAX_SHOP_CHEST_OPENS_PER_DAY,
 )
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
@@ -111,6 +103,9 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _chestReward = MutableStateFlow(ChestRewardUiState())
     val chestReward: StateFlow<ChestRewardUiState> = _chestReward.asStateFlow()
+
+    private val _shopChestOverlayBananas = MutableStateFlow<Int?>(null)
+    val shopChestOverlayBananas: StateFlow<Int?> = _shopChestOverlayBananas.asStateFlow()
 
     private val _effects = MutableSharedFlow<MonkeyUiEffect>(extraBufferCapacity = 1)
     val effects: SharedFlow<MonkeyUiEffect> = _effects.asSharedFlow()
@@ -224,6 +219,42 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** Abre el cofre de tienda: sonido de compra, reserva cupo y pide anuncio. */
+    fun requestShopChestAd() {
+        if (manager.shopChestOpensToday >= MonkeyStateManager.MAX_SHOP_CHEST_OPENS_PER_DAY) {
+            refreshState()
+            return
+        }
+        if (manager.hasPendingShopChestAd) return
+        sounds.playCashRegister()
+        if (!manager.beginShopChestAd()) {
+            refreshState()
+            return
+        }
+        _effects.tryEmit(MonkeyUiEffect.ShowRewardedAdForShopChest)
+    }
+
+    fun onShopChestAdRewardEarned() {
+        if (!manager.completeShopChestReward()) {
+            refreshState()
+            return
+        }
+        val reward = MonkeyStateManager.SHOP_CHEST_REWARD
+        refreshState()
+        beginChestFlow(baseBananas = reward, offerDouble = false)
+        _shopChestOverlayBananas.value = reward
+    }
+
+    fun onShopChestAdCancelled() {
+        manager.cancelShopChestAd()
+        refreshState()
+    }
+
+    fun consumeShopChestOverlay() {
+        _shopChestOverlayBananas.value = null
+        resetChestRewardUi()
+    }
+
     fun useAccessory(accessoryId: String) {
         viewModelScope.launch {
             manager.useAccessory(accessoryId)
@@ -252,59 +283,6 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         emitShieldProtectedIfPending()
     }
 
-    // ─── Debug (solo UI debug) ─────────────────────────────────────────────────
-
-    fun debugAdvanceIncompleteDay() {
-        manager.debugAdvanceDay(markPreviousCompleted = false)
-        refresh()
-        updateWidget()
-    }
-
-    fun debugAdvanceCompletedDay() {
-        manager.debugAdvanceDay(markPreviousCompleted = true)
-        refresh()
-        updateWidget()
-    }
-
-    fun debugAdvanceDayAsIs() {
-        manager.debugAdvanceDay(markPreviousCompleted = null)
-        refresh()
-        updateWidget()
-    }
-
-    fun debugAddShield(delta: Int) {
-        manager.debugAddShields(delta)
-        refreshState()
-    }
-
-    fun debugSetStreak(value: Int) {
-        manager.debugSetStreak(value)
-        refreshState()
-    }
-
-    fun debugAddBananas() {
-        manager.debugAddBananas(100)
-        refreshState()
-    }
-
-    fun debugAdvanceDust() {
-        manager.debugAdvanceDustHours(2)
-        refreshState()
-        updateWidget()
-    }
-
-    fun debugClearDayOffset() {
-        manager.debugClearDayOffset()
-        refresh()
-        updateWidget()
-    }
-
-    fun debugResetAll() {
-        manager.debugResetAllPrefs()
-        refresh()
-        updateWidget()
-    }
-
     private fun emitShieldProtectedIfPending() {
         if (manager.consumePendingShieldUsedMessage()) {
             _effects.tryEmit(MonkeyUiEffect.ShowShieldProtectedMessage)
@@ -313,21 +291,21 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     // ─── Cofre + duplicar recompensa (AdMob) ───────────────────────────────────
 
-    fun beginChestFlow(baseBananas: Int) {
+    fun beginChestFlow(baseBananas: Int, offerDouble: Boolean = !manager.rewardDoubledToday) {
         _chestReward.value = ChestRewardUiState(
             displayedBananas = baseBananas,
             phase = ChestRewardPhase.Idle,
-            canOfferDouble = !manager.rewardDoubledToday,
+            canOfferDouble = offerDouble,
         )
     }
 
     fun onChestRevealed() {
-        val base = manager.lastRewardBananas
         _chestReward.update {
             it.copy(
-                displayedBananas = base,
+                displayedBananas = it.displayedBananas.takeIf { n -> n > 0 }
+                    ?: manager.lastRewardBananas,
                 phase = ChestRewardPhase.Revealed,
-                canOfferDouble = !manager.rewardDoubledToday,
+                canOfferDouble = it.canOfferDouble && !manager.rewardDoubledToday,
             )
         }
     }
@@ -408,15 +386,8 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 celebration       = celebration,
                 showShopAffordHint = manager.shouldShowShopAffordHint(),
                 showMainTour      = manager.shouldShowMainTour,
-                debug = DebugUiState(
-                    gameDate = manager.currentGameDate().toString(),
-                    lastResetDate = manager.lastResetDate,
-                    dayOffset = manager.debugDayOffset,
-                    streakCountedToday = manager.streakCountedToday,
-                    lastShieldProtectedDate = manager.lastShieldProtectedDate,
-                    todayTaskCount = todayStates.size,
-                    todayDoneCount = todayStates.count { it.second },
-                ),
+                shopChestOpensToday = manager.shopChestOpensToday,
+                shopChestRemainingToday = manager.shopChestRemainingToday,
             )
         }
     }

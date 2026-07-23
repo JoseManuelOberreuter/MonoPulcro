@@ -1,5 +1,6 @@
 package com.josem.monopulcro.ui
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,16 +23,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.josem.monopulcro.R
+import com.josem.monopulcro.ads.AdLoadState
+import com.josem.monopulcro.ads.RewardedAdManager
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.MonkeyStateManager.Companion.AccessoryItem
 import com.josem.monopulcro.data.MonkeyStateManager.Companion.ACCESSORIES
@@ -42,6 +47,10 @@ import kotlin.math.roundToInt
 private val ShopWaveColor = Color(0xFF7DD3FC)
 private val ShopWaveSoft = Color(0xFFE0F2FE)
 private val ShopAccent = Color(0xFFEA580C)
+/** Ancho fijo del CTA para que ambas cards de objetos midan igual. */
+private val ShopObjectActionMinWidth = 96.dp
+/** Altura mínima compartida cuando título/descripción usan hasta 2 líneas. */
+private val ShopObjectCardMinHeight = 112.dp
 
 private enum class ShopTab(val title: String) {
     OUTFITS("Atuendos"),
@@ -55,90 +64,140 @@ fun ShopScreen(
     vm: MonkeyViewModel = viewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val chestRewardState by vm.chestReward.collectAsStateWithLifecycle()
+    val shopChestOverlayBananas by vm.shopChestOverlayBananas.collectAsStateWithLifecycle()
     val tabs = ShopTab.entries
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val activity = context as ComponentActivity
+    val adManager = remember(activity) { RewardedAdManager(activity) }
+    val adLoadState by adManager.adState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Tienda",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
-                        )
-                    }
-                },
-                actions = {
-                    Row(
-                        modifier = Modifier.padding(end = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            painter = painterResource(R.drawable.banana),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "${state.bananas}",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = ShopAccent
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
-            )
-        },
-        containerColor = Color.White
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            ShopSegmentedTabs(
-                tabs = tabs,
-                pagerState = pagerState,
-                onSelect = { tab ->
-                    scope.launch { pagerState.animateScrollToPage(tab.ordinal) }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
-            )
-
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-                when (tabs[page]) {
-                    ShopTab.OUTFITS -> OutfitsShopPage(
-                        bananas = state.bananas,
-                        ownedAccessories = state.ownedAccessories,
-                        equippedAccessory = state.equippedAccessory,
-                        onBuy = { vm.buyAccessory(it) },
-                        onUse = { vm.useAccessory(it) }
-                    )
-                    ShopTab.OBJECTS -> ObjectsShopPage(
-                        bananas = state.bananas,
-                        shieldsCount = state.shieldsCount,
-                        maxShields = state.maxShields,
-                        onBuyShield = { vm.buyShield() }
+    LaunchedEffect(Unit) {
+        adManager.preload()
+        vm.effects.collect { effect ->
+            when (effect) {
+                MonkeyUiEffect.ShowRewardedAdForShopChest -> {
+                    var earned = false
+                    adManager.show(
+                        onEarned = {
+                            earned = true
+                            vm.onShopChestAdRewardEarned()
+                        },
+                        onDismissed = {
+                            if (!earned) vm.onShopChestAdCancelled()
+                        },
+                        onFailedToShow = { vm.onShopChestAdCancelled() },
                     )
                 }
+                else -> Unit
             }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Tienda",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Volver"
+                            )
+                        }
+                    },
+                    actions = {
+                        Row(
+                            modifier = Modifier.padding(end = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.banana),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${state.bananas}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ShopAccent
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.White
+                    )
+                )
+            },
+            containerColor = Color.White
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                ShopSegmentedTabs(
+                    tabs = tabs,
+                    pagerState = pagerState,
+                    onSelect = { tab ->
+                        scope.launch { pagerState.animateScrollToPage(tab.ordinal) }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp)
+                )
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    when (tabs[page]) {
+                        ShopTab.OUTFITS -> OutfitsShopPage(
+                            bananas = state.bananas,
+                            ownedAccessories = state.ownedAccessories,
+                            equippedAccessory = state.equippedAccessory,
+                            onBuy = { vm.buyAccessory(it) },
+                            onUse = { vm.useAccessory(it) }
+                        )
+                        ShopTab.OBJECTS -> ObjectsShopPage(
+                            bananas = state.bananas,
+                            shieldsCount = state.shieldsCount,
+                            maxShields = state.maxShields,
+                            shopChestOpensToday = state.shopChestOpensToday,
+                            shopChestMaxOpens = MonkeyStateManager.MAX_SHOP_CHEST_OPENS_PER_DAY,
+                            shopChestReward = MonkeyStateManager.SHOP_CHEST_REWARD,
+                            onBuyShield = { vm.buyShield() },
+                            onOpenShopChest = { vm.requestShopChestAd() }
+                        )
+                    }
+                }
+            }
+        }
+
+        shopChestOverlayBananas?.let { bananas ->
+            ChestCelebrationOverlay(
+                bananasEarned = chestRewardState.displayedBananas
+                    .takeIf { it > 0 } ?: bananas,
+                isMilestone = false,
+                phase = chestRewardState.phase,
+                adReady = adLoadState is AdLoadState.Ready,
+                adLoading = adLoadState is AdLoadState.Loading ||
+                    chestRewardState.phase == ChestRewardPhase.AdLoading,
+                canOfferDouble = false,
+                onChestRevealed = { vm.onChestRevealed() },
+                onRequestDouble = { },
+                onFinished = { vm.consumeShopChestOverlay() }
+            )
         }
     }
 }
@@ -258,7 +317,11 @@ private fun ObjectsShopPage(
     bananas: Int,
     shieldsCount: Int,
     maxShields: Int,
+    shopChestOpensToday: Int,
+    shopChestMaxOpens: Int,
+    shopChestReward: Int,
     onBuyShield: () -> Unit,
+    onOpenShopChest: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -267,6 +330,12 @@ private fun ObjectsShopPage(
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        ShopChestCard(
+            opensToday = shopChestOpensToday,
+            maxOpens = shopChestMaxOpens,
+            reward = shopChestReward,
+            onOpen = onOpenShopChest
+        )
         ShieldShopCard(
             shieldsCount = shieldsCount,
             maxShields = maxShields,
@@ -275,6 +344,100 @@ private fun ObjectsShopPage(
             onBuy = onBuyShield
         )
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun ShopChestCard(
+    opensToday: Int,
+    maxOpens: Int,
+    reward: Int,
+    onOpen: () -> Unit,
+) {
+    val atLimit = opensToday >= maxOpens
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = ShopObjectCardMinHeight)
+            .background(Color(0xFFE0F2FE), RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Image(
+            painter = painterResource(R.drawable.cofre_cerrado),
+            contentDescription = null,
+            modifier = Modifier.size(72.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Cofre de bananas",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E293B),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "Hoy $opensToday/$maxOpens",
+                fontSize = 13.sp,
+                color = Color(0xFF0369A1),
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.Top) {
+                Image(
+                    painter = painterResource(R.drawable.banana),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(top = 1.dp)
+                        .size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "+$reward bananas",
+                    fontSize = 13.sp,
+                    color = Color(0xFF64748B),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+            }
+        }
+        if (atLimit) {
+            Box(
+                modifier = Modifier
+                    .widthIn(min = ShopObjectActionMinWidth)
+                    .background(Color(0xFF94A3B8), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Límite",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        } else {
+            Button(
+                onClick = onOpen,
+                modifier = Modifier.widthIn(min = ShopObjectActionMinWidth),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0284C7)
+                ),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "Ver",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+        }
     }
 }
 
@@ -290,6 +453,7 @@ private fun ShieldShopCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = ShopObjectCardMinHeight)
             .background(Color(0xFFE0F2FE), RoundedCornerShape(16.dp))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -303,9 +467,11 @@ private fun ShieldShopCard(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Escudo de Pulcritud",
-                fontSize = 17.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E293B)
+                color = Color(0xFF1E293B),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -315,25 +481,32 @@ private fun ShieldShopCard(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.Top) {
                 Image(
                     painter = painterResource(R.drawable.banana),
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier
+                        .padding(top = 1.dp)
+                        .size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "$price bananas",
                     fontSize = 13.sp,
-                    color = Color(0xFF64748B)
+                    color = Color(0xFF64748B),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
             }
         }
         if (atMax) {
             Box(
                 modifier = Modifier
+                    .widthIn(min = ShopObjectActionMinWidth)
                     .background(Color(0xFF94A3B8), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Máximo",
@@ -346,6 +519,7 @@ private fun ShieldShopCard(
             Button(
                 onClick = onBuy,
                 enabled = canAfford,
+                modifier = Modifier.widthIn(min = ShopObjectActionMinWidth),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF0284C7),

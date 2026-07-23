@@ -240,6 +240,8 @@ class MonkeyStateManager(
         editor.putBoolean(KEY_STREAK_BONUS_GIVEN, false)
         editor.putInt(KEY_REWARD_BANANAS, 0)
         editor.putBoolean(KEY_REWARD_DOUBLED, false)
+        editor.putInt(KEY_SHOP_CHEST_OPENS_TODAY, 0)
+        editor.putBoolean(KEY_PENDING_SHOP_CHEST_AD, false)
         editor.putString(KEY_LAST_RESET, today)
         editor.commit()
     }
@@ -360,6 +362,42 @@ class MonkeyStateManager(
             .putInt(KEY_SHIELDS_COUNT, shieldsCount + 1)
             .commit()
         return true
+    }
+
+    // ─── Cofre de tienda (anuncio recompensado) ─────────────────────────────────
+
+    val shopChestOpensToday: Int get() = prefs.getInt(KEY_SHOP_CHEST_OPENS_TODAY, 0)
+    val shopChestRemainingToday: Int
+        get() = (MAX_SHOP_CHEST_OPENS_PER_DAY - shopChestOpensToday).coerceAtLeast(0)
+    val hasPendingShopChestAd: Boolean
+        get() = prefs.getBoolean(KEY_PENDING_SHOP_CHEST_AD, false)
+
+    /** Reserva un intento de cofre (máx. 3/día) antes de mostrar el anuncio. */
+    fun beginShopChestAd(): Boolean {
+        if (shopChestOpensToday >= MAX_SHOP_CHEST_OPENS_PER_DAY) return false
+        if (prefs.getBoolean(KEY_PENDING_SHOP_CHEST_AD, false)) return false
+        prefs.edit().putBoolean(KEY_PENDING_SHOP_CHEST_AD, true).commit()
+        return true
+    }
+
+    /** Tras ver el anuncio: +SHOP_CHEST_REWARD bananas y cuenta el uso del día. */
+    fun completeShopChestReward(): Boolean {
+        if (!prefs.getBoolean(KEY_PENDING_SHOP_CHEST_AD, false)) return false
+        if (shopChestOpensToday >= MAX_SHOP_CHEST_OPENS_PER_DAY) {
+            prefs.edit().putBoolean(KEY_PENDING_SHOP_CHEST_AD, false).commit()
+            return false
+        }
+        prefs.edit()
+            .putInt(KEY_BANANAS, bananas + SHOP_CHEST_REWARD)
+            .putInt(KEY_SHOP_CHEST_OPENS_TODAY, shopChestOpensToday + 1)
+            .putBoolean(KEY_PENDING_SHOP_CHEST_AD, false)
+            .commit()
+        return true
+    }
+
+    /** Anuncio cancelado o fallido: libera la reserva sin cobrar ni premiar. */
+    fun cancelShopChestAd() {
+        prefs.edit().putBoolean(KEY_PENDING_SHOP_CHEST_AD, false).commit()
     }
 
     fun useAccessory(accessoryId: String) {
@@ -585,6 +623,11 @@ class MonkeyStateManager(
         const val MAX_SHIELDS = 3
         const val INITIAL_SHIELDS = 3
         const val SHIELD_SHOP_PRICE = 100
+        const val SHOP_CHEST_REWARD = 5
+        const val MAX_SHOP_CHEST_OPENS_PER_DAY = 3
+
+        const val KEY_SHOP_CHEST_OPENS_TODAY = "shopChestOpensToday"
+        const val KEY_PENDING_SHOP_CHEST_AD = "pendingShopChestAd"
 
         /** Hitos one-shot de racha → escudos. Independiente del bonus banana % 7. */
         val SHIELD_MILESTONES: Map<Int, Int> = linkedMapOf(

@@ -66,7 +66,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.ComponentActivity
 import com.josem.monopulcro.R
 import com.josem.monopulcro.ads.AdLoadState
-import com.josem.monopulcro.BuildConfig
 import com.josem.monopulcro.ads.RewardedAdManager
 import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.coroutineScope
@@ -243,6 +242,9 @@ fun MainScreen(
                 }
                 MonkeyUiEffect.ShowShieldProtectedMessage -> {
                     showShieldProtection = true
+                }
+                MonkeyUiEffect.ShowRewardedAdForShopChest -> {
+                    // Lo maneja ShopScreen; ignorar en MainScreen.
                 }
             }
         }
@@ -478,25 +480,6 @@ fun MainScreen(
                             }
                         }
                     }
-                }
-
-                if (BuildConfig.DEBUG) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    ShieldsDebugPanel(
-                        state = state,
-                        onIncompleteDay = { vm.debugAdvanceIncompleteDay() },
-                        onCompletedDay = { vm.debugAdvanceCompletedDay() },
-                        onAdvanceAsIs = { vm.debugAdvanceDayAsIs() },
-                        onAddShield = { vm.debugAddShield(1) },
-                        onRemoveShield = { vm.debugAddShield(-1) },
-                        onStreakPlus = { vm.debugSetStreak(state.streak + 1) },
-                        onStreakMinus = { vm.debugSetStreak(state.streak - 1) },
-                        onStreak7 = { vm.debugSetStreak(6) }, // próximo complete → hito 7
-                        onAddBananas = { vm.debugAddBananas() },
-                        onDustHours = { vm.debugAdvanceDust() },
-                        onClearOffset = { vm.debugClearDayOffset() },
-                        onResetAll = { vm.debugResetAll() },
-                    )
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -1058,7 +1041,7 @@ private val StreakBgBottom = Color(0xFFF25C05)
 private val StreakGlow      = Color(0xFFFFE29A)
 
 /** Bloquea toques al contenido debajo; los hijos del Box siguen recibiendo taps. */
-private fun Modifier.modalOverlayScrim(onBackgroundTap: () -> Unit = {}): Modifier =
+internal fun Modifier.modalOverlayScrim(onBackgroundTap: () -> Unit = {}): Modifier =
     fillMaxSize()
         .zIndex(100f)
         .pointerInput(Unit) {
@@ -1314,7 +1297,7 @@ private fun bananaBurstParticles(lootCount: Int): List<BananaBurstParticle> {
 }
 
 @Composable
-private fun ChestCelebrationOverlay(
+internal fun ChestCelebrationOverlay(
     bananasEarned: Int,
     isMilestone: Boolean,
     phase: ChestRewardPhase,
@@ -1641,7 +1624,7 @@ private val DoubleRewardGreen = Color(0xFF16A34A)
 private val DoubleRewardGreenDark = Color(0xFF15803D)
 
 @Composable
-private fun DoubleRewardButton(
+internal fun DoubleRewardButton(
     enabled: Boolean,
     adReady: Boolean,
     adLoading: Boolean,
@@ -1735,118 +1718,6 @@ private fun DoubleRewardButton(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ShieldsDebugPanel(
-    state: MonkeyUiState,
-    onIncompleteDay: () -> Unit,
-    onCompletedDay: () -> Unit,
-    onAdvanceAsIs: () -> Unit,
-    onAddShield: () -> Unit,
-    onRemoveShield: () -> Unit,
-    onStreakPlus: () -> Unit,
-    onStreakMinus: () -> Unit,
-    onStreak7: () -> Unit,
-    onAddBananas: () -> Unit,
-    onDustHours: () -> Unit,
-    onClearOffset: () -> Unit,
-    onResetAll: () -> Unit,
-) {
-    val d = state.debug
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFFFF59D), RoundedCornerShape(12.dp))
-            .border(1.dp, Color(0xFFFBC02D), RoundedCornerShape(12.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "DEBUG · Escudos / Días",
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            color = Color(0xFF5D4037)
-        )
-        Text(
-            text = buildString {
-                append("fecha=${d.gameDate}  offset=${d.dayOffset}\n")
-                append("lastReset=${d.lastResetDate.ifEmpty { "—" }}\n")
-                append("racha=${state.streak}  escudos=${state.shieldsCount}/${state.maxShields}\n")
-                append("counted=${d.streakCountedToday}  broken=${state.streakBroken}\n")
-                append("tareas hoy=${d.todayDoneCount}/${d.todayTaskCount}  missed=${state.missedDaysCount}\n")
-                append("protegido=${d.lastShieldProtectedDate.ifEmpty { "—" }}")
-            },
-            fontSize = 11.sp,
-            color = Color(0xFF4E342E),
-            lineHeight = 15.sp
-        )
-
-        Text(
-            text = "Días (reset + escudo)",
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 12.sp,
-            color = Color(0xFF5D4037)
-        )
-        DebugButtonRow(
-            "Día perdido →" to onIncompleteDay,
-            "Día ganado →" to onCompletedDay,
-        )
-        DebugButtonRow(
-            "Avanzar tal cual →" to onAdvanceAsIs,
-            "Offset=0" to onClearOffset,
-        )
-
-        Text(
-            text = "Escudos / Racha",
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 12.sp,
-            color = Color(0xFF5D4037)
-        )
-        DebugButtonRow(
-            "+1 escudo" to onAddShield,
-            "−1 escudo" to onRemoveShield,
-        )
-        DebugButtonRow(
-            "Racha +1" to onStreakPlus,
-            "Racha −1" to onStreakMinus,
-            "Racha=6 (hito)" to onStreak7,
-        )
-
-        Text(
-            text = "Otros",
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 12.sp,
-            color = Color(0xFF5D4037)
-        )
-        DebugButtonRow(
-            "+100 bananas" to onAddBananas,
-            "+2h polvo" to onDustHours,
-            "Reset prefs" to onResetAll,
-        )
-    }
-}
-
-@Composable
-private fun DebugButtonRow(vararg buttons: Pair<String, () -> Unit>) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        buttons.forEach { (label, onClick) ->
-            Button(
-                onClick = onClick,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFF9A825),
-                    contentColor = Color(0xFF3E2723)
-                )
-            ) {
-                Text(text = label, fontSize = 11.sp, maxLines = 1)
             }
         }
     }
