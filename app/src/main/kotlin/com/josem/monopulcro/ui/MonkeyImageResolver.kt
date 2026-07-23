@@ -55,6 +55,13 @@ object MonkeyImageResolver {
         R.drawable.mono_vikingo_3,
     )
 
+    private val MAGO_STATES = listOf(
+        R.drawable.mono_mago_1,
+        R.drawable.mono_mago_2,
+        R.drawable.mono_mago_3,
+        R.drawable.mono_mago_4,
+    )
+
     private val ACCESSORY_STATES = mapOf(
         "glasses"   to COOL_STATES,
         "hat"       to GORRO_STATES,
@@ -63,6 +70,7 @@ object MonkeyImageResolver {
         "payaso"    to PAYASO_STATES,
         "vikingo"   to VIKINGO_STATES,
         "astronaut" to ASTRONAUT_STATES,
+        "mago"      to MAGO_STATES,
     )
 
     private val ESTADOS_EXTREMO = listOf(
