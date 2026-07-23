@@ -72,11 +72,13 @@ imagen (solo aplica cuando isCleanToday == true).
 -------------------------------------
   ID          Nombre        Precio   Drawables
   ─────────────────────────────────────────────────────────
-  glasses     Lentes           3     mono_cool_1 / _2 / _3
-  hat         Gorro            7     mono_gorro_1 / _2 / _3
-  crown       Corona          14     mono_corona_1 / _2 / _3
-  astronaut   Astronauta      30     mono_astronauta (1 imagen por ahora)
-  gold        Mono de oro     50     mono_de_oro (+ animación especial)
+  glasses     Lentes           5     mono_cool_1 / _2 / _3
+  hat         Gorro           12     mono_gorro_1 / _2 / _3
+  chaleco     Chaleco         20     mono_chaleco_1 / _2 / _3
+  crown       Corona          30     mono_corona_1 / _2 / _3
+  payaso      Payaso          40     mono_payaso_1 / _2 / _3
+  vikingo     Vikingo         50     mono_vikingo_1 / _2 / _3
+  astronaut   Astronauta      60     mono_astronauta_1 / _2 / _3
 
 Cada accesorio con variantes usa la misma lógica “diaria”: una variante por
 día, estable hasta medianoche.

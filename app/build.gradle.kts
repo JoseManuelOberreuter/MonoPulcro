@@ -6,13 +6,13 @@ plugins {
 
 android {
     namespace = "com.josem.monopulcro"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.josem.monopulcro"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 15
+        targetSdk = 36
+        versionCode = 16
         versionName = "1.2.1"
     }
 

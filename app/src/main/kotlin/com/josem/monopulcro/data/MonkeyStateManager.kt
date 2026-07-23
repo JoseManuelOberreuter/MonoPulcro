@@ -647,6 +647,7 @@ class MonkeyStateManager(
             AccessoryItem("chaleco",   "Chaleco",    20),
             AccessoryItem("crown",     "Corona",     30),
             AccessoryItem("payaso",    "Payaso",     40),
+            AccessoryItem("vikingo",   "Vikingo",    50),
             AccessoryItem("astronaut", "Astronauta", 60)
         )
     }
