@@ -642,14 +642,14 @@ class MonkeyStateManager(
         data class AccessoryItem(val id: String, val name: String, val price: Int)
 
         val ACCESSORIES = listOf(
-            AccessoryItem("glasses",   "Lentes",      5),
-            AccessoryItem("hat",       "Gorro",      12),
-            AccessoryItem("chaleco",   "Chaleco",    20),
-            AccessoryItem("crown",     "Corona",     30),
-            AccessoryItem("payaso",    "Payaso",     40),
-            AccessoryItem("vikingo",   "Vikingo",    50),
-            AccessoryItem("astronaut", "Astronauta", 60),
-            AccessoryItem("mago",      "Mago",       70)
+            AccessoryItem("glasses",   "Lentes",     10),
+            AccessoryItem("hat",       "Gorro",      20),
+            AccessoryItem("chaleco",   "Chaleco",    30),
+            AccessoryItem("crown",     "Corona",     40),
+            AccessoryItem("payaso",    "Payaso",     50),
+            AccessoryItem("vikingo",   "Vikingo",    60),
+            AccessoryItem("astronaut", "Astronauta", 70),
+            AccessoryItem("mago",      "Mago",       80)
         )
     }
 }
