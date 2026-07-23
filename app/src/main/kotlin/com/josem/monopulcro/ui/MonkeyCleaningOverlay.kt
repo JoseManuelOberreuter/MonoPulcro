@@ -292,7 +292,7 @@ fun MonkeyCleaningOverlay(
         }
 
         Image(
-            painter = painterResource(R.drawable.pano_limpio),
+            painter = painterResource(R.drawable.esponja_limpia),
             contentDescription = null,
             modifier = Modifier
                 .size(88.dp)
