@@ -2,13 +2,17 @@
 
 Resumen
 -------
-La racha (streak) y las bananas son el núcleo de la gamificación:
+La racha (streak), las bananas y los Escudos de Pulcritud son el núcleo
+de la gamificación:
 
-  - RACHA   → días consecutivos completando TODAS las tareas del día.
-              Es el progreso emocional (fuego en el header y celebración).
-  - BANANAS → moneda virtual. Se gana al abrir el cofre del día (loot
-              aleatorio), en hitos de racha y limpiando motas de polvo.
-              Se gasta en la tienda.
+  - RACHA    → días consecutivos completando TODAS las tareas del día.
+               Es el progreso emocional (fuego en el header y celebración).
+  - BANANAS  → moneda virtual. Se gana al abrir el cofre del día (loot
+               aleatorio), en hitos de racha y limpiando motas de polvo.
+               Se gasta en la tienda.
+  - ESCUDOS  → consumibles (máx. 3). Protegen la racha cuando el día
+               evaluado en el reset diario habría roto la racha. No
+               completan tareas ni generan recompensas de cofre.
 
 Toda la lógica vive en data/MonkeyStateManager.kt sobre SharedPreferences
 (archivo "monkey_prefs"). No hay backend: todo es local y síncrono.
@@ -32,6 +36,12 @@ Toda la lógica vive en data/MonkeyStateManager.kt sobre SharedPreferences
                                 vez que se completó un día.
   lastResetDate        String   Fecha (yyyy-MM-dd) del último reset diario.
   done_<taskId>        Bool     Checkbox de cada tarea, se borra a diario.
+  shieldsCount         Int      Escudos de Pulcritud disponibles (0–3).
+  shieldsInitialized   Bool     Ya se otorgaron los 3 escudos iniciales.
+  shieldMilestonesClaimed  Set  Hitos de racha que ya dieron escudos
+                                ("7","30","60","90","180","365").
+  lastShieldProtectedDate  String  Día (yyyy-MM-dd) ya protegido (idempotencia).
+  pendingShieldUsedMessage Bool  Mostrar snackbar de protección en la UI.
 
 
 2. CÓMO SE GANA LA RACHA Y EL LOOT DEL COFRE (toggleTask)
@@ -56,6 +66,7 @@ Cada marca/desmarca de tarea pasa por MonkeyStateManager.toggleTask(id):
      streakBroken       = false
      missedDaysCount    = 0
      streakBonusGiven   = esHito
+     → claimShieldMilestonesIfNeeded(nuevaRacha) (escudos one-shot, capped)
      → devuelve true → el ViewModel dispara la celebración.
 
   CASO B — Se desmarcó una tarea DESPUÉS de haber completado el día
@@ -92,8 +103,10 @@ ya es hoy, no hace nada. Si cambió el día:
      │                                    │ igual, incentivo a crear)       │
      │ Ayer era día de descanso           │ Sin cambios: racha intacta      │
      │ (0 tareas programadas ese día)     │ pero NO suma                    │
-     │ Tenía tareas y NO completó todas   │ streakCount=0, streakBroken=    │
-     │                                    │ true, missedDays+1              │
+     │ Tenía tareas y NO completó todas   │ Si hay escudo: consume 1,       │
+     │                                    │ conserva racha, mensaje UI.     │
+     │                                    │ Si no: streakCount=0,           │
+     │                                    │ streakBroken, missedDays+1      │
      └────────────────────────────────────┴─────────────────────────────────┘
 
   2. Borra todos los done_<taskId> (día nuevo en blanco).
@@ -105,8 +118,18 @@ Matices importantes:
 
   - DÍA DE DESCANSO: mantiene la racha pero no la incrementa.
   - Si la app estuvo cerrada VARIOS días, el reset solo evalúa el día de
-    lastResetDate y suma missedDays UNA vez.
-  - Las bananas NUNCA se pierden al fallar un día; solo la racha vuelve a 0.
+    lastResetDate (un solo día). Un escudo protege como máximo ese día.
+  - Las bananas NUNCA se pierden al fallar un día; solo la racha vuelve a 0
+    (salvo que un escudo la proteja).
+  - Día evaluado = lastResetDate (no lastReset+1). Zona: LocalDate del dispositivo.
+
+
+3.1 ESCUDOS DE PULCRITUD
+------------------------
+Resumen: consumibles (máx. 3) que protegen la racha en el día evaluado
+del reset si había tareas incompletas. Doc completo:
+
+  → docs/escudos_de_pulcritud.md
 
 
 4. FUENTES Y GASTOS DE BANANAS
@@ -122,6 +145,7 @@ Matices importantes:
 
   Gasto                                    Cantidad   Dónde
   ─────────────────────────────────────────────────────────────────────────
+  Escudo de Pulcritud (tienda, 1º ítem)      100     buyShield()
   Comprar accesorio en la tienda           precio     buyAccessory()
 
   Precios actuales (ACCESSORIES en MonkeyStateManager):
@@ -228,11 +252,12 @@ SUCIO1_PHRASES, SUCIO2_PHRASES en MainScreen.kt).
 8. ARCHIVOS INVOLUCRADOS
 ------------------------
   data/MonkeyStateManager.kt  — toggleTask (loot random), checkAndResetForNewDay,
-                                lastRewardBananas, buyAccessory.
-  ui/MonkeyViewModel.kt       — StreakCelebration con bananasEarned.
+                                escudos (init/consumo/hitos), lastRewardBananas,
+                                buyAccessory.
+  ui/MonkeyViewModel.kt       — StreakCelebration, efecto ShowShieldProtectedMessage.
   ui/MainScreen.kt            — StreakCelebrationOverlay (pantalla 1),
                                 ChestCelebrationOverlay (pantalla 2),
-                                header de contadores.
+                                header (bananas, escudos N/3, racha).
   ui/ShopScreen.kt            — Gasto de bananas en accesorios.
   notifications/…             — Notificación al completar el día.
   widget/…                    — Refleja racha/estado en el widget.
@@ -258,7 +283,8 @@ SUCIO1_PHRASES, SUCIO2_PHRASES en MainScreen.kt).
   [Nuevo día] checkAndResetForNewDay
         ├── ayer completo      → racha se conserva
         ├── ayer descanso      → racha intacta (no suma)
-        ├── ayer incompleto    → racha=0, streakBroken, missedDays+1
+        ├── ayer incompleto + escudo → consume 1, racha intacta
+        ├── ayer incompleto sin escudo → racha=0, streakBroken, missedDays+1
         └── limpia checks y flags del día
 
 

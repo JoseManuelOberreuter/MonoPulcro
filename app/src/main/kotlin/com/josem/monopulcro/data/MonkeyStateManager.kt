@@ -6,14 +6,19 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.time.LocalDate
 
-class MonkeyStateManager(private val context: Context) {
+class MonkeyStateManager(
+    context: Context,
+    private val todayProvider: () -> LocalDate = { LocalDate.now() },
+    prefsOverride: SharedPreferences? = null,
+) {
 
     private val prefs: SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefsOverride ?: context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val gson = Gson()
 
     init {
         migrateRemoveGoldAccessory()
+        ensureShieldsInitialized()
     }
 
     private fun migrateRemoveGoldAccessory() {
@@ -24,6 +29,15 @@ class MonkeyStateManager(private val context: Context) {
         if ("gold" in owned) {
             prefs.edit().putStringSet(KEY_OWNED_ACCESSORIES, owned - "gold").apply()
         }
+    }
+
+    /** One-shot: otorga 3 escudos a usuarios nuevos y existentes. Idempotente. */
+    fun ensureShieldsInitialized() {
+        if (prefs.getBoolean(KEY_SHIELDS_INITIALIZED, false)) return
+        prefs.edit()
+            .putInt(KEY_SHIELDS_COUNT, minOf(INITIAL_SHIELDS, MAX_SHIELDS))
+            .putBoolean(KEY_SHIELDS_INITIALIZED, true)
+            .commit()
     }
 
     // ─── Tareas ────────────────────────────────────────────────────────────────
@@ -60,9 +74,13 @@ class MonkeyStateManager(private val context: Context) {
         prefs.edit().remove(taskKey(taskId)).apply()
     }
 
+    /** Fecha de juego (hoy real + offset de debug). */
+    fun currentGameDate(): LocalDate =
+        todayProvider().plusDays(prefs.getInt(KEY_DEBUG_DAY_OFFSET, 0).toLong())
+
     val todayTasks: List<Task>
         get() {
-            val dow = LocalDate.now().dayOfWeek.value   // 1=Lun … 7=Dom
+            val dow = currentGameDate().dayOfWeek.value   // 1=Lun … 7=Dom
             return loadTasks().filter { dow in it.scheduledDays }
         }
 
@@ -87,6 +105,11 @@ class MonkeyStateManager(private val context: Context) {
     val bananas: Int      get() = prefs.getInt(KEY_BANANAS, 0)
     val streakBroken: Boolean get() = prefs.getBoolean(KEY_STREAK_BROKEN, false)
     val missedDaysCount: Int  get() = prefs.getInt(KEY_MISSED_DAYS, 0)
+
+    val shieldsCount: Int get() = prefs.getInt(KEY_SHIELDS_COUNT, 0)
+    val shieldsInitialized: Boolean get() = prefs.getBoolean(KEY_SHIELDS_INITIALIZED, false)
+    val claimedShieldMilestones: Set<String>
+        get() = prefs.getStringSet(KEY_SHIELD_MILESTONES_CLAIMED, emptySet()) ?: emptySet()
 
     val ownedAccessories: Set<String>
         get() = prefs.getStringSet(KEY_OWNED_ACCESSORIES, emptySet()) ?: emptySet()
@@ -127,10 +150,55 @@ class MonkeyStateManager(private val context: Context) {
         prefs.edit().putString(KEY_TASKS_VIEW_MODE, mode).apply()
     }
 
+    // ─── Escudos de Pulcritud ──────────────────────────────────────────────────
+
+    /**
+     * Otorga escudos por hitos de racha one-shot. Respeta MAX_SHIELDS.
+     * Marca el hito aunque grant=0 (inventario lleno) para no reintentar.
+     * @return escudos efectivamente añadidos
+     */
+    fun claimShieldMilestonesIfNeeded(newStreak: Int): Int {
+        val claimed = claimedShieldMilestones.toMutableSet()
+        var current = shieldsCount
+        var granted = 0
+        var changed = false
+
+        for ((threshold, amount) in SHIELD_MILESTONES) {
+            val key = threshold.toString()
+            if (newStreak < threshold || key in claimed) continue
+            val room = MAX_SHIELDS - current
+            val grant = minOf(amount, room).coerceAtLeast(0)
+            if (grant > 0) {
+                current += grant
+                granted += grant
+            }
+            claimed.add(key)
+            changed = true
+        }
+
+        if (changed) {
+            prefs.edit()
+                .putInt(KEY_SHIELDS_COUNT, current)
+                .putStringSet(KEY_SHIELD_MILESTONES_CLAIMED, HashSet(claimed))
+                .commit()
+        }
+        return granted
+    }
+
+    /** True si hay mensaje pendiente de “escudo protegió la racha”. */
+    fun consumePendingShieldUsedMessage(): Boolean {
+        if (!prefs.getBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, false)) return false
+        prefs.edit().putBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, false).commit()
+        return true
+    }
+
+    val hasPendingShieldUsedMessage: Boolean
+        get() = prefs.getBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, false)
+
     // ─── Reset diario ──────────────────────────────────────────────────────────
 
     fun checkAndResetForNewDay() {
-        val today = LocalDate.now().toString()
+        val today = currentGameDate().toString()
         val lastReset = prefs.getString(KEY_LAST_RESET, "") ?: ""
         if (lastReset == today) return
 
@@ -138,43 +206,67 @@ class MonkeyStateManager(private val context: Context) {
         val allTasks = loadTasks()
         val hadPreviousDay = lastReset.isNotEmpty()
 
-        prefs.edit().apply {
-            if (hadPreviousDay) {
-                val lastDow = LocalDate.parse(lastReset).dayOfWeek.value
-                val tasksForLastDay = allTasks.filter { lastDow in it.scheduledDays }
+        val editor = prefs.edit()
+        if (hadPreviousDay) {
+            val evaluatedDate = LocalDate.parse(lastReset)
+            val lastDow = evaluatedDate.dayOfWeek.value
+            val tasksForLastDay = allTasks.filter { lastDow in it.scheduledDays }
 
-                when {
-                    streakAlreadyCounted -> {
-                        // Completó ayer → racha sana
-                        putBoolean(KEY_STREAK_BROKEN, false)
-                        putInt(KEY_MISSED_DAYS, 0)
-                    }
-                    allTasks.isEmpty() -> {
-                        // Sin tareas → mono se ensucia igual (incentivo)
-                        putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
-                    }
-                    tasksForLastDay.isEmpty() -> {
-                        // Día de descanso ayer → racha intacta, sin cambios
-                    }
-                    else -> {
-                        val wasClean = tasksForLastDay.all { prefs.getBoolean(taskKey(it.id), false) }
-                        if (!wasClean) {
-                            putInt(KEY_STREAK, 0)
-                            putBoolean(KEY_STREAK_BROKEN, true)
-                            putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
-                        }
+            when {
+                streakAlreadyCounted -> {
+                    // Completó ayer → racha sana
+                    editor.putBoolean(KEY_STREAK_BROKEN, false)
+                    editor.putInt(KEY_MISSED_DAYS, 0)
+                }
+                allTasks.isEmpty() -> {
+                    // Sin tareas → mono se ensucia igual (incentivo); no rompe racha
+                    editor.putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
+                }
+                tasksForLastDay.isEmpty() -> {
+                    // Día de descanso ayer → racha intacta, sin cambios
+                }
+                else -> {
+                    val wasClean = tasksForLastDay.all { prefs.getBoolean(taskKey(it.id), false) }
+                    if (!wasClean) {
+                        applyShieldOrBreakStreak(editor, evaluatedDate.toString())
                     }
                 }
             }
-            // Limpiar estados de completado del día anterior
-            allTasks.forEach { remove(taskKey(it.id)) }
-            putBoolean(KEY_REWARD_GIVEN, false)
-            putBoolean(KEY_STREAK_COUNTED, false)
-            putBoolean(KEY_STREAK_BONUS_GIVEN, false)
-            putInt(KEY_REWARD_BANANAS, 0)
-            putBoolean(KEY_REWARD_DOUBLED, false)
-            putString(KEY_LAST_RESET, today)
-            apply()
+        }
+        // Limpiar estados de completado del día anterior
+        allTasks.forEach { editor.remove(taskKey(it.id)) }
+        editor.putBoolean(KEY_REWARD_GIVEN, false)
+        editor.putBoolean(KEY_STREAK_COUNTED, false)
+        editor.putBoolean(KEY_STREAK_BONUS_GIVEN, false)
+        editor.putInt(KEY_REWARD_BANANAS, 0)
+        editor.putBoolean(KEY_REWARD_DOUBLED, false)
+        editor.putString(KEY_LAST_RESET, today)
+        editor.commit()
+    }
+
+    /**
+     * Si hay escudo disponible y el día no fue ya protegido: consume 1 y conserva la racha.
+     * Si no: rompe la racha según reglas actuales.
+     */
+    private fun applyShieldOrBreakStreak(editor: SharedPreferences.Editor, protectedKey: String) {
+        val alreadyProtected = prefs.getString(KEY_LAST_SHIELD_PROTECTED_DATE, "") == protectedKey
+        if (alreadyProtected) {
+            // Idempotencia: ya se protegió este día; no romper ni re-consumir
+            editor.putBoolean(KEY_STREAK_BROKEN, false)
+            return
+        }
+
+        val currentShields = prefs.getInt(KEY_SHIELDS_COUNT, 0)
+        if (currentShields > 0) {
+            editor.putInt(KEY_SHIELDS_COUNT, currentShields - 1)
+            editor.putString(KEY_LAST_SHIELD_PROTECTED_DATE, protectedKey)
+            editor.putBoolean(KEY_STREAK_BROKEN, false)
+            editor.putBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, true)
+            // streakCount intacto; missedDays no incrementa
+        } else {
+            editor.putInt(KEY_STREAK, 0)
+            editor.putBoolean(KEY_STREAK_BROKEN, true)
+            editor.putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
         }
     }
 
@@ -206,7 +298,8 @@ class MonkeyStateManager(private val context: Context) {
                     .putBoolean(KEY_STREAK_BROKEN, false)
                     .putInt(KEY_MISSED_DAYS, 0)
                     .putBoolean(KEY_STREAK_BONUS_GIVEN, isMilestone)
-                    .apply()
+                    .commit()
+                claimShieldMilestonesIfNeeded(newStreak)
                 true
             }
             !newState && rewardAlreadyGiven -> {
@@ -255,6 +348,17 @@ class MonkeyStateManager(private val context: Context) {
             .putInt(KEY_BANANAS, bananas - item.price)
             .putStringSet(KEY_OWNED_ACCESSORIES, newOwned)
             .apply()
+        return true
+    }
+
+    /** Compra 1 Escudo de Pulcritud en la tienda (100 bananas, máx. MAX_SHIELDS). */
+    fun buyShield(): Boolean {
+        if (bananas < SHIELD_SHOP_PRICE) return false
+        if (shieldsCount >= MAX_SHIELDS) return false
+        prefs.edit()
+            .putInt(KEY_BANANAS, bananas - SHIELD_SHOP_PRICE)
+            .putInt(KEY_SHIELDS_COUNT, shieldsCount + 1)
+            .commit()
         return true
     }
 
@@ -360,6 +464,80 @@ class MonkeyStateManager(private val context: Context) {
         prefs.edit().putString(KEY_DUST_MOTES, gson.toJson(canonical)).apply()
     }
 
+    // ─── Debug ─────────────────────────────────────────────────────────────────
+
+    val lastResetDate: String get() = prefs.getString(KEY_LAST_RESET, "") ?: ""
+    val streakCountedToday: Boolean get() = prefs.getBoolean(KEY_STREAK_COUNTED, false)
+    val debugDayOffset: Int get() = prefs.getInt(KEY_DEBUG_DAY_OFFSET, 0)
+    val lastShieldProtectedDate: String
+        get() = prefs.getString(KEY_LAST_SHIELD_PROTECTED_DATE, "") ?: ""
+
+    /**
+     * Avanza un día de juego y ejecuta el reset.
+     * @param markPreviousCompleted true = día ganado; false = incompleto (prueba escudos);
+     *        null = deja el estado actual de streakCounted/done_*.
+     */
+    fun debugAdvanceDay(markPreviousCompleted: Boolean? = null) {
+        val today = currentGameDate().toString()
+        if (lastResetDate.isEmpty()) {
+            prefs.edit().putString(KEY_LAST_RESET, today).commit()
+        } else if (lastResetDate != today) {
+            // Alinear lastReset al día actual antes de marcar y avanzar
+            prefs.edit().putString(KEY_LAST_RESET, today).commit()
+        }
+
+        when (markPreviousCompleted) {
+            true -> prefs.edit()
+                .putBoolean(KEY_STREAK_COUNTED, true)
+                .putBoolean(KEY_STREAK_BROKEN, false)
+                .commit()
+            false -> {
+                // Día incompleto: quitar conteo y desmarcar tareas de hoy
+                val editor = prefs.edit().putBoolean(KEY_STREAK_COUNTED, false)
+                todayTasks.forEach { editor.putBoolean(taskKey(it.id), false) }
+                editor.commit()
+            }
+            null -> Unit
+        }
+
+        prefs.edit()
+            .putInt(KEY_DEBUG_DAY_OFFSET, debugDayOffset + 1)
+            .commit()
+        checkAndResetForNewDay()
+    }
+
+    fun debugAddShields(delta: Int) {
+        val next = (shieldsCount + delta).coerceIn(0, MAX_SHIELDS)
+        prefs.edit().putInt(KEY_SHIELDS_COUNT, next).commit()
+    }
+
+    fun debugSetStreak(value: Int) {
+        prefs.edit().putInt(KEY_STREAK, value.coerceAtLeast(0)).commit()
+    }
+
+    fun debugAddBananas(amount: Int) {
+        prefs.edit().putInt(KEY_BANANAS, maxOf(0, bananas + amount)).commit()
+    }
+
+    /** Retrocede el reloj de motas para forzar spawn al sincronizar. */
+    fun debugAdvanceDustHours(hours: Int) {
+        val last = prefs.getLong(KEY_DUST_LAST_SPAWN_MS, currentTimeMs())
+        val shifted = last - hours * 3_600_000L
+        prefs.edit().putLong(KEY_DUST_LAST_SPAWN_MS, shifted).commit()
+        syncDustSpawns()
+    }
+
+    fun debugClearDayOffset() {
+        prefs.edit().putInt(KEY_DEBUG_DAY_OFFSET, 0).commit()
+        checkAndResetForNewDay()
+    }
+
+    fun debugResetAllPrefs() {
+        prefs.edit().clear().commit()
+        ensureShieldsInitialized()
+        checkAndResetForNewDay()
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
     private fun currentTimeMs(): Long = System.currentTimeMillis()
@@ -391,11 +569,32 @@ class MonkeyStateManager(private val context: Context) {
         const val KEY_DUST_LAST_SPAWN_MS = "dustLastSpawnMs"
         const val KEY_TASKS_VIEW_MODE    = "tasksViewMode"
 
+        const val KEY_SHIELDS_COUNT = "shieldsCount"
+        const val KEY_SHIELDS_INITIALIZED = "shieldsInitialized"
+        const val KEY_SHIELD_MILESTONES_CLAIMED = "shieldMilestonesClaimed"
+        const val KEY_LAST_SHIELD_PROTECTED_DATE = "lastShieldProtectedDate"
+        const val KEY_PENDING_SHIELD_USED_MESSAGE = "pendingShieldUsedMessage"
+        const val KEY_DEBUG_DAY_OFFSET = "debugDayOffset"
+
         const val VIEW_MODE_TODAY = "today"
         const val VIEW_MODE_WEEK  = "week"
 
         const val MAX_DUST_MOTES = 5
         const val DUST_SPAWN_INTERVAL_MS = 7_200_000L // 2 horas
+
+        const val MAX_SHIELDS = 3
+        const val INITIAL_SHIELDS = 3
+        const val SHIELD_SHOP_PRICE = 100
+
+        /** Hitos one-shot de racha → escudos. Independiente del bonus banana % 7. */
+        val SHIELD_MILESTONES: Map<Int, Int> = linkedMapOf(
+            7 to 1,
+            30 to 1,
+            60 to 1,
+            90 to 2,
+            180 to 2,
+            365 to 3,
+        )
 
         data class AccessoryItem(val id: String, val name: String, val price: Int)
 

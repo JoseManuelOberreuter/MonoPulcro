@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.LocalDate
 
 // ─── Modelos de estado ────────────────────────────────────────────────────────
 
@@ -66,11 +65,24 @@ data class ChestRewardUiState(
 
 sealed interface MonkeyUiEffect {
     data object ShowRewardedAdForDouble : MonkeyUiEffect
+    data object ShowShieldProtectedMessage : MonkeyUiEffect
 }
+
+data class DebugUiState(
+    val gameDate: String = "",
+    val lastResetDate: String = "",
+    val dayOffset: Int = 0,
+    val streakCountedToday: Boolean = false,
+    val lastShieldProtectedDate: String = "",
+    val todayTaskCount: Int = 0,
+    val todayDoneCount: Int = 0,
+)
 
 data class MonkeyUiState(
     val streak: Int = 0,
     val bananas: Int = 0,
+    val shieldsCount: Int = 0,
+    val maxShields: Int = MonkeyStateManager.MAX_SHIELDS,
     val isCleanToday: Boolean = false,
     val streakBroken: Boolean = false,
     val missedDaysCount: Int = 0,
@@ -83,7 +95,8 @@ data class MonkeyUiState(
     val dustMotes: List<DustMote> = emptyList(),
     val celebration: StreakCelebration? = null,
     val showShopAffordHint: Boolean = false,
-    val showMainTour: Boolean = false
+    val showMainTour: Boolean = false,
+    val debug: DebugUiState = DebugUiState(),
 )
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
@@ -105,6 +118,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     init {
         manager.checkAndResetForNewDay()
         refreshState()
+        emitShieldProtectedIfPending()
         viewModelScope.launch {
             val hasWidget = GlanceAppWidgetManager(getApplication())
                 .getGlanceIds(MonkeyWidget::class.java)
@@ -203,6 +217,13 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun buyShield() {
+        if (manager.buyShield()) {
+            sounds.playCashRegister()
+            refreshState()
+        }
+    }
+
     fun useAccessory(accessoryId: String) {
         viewModelScope.launch {
             manager.useAccessory(accessoryId)
@@ -226,7 +247,69 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         refreshState()
     }
 
-    fun refresh() = refreshState()
+    fun refresh() {
+        refreshState()
+        emitShieldProtectedIfPending()
+    }
+
+    // ─── Debug (solo UI debug) ─────────────────────────────────────────────────
+
+    fun debugAdvanceIncompleteDay() {
+        manager.debugAdvanceDay(markPreviousCompleted = false)
+        refresh()
+        updateWidget()
+    }
+
+    fun debugAdvanceCompletedDay() {
+        manager.debugAdvanceDay(markPreviousCompleted = true)
+        refresh()
+        updateWidget()
+    }
+
+    fun debugAdvanceDayAsIs() {
+        manager.debugAdvanceDay(markPreviousCompleted = null)
+        refresh()
+        updateWidget()
+    }
+
+    fun debugAddShield(delta: Int) {
+        manager.debugAddShields(delta)
+        refreshState()
+    }
+
+    fun debugSetStreak(value: Int) {
+        manager.debugSetStreak(value)
+        refreshState()
+    }
+
+    fun debugAddBananas() {
+        manager.debugAddBananas(100)
+        refreshState()
+    }
+
+    fun debugAdvanceDust() {
+        manager.debugAdvanceDustHours(2)
+        refreshState()
+        updateWidget()
+    }
+
+    fun debugClearDayOffset() {
+        manager.debugClearDayOffset()
+        refresh()
+        updateWidget()
+    }
+
+    fun debugResetAll() {
+        manager.debugResetAllPrefs()
+        refresh()
+        updateWidget()
+    }
+
+    private fun emitShieldProtectedIfPending() {
+        if (manager.consumePendingShieldUsedMessage()) {
+            _effects.tryEmit(MonkeyUiEffect.ShowShieldProtectedMessage)
+        }
+    }
 
     // ─── Cofre + duplicar recompensa (AdMob) ───────────────────────────────────
 
@@ -303,16 +386,19 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
             MonkeyStateManager.VIEW_MODE_WEEK -> TasksViewMode.WEEK
             else -> TasksViewMode.TODAY
         }
+        val todayStates = manager.todayTaskStates
         _uiState.update {
             MonkeyUiState(
                 streak            = manager.streakCount,
                 bananas           = manager.bananas,
+                shieldsCount      = manager.shieldsCount,
+                maxShields        = MonkeyStateManager.MAX_SHIELDS,
                 isCleanToday      = manager.isCleanToday,
                 streakBroken      = manager.streakBroken,
                 missedDaysCount   = manager.missedDaysCount,
                 ownedAccessories  = manager.ownedAccessories,
                 equippedAccessory = manager.equippedAccessory,
-                todayTasks        = manager.todayTaskStates.map { (task, done) ->
+                todayTasks        = todayStates.map { (task, done) ->
                     TaskUiState(task, done)
                 },
                 allTasks          = allTasks,
@@ -321,13 +407,22 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 dustMotes         = manager.dustMotes,
                 celebration       = celebration,
                 showShopAffordHint = manager.shouldShowShopAffordHint(),
-                showMainTour      = manager.shouldShowMainTour
+                showMainTour      = manager.shouldShowMainTour,
+                debug = DebugUiState(
+                    gameDate = manager.currentGameDate().toString(),
+                    lastResetDate = manager.lastResetDate,
+                    dayOffset = manager.debugDayOffset,
+                    streakCountedToday = manager.streakCountedToday,
+                    lastShieldProtectedDate = manager.lastShieldProtectedDate,
+                    todayTaskCount = todayStates.size,
+                    todayDoneCount = todayStates.count { it.second },
+                ),
             )
         }
     }
 
     private fun buildWeekDays(allTasks: List<Task>): List<WeekDayUi> {
-        val today = LocalDate.now()
+        val today = manager.currentGameDate()
         val monday = today.minusDays((today.dayOfWeek.value - 1).toLong())
         return (1..7).map { dow ->
             val date = monday.plusDays((dow - 1).toLong())

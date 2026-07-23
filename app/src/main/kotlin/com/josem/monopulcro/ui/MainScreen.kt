@@ -66,6 +66,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.ComponentActivity
 import com.josem.monopulcro.R
 import com.josem.monopulcro.ads.AdLoadState
+import com.josem.monopulcro.BuildConfig
 import com.josem.monopulcro.ads.RewardedAdManager
 import com.josem.monopulcro.audio.SoundManager
 import kotlinx.coroutines.coroutineScope
@@ -175,7 +176,9 @@ fun MainScreen(
     val monkeyImageSize = if (screenHeightDp < 700) 154.dp else 220.dp
 
     val showTour = state.showMainTour
-    val rewardFlowActive = celebration != null || chestCelebration != null
+    var showShieldProtection by remember { mutableStateOf(false) }
+    val rewardFlowActive =
+        celebration != null || chestCelebration != null || showShieldProtection
     val interactionLocked = showTour || rewardFlowActive
     var tourStep by remember { mutableIntStateOf(0) }
     val tourBounds = remember { mutableStateMapOf<MainTourStep, Rect>() }
@@ -237,6 +240,9 @@ fun MainScreen(
                         onDismissed = { vm.onAdDismissedWithoutReward() },
                         onFailedToShow = { vm.onAdFailedToLoadOrShow() },
                     )
+                }
+                MonkeyUiEffect.ShowShieldProtectedMessage -> {
+                    showShieldProtection = true
                 }
             }
         }
@@ -474,6 +480,25 @@ fun MainScreen(
                     }
                 }
 
+                if (BuildConfig.DEBUG) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ShieldsDebugPanel(
+                        state = state,
+                        onIncompleteDay = { vm.debugAdvanceIncompleteDay() },
+                        onCompletedDay = { vm.debugAdvanceCompletedDay() },
+                        onAdvanceAsIs = { vm.debugAdvanceDayAsIs() },
+                        onAddShield = { vm.debugAddShield(1) },
+                        onRemoveShield = { vm.debugAddShield(-1) },
+                        onStreakPlus = { vm.debugSetStreak(state.streak + 1) },
+                        onStreakMinus = { vm.debugSetStreak(state.streak - 1) },
+                        onStreak7 = { vm.debugSetStreak(6) }, // próximo complete → hito 7
+                        onAddBananas = { vm.debugAddBananas() },
+                        onDustHours = { vm.debugAdvanceDust() },
+                        onClearOffset = { vm.debugClearDayOffset() },
+                        onResetAll = { vm.debugResetAll() },
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
@@ -490,6 +515,13 @@ fun MainScreen(
             )
         }
 
+        if (showShieldProtection) {
+            ShieldProtectionOverlay(
+                shieldsRemaining = state.shieldsCount,
+                maxShields = state.maxShields,
+                onFinished = { showShieldProtection = false }
+            )
+        }
         celebration?.let { event ->
             StreakCelebrationOverlay(
                 event = event,
@@ -1709,6 +1741,118 @@ private fun DoubleRewardButton(
 }
 
 @Composable
+private fun ShieldsDebugPanel(
+    state: MonkeyUiState,
+    onIncompleteDay: () -> Unit,
+    onCompletedDay: () -> Unit,
+    onAdvanceAsIs: () -> Unit,
+    onAddShield: () -> Unit,
+    onRemoveShield: () -> Unit,
+    onStreakPlus: () -> Unit,
+    onStreakMinus: () -> Unit,
+    onStreak7: () -> Unit,
+    onAddBananas: () -> Unit,
+    onDustHours: () -> Unit,
+    onClearOffset: () -> Unit,
+    onResetAll: () -> Unit,
+) {
+    val d = state.debug
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFFF59D), RoundedCornerShape(12.dp))
+            .border(1.dp, Color(0xFFFBC02D), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "DEBUG · Escudos / Días",
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = Color(0xFF5D4037)
+        )
+        Text(
+            text = buildString {
+                append("fecha=${d.gameDate}  offset=${d.dayOffset}\n")
+                append("lastReset=${d.lastResetDate.ifEmpty { "—" }}\n")
+                append("racha=${state.streak}  escudos=${state.shieldsCount}/${state.maxShields}\n")
+                append("counted=${d.streakCountedToday}  broken=${state.streakBroken}\n")
+                append("tareas hoy=${d.todayDoneCount}/${d.todayTaskCount}  missed=${state.missedDaysCount}\n")
+                append("protegido=${d.lastShieldProtectedDate.ifEmpty { "—" }}")
+            },
+            fontSize = 11.sp,
+            color = Color(0xFF4E342E),
+            lineHeight = 15.sp
+        )
+
+        Text(
+            text = "Días (reset + escudo)",
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            color = Color(0xFF5D4037)
+        )
+        DebugButtonRow(
+            "Día perdido →" to onIncompleteDay,
+            "Día ganado →" to onCompletedDay,
+        )
+        DebugButtonRow(
+            "Avanzar tal cual →" to onAdvanceAsIs,
+            "Offset=0" to onClearOffset,
+        )
+
+        Text(
+            text = "Escudos / Racha",
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            color = Color(0xFF5D4037)
+        )
+        DebugButtonRow(
+            "+1 escudo" to onAddShield,
+            "−1 escudo" to onRemoveShield,
+        )
+        DebugButtonRow(
+            "Racha +1" to onStreakPlus,
+            "Racha −1" to onStreakMinus,
+            "Racha=6 (hito)" to onStreak7,
+        )
+
+        Text(
+            text = "Otros",
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            color = Color(0xFF5D4037)
+        )
+        DebugButtonRow(
+            "+100 bananas" to onAddBananas,
+            "+2h polvo" to onDustHours,
+            "Reset prefs" to onResetAll,
+        )
+    }
+}
+
+@Composable
+private fun DebugButtonRow(vararg buttons: Pair<String, () -> Unit>) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        buttons.forEach { (label, onClick) ->
+            Button(
+                onClick = onClick,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFF9A825),
+                    contentColor = Color(0xFF3E2723)
+                )
+            ) {
+                Text(text = label, fontSize = 11.sp, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
 private fun BananaCounter(count: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Image(
@@ -1723,6 +1867,145 @@ private fun BananaCounter(count: Int) {
             fontWeight = FontWeight.Bold,
             color = Color(0xFFEA580C)
         )
+    }
+}
+
+private val ShieldBgTop = Color(0xFF38BDF8)
+private val ShieldBgBottom = Color(0xFF0284C7)
+private val ShieldGlow = Color(0xFFBAE6FD)
+
+@Composable
+private fun ShieldProtectionOverlay(
+    shieldsRemaining: Int,
+    maxShields: Int,
+    onFinished: () -> Unit,
+) {
+    val context = LocalContext.current
+    val sounds = remember { SoundManager.get(context) }
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+
+    val overlayAlpha = remember { Animatable(0f) }
+    val iconScale = remember { Animatable(0.3f) }
+    val headlineAlpha = remember { Animatable(0f) }
+    val headlineY = remember { Animatable(28f) }
+    val ctaAlpha = remember { Animatable(0f) }
+
+    var closing by remember { mutableStateOf(false) }
+    fun dismiss() {
+        if (closing || ctaAlpha.value < 0.5f) return
+        closing = true
+        scope.launch {
+            overlayAlpha.animateTo(0f, tween(280))
+            onFinished()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        overlayAlpha.animateTo(1f, tween(250, easing = FastOutSlowInEasing))
+        iconScale.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        )
+        sounds.playMonkeyCheer()
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        launch {
+            headlineAlpha.animateTo(1f, tween(220))
+            headlineY.animateTo(0f, tween(320, easing = FastOutSlowInEasing))
+        }
+        ctaAlpha.animateTo(1f, tween(280, delayMillis = 400))
+    }
+
+    Box(
+        modifier = Modifier
+            .modalOverlayScrim(onBackgroundTap = { dismiss() })
+            .graphicsLayer { alpha = overlayAlpha.value }
+            .background(Brush.verticalGradient(listOf(ShieldBgTop, ShieldBgBottom))),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 28.dp, vertical = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(contentAlignment = Alignment.Center) {
+                    Canvas(modifier = Modifier.size(320.dp)) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    ShieldGlow.copy(alpha = 0.55f),
+                                    ShieldGlow.copy(alpha = 0.12f),
+                                    Color.Transparent
+                                )
+                            ),
+                            radius = size.minDimension * 0.5f
+                        )
+                    }
+                    Image(
+                        painter = painterResource(R.drawable.escudo_pulcritud),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(240.dp)
+                            .graphicsLayer {
+                                scaleX = iconScale.value
+                                scaleY = iconScale.value
+                            }
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = "¡Racha protegida!",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = headlineAlpha.value
+                        translationY = headlineY.value
+                    }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Tu Escudo de Pulcritud protegió tu racha.",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.95f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer { alpha = headlineAlpha.value }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Escudos restantes: $shieldsRemaining/$maxShields",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.graphicsLayer { alpha = headlineAlpha.value }
+                )
+            }
+
+            Button(
+                onClick = { dismiss() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = ShieldBgBottom
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .graphicsLayer { alpha = ctaAlpha.value }
+            ) {
+                Text(
+                    text = "¡Seguir!",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 

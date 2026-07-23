@@ -174,13 +174,15 @@ Muestra la misma imagen de estado y las motas de polvo (sin limpieza).
   widget/MonkeyWidget.kt       — Mismo resolver en el widget.
 
 
-12. DEBUG (panel amarillo)
---------------------------
-  Día perdido   — Simula fallar el día: racha 0, streakBroken, missedDays++.
-  Día ganado    — Simula ayer completado y ejecuta reset → nuevo día limpio.
-  Reset         — Borra todas las preferencias.
-  100 bananas   — Añade bananas para la tienda.
-  +2 horas      — Solo afecta motas de polvo, no el estado limpio/sucio.
+12. DEBUG (panel amarillo, solo BuildConfig.DEBUG)
+--------------------------------------------------
+Panel en MainScreen. Controles de días/escudos: ver docs/escudos_de_pulcritud.md §10.
+
+  Día perdido →  — Marca incompleto, avanza día, dispara reset (prueba escudo).
+  Día ganado →   — Marca completado, avanza día (no consume escudo).
+  +1/−1 escudo   — Ajusta contador (0–3).
+  Reset prefs    — Borra preferencias y re-inicializa escudos.
+  +100 bananas / +2h polvo — utilidades varias.
 
 
 13. FLUJO RESUMIDO
