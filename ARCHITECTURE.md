@@ -125,8 +125,8 @@ Flujo principal: marcar una tarea como completada.
 Flujo de arranque (reset diario):
 
 1. Al crear el ViewModel se llama `checkAndResetForNewDay()`.
-2. Si la fecha guardada no es hoy, se evalúa el día anterior (completado o fallido), se ajustan racha / `missedDays` / `streakBroken` y se limpian flags diarios de tareas.
-3. Se sincronizan motas de polvo y se publica el estado inicial a la UI.
+2. Si la fecha guardada no es hoy, se evalúan todos los días desde `lastResetDate` hasta ayer (escudos / ruptura), se ajustan racha / `missedDays` / `streakBroken` y se limpian flags diarios de tareas.
+3. Se sincronizan motas de polvo y se publica el estado inicial a la UI; si hay pending, se emite overlay de racha rota o de escudo.
 
 Flujo de notificación local:
 

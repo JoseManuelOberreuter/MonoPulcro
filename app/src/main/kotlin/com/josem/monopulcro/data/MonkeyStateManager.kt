@@ -6,6 +6,12 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.time.LocalDate
 
+/** Datos one-shot para el overlay de racha rota. */
+data class StreakBrokenPending(
+    val lostStreak: Int,
+    val shieldsUsed: Int,
+)
+
 class MonkeyStateManager(
     context: Context,
     private val todayProvider: () -> LocalDate = { LocalDate.now() },
@@ -188,51 +194,44 @@ class MonkeyStateManager(
     /** True si hay mensaje pendiente de “escudo protegió la racha”. */
     fun consumePendingShieldUsedMessage(): Boolean {
         if (!prefs.getBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, false)) return false
-        prefs.edit().putBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, false).commit()
+        prefs.edit()
+            .putBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, false)
+            .putInt(KEY_SHIELDS_USED_ACCUMULATOR, 0)
+            .commit()
         return true
     }
 
     val hasPendingShieldUsedMessage: Boolean
         get() = prefs.getBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, false)
 
+    /** Consume el pending de racha rota (one-shot). */
+    fun consumePendingStreakBrokenMessage(): StreakBrokenPending? {
+        if (!prefs.getBoolean(KEY_PENDING_STREAK_BROKEN_MESSAGE, false)) return null
+        val lost = prefs.getInt(KEY_PENDING_BROKEN_STREAK_COUNT, 0)
+        val shields = prefs.getInt(KEY_PENDING_BROKEN_SHIELDS_USED, 0)
+        prefs.edit()
+            .putBoolean(KEY_PENDING_STREAK_BROKEN_MESSAGE, false)
+            .putInt(KEY_PENDING_BROKEN_STREAK_COUNT, 0)
+            .putInt(KEY_PENDING_BROKEN_SHIELDS_USED, 0)
+            .commit()
+        return StreakBrokenPending(lostStreak = lost, shieldsUsed = shields)
+    }
+
     // ─── Reset diario ──────────────────────────────────────────────────────────
 
     fun checkAndResetForNewDay() {
-        val today = currentGameDate().toString()
+        val today = currentGameDate()
+        val todayStr = today.toString()
         val lastReset = prefs.getString(KEY_LAST_RESET, "") ?: ""
-        if (lastReset == today) return
+        if (lastReset == todayStr) return
 
-        val streakAlreadyCounted = prefs.getBoolean(KEY_STREAK_COUNTED, false)
         val allTasks = loadTasks()
-        val hadPreviousDay = lastReset.isNotEmpty()
-
         val editor = prefs.edit()
-        if (hadPreviousDay) {
-            val evaluatedDate = LocalDate.parse(lastReset)
-            val lastDow = evaluatedDate.dayOfWeek.value
-            val tasksForLastDay = allTasks.filter { lastDow in it.scheduledDays }
 
-            when {
-                streakAlreadyCounted -> {
-                    // Completó ayer → racha sana
-                    editor.putBoolean(KEY_STREAK_BROKEN, false)
-                    editor.putInt(KEY_MISSED_DAYS, 0)
-                }
-                allTasks.isEmpty() -> {
-                    // Sin tareas → mono se ensucia igual (incentivo); no rompe racha
-                    editor.putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
-                }
-                tasksForLastDay.isEmpty() -> {
-                    // Día de descanso ayer → racha intacta, sin cambios
-                }
-                else -> {
-                    val wasClean = tasksForLastDay.all { prefs.getBoolean(taskKey(it.id), false) }
-                    if (!wasClean) {
-                        applyShieldOrBreakStreak(editor, evaluatedDate.toString())
-                    }
-                }
-            }
+        if (lastReset.isNotEmpty()) {
+            evaluateMissedDays(editor, LocalDate.parse(lastReset), today, allTasks)
         }
+
         // Limpiar estados de completado del día anterior
         allTasks.forEach { editor.remove(taskKey(it.id)) }
         editor.putBoolean(KEY_REWARD_GIVEN, false)
@@ -242,33 +241,104 @@ class MonkeyStateManager(
         editor.putBoolean(KEY_REWARD_DOUBLED, false)
         editor.putInt(KEY_SHOP_CHEST_OPENS_TODAY, 0)
         editor.putBoolean(KEY_PENDING_SHOP_CHEST_AD, false)
-        editor.putString(KEY_LAST_RESET, today)
+        editor.putString(KEY_LAST_RESET, todayStr)
         editor.commit()
     }
 
     /**
-     * Si hay escudo disponible y el día no fue ya protegido: consume 1 y conserva la racha.
-     * Si no: rompe la racha según reglas actuales.
+     * Evalúa cada día desde [startDate] inclusive hasta el día anterior a [today].
+     * Consume escudos día a día; si se agotan, rompe la racha y deja pending de overlay.
      */
-    private fun applyShieldOrBreakStreak(editor: SharedPreferences.Editor, protectedKey: String) {
-        val alreadyProtected = prefs.getString(KEY_LAST_SHIELD_PROTECTED_DATE, "") == protectedKey
-        if (alreadyProtected) {
-            // Idempotencia: ya se protegió este día; no romper ni re-consumir
-            editor.putBoolean(KEY_STREAK_BROKEN, false)
-            return
+    private fun evaluateMissedDays(
+        editor: SharedPreferences.Editor,
+        startDate: LocalDate,
+        today: LocalDate,
+        allTasks: List<Task>,
+    ) {
+        val streakAlreadyCounted = prefs.getBoolean(KEY_STREAK_COUNTED, false)
+        var currentStreak = prefs.getInt(KEY_STREAK, 0)
+        var currentShields = prefs.getInt(KEY_SHIELDS_COUNT, 0)
+        var missedDays = prefs.getInt(KEY_MISSED_DAYS, 0)
+        var streakBroken = prefs.getBoolean(KEY_STREAK_BROKEN, false)
+        var lastShieldProtected = prefs.getString(KEY_LAST_SHIELD_PROTECTED_DATE, "") ?: ""
+        // Acumulador cross-reset (widget día a día) + usos en este gap
+        var shieldsUsedAccum = prefs.getInt(KEY_SHIELDS_USED_ACCUMULATOR, 0)
+        var lostStreakForOverlay = 0
+        var brokeInGap = false
+        var usedShieldInGap = false
+
+        var day = startDate
+        while (day.isBefore(today)) {
+            val isFirstDay = day == startDate
+            val dow = day.dayOfWeek.value
+            val tasksForDay = allTasks.filter { dow in it.scheduledDays }
+            val dayKey = day.toString()
+
+            when {
+                isFirstDay && streakAlreadyCounted -> {
+                    streakBroken = false
+                    missedDays = 0
+                    shieldsUsedAccum = 0
+                }
+                allTasks.isEmpty() -> {
+                    missedDays += 1
+                }
+                tasksForDay.isEmpty() -> {
+                    // Día de descanso → racha intacta
+                }
+                else -> {
+                    val wasClean = if (isFirstDay) {
+                        tasksForDay.all { prefs.getBoolean(taskKey(it.id), false) }
+                    } else {
+                        // Días sin abrir la app: no hubo completados
+                        false
+                    }
+                    if (!wasClean) {
+                        when {
+                            lastShieldProtected == dayKey -> {
+                                streakBroken = false
+                            }
+                            currentShields > 0 -> {
+                                currentShields -= 1
+                                lastShieldProtected = dayKey
+                                streakBroken = false
+                                shieldsUsedAccum += 1
+                                usedShieldInGap = true
+                            }
+                            else -> {
+                                if (currentStreak > 0) {
+                                    lostStreakForOverlay = currentStreak
+                                    brokeInGap = true
+                                    currentStreak = 0
+                                }
+                                streakBroken = true
+                                missedDays += 1
+                            }
+                        }
+                    }
+                }
+            }
+            day = day.plusDays(1)
         }
 
-        val currentShields = prefs.getInt(KEY_SHIELDS_COUNT, 0)
-        if (currentShields > 0) {
-            editor.putInt(KEY_SHIELDS_COUNT, currentShields - 1)
-            editor.putString(KEY_LAST_SHIELD_PROTECTED_DATE, protectedKey)
-            editor.putBoolean(KEY_STREAK_BROKEN, false)
-            editor.putBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, true)
-            // streakCount intacto; missedDays no incrementa
+        editor.putInt(KEY_STREAK, currentStreak)
+        editor.putInt(KEY_SHIELDS_COUNT, currentShields)
+        editor.putInt(KEY_MISSED_DAYS, missedDays)
+        editor.putBoolean(KEY_STREAK_BROKEN, streakBroken)
+        editor.putString(KEY_LAST_SHIELD_PROTECTED_DATE, lastShieldProtected)
+
+        if (brokeInGap) {
+            editor.putBoolean(KEY_PENDING_STREAK_BROKEN_MESSAGE, true)
+            editor.putInt(KEY_PENDING_BROKEN_STREAK_COUNT, lostStreakForOverlay)
+            editor.putInt(KEY_PENDING_BROKEN_SHIELDS_USED, shieldsUsedAccum)
+            editor.putBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, false)
+            editor.putInt(KEY_SHIELDS_USED_ACCUMULATOR, 0)
         } else {
-            editor.putInt(KEY_STREAK, 0)
-            editor.putBoolean(KEY_STREAK_BROKEN, true)
-            editor.putInt(KEY_MISSED_DAYS, missedDaysCount + 1)
+            if (usedShieldInGap) {
+                editor.putBoolean(KEY_PENDING_SHIELD_USED_MESSAGE, true)
+            }
+            // Conservar acumulador hasta overlay de escudo o ruptura (widget día a día)
+            editor.putInt(KEY_SHIELDS_USED_ACCUMULATOR, shieldsUsedAccum)
         }
     }
 
@@ -612,6 +682,10 @@ class MonkeyStateManager(
         const val KEY_SHIELD_MILESTONES_CLAIMED = "shieldMilestonesClaimed"
         const val KEY_LAST_SHIELD_PROTECTED_DATE = "lastShieldProtectedDate"
         const val KEY_PENDING_SHIELD_USED_MESSAGE = "pendingShieldUsedMessage"
+        const val KEY_PENDING_STREAK_BROKEN_MESSAGE = "pendingStreakBrokenMessage"
+        const val KEY_PENDING_BROKEN_STREAK_COUNT = "pendingBrokenStreakCount"
+        const val KEY_PENDING_BROKEN_SHIELDS_USED = "pendingBrokenShieldsUsed"
+        const val KEY_SHIELDS_USED_ACCUMULATOR = "shieldsUsedAccumulator"
         const val KEY_DEBUG_DAY_OFFSET = "debugDayOffset"
 
         const val VIEW_MODE_TODAY = "today"

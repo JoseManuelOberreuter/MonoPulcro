@@ -41,7 +41,11 @@ Toda la lógica vive en data/MonkeyStateManager.kt sobre SharedPreferences
   shieldMilestonesClaimed  Set  Hitos de racha que ya dieron escudos
                                 ("7","30","60","90","180","365").
   lastShieldProtectedDate  String  Día (yyyy-MM-dd) ya protegido (idempotencia).
-  pendingShieldUsedMessage Bool  Mostrar snackbar de protección en la UI.
+  pendingShieldUsedMessage Bool  Overlay de protección pendiente.
+  shieldsUsedAccumulator   Int   Escudos usados en el hueco actual.
+  pendingStreakBrokenMessage Bool Overlay de racha rota pendiente.
+  pendingBrokenStreakCount Int   Racha perdida (para animar N→0).
+  pendingBrokenShieldsUsed Int   Escudos usados antes de romper.
 
 
 2. CÓMO SE GANA LA RACHA Y EL LOOT DEL COFRE (toggleTask)
@@ -89,24 +93,29 @@ lo revela visualmente.
 
 3. RESET DIARIO (checkAndResetForNewDay)
 ----------------------------------------
-Se ejecuta al crear el MonkeyViewModel (inicio de app). Si lastResetDate
-ya es hoy, no hace nada. Si cambió el día:
+Se ejecuta al crear el MonkeyViewModel (inicio de app) y también desde
+el widget. Si lastResetDate ya es hoy, no hace nada. Si cambió el día:
 
-  1. EVALÚA EL DÍA ANTERIOR (el de lastResetDate):
+  1. EVALÚA CADA DÍA desde lastResetDate inclusive hasta ayer (today−1).
+     Para el primer día del hueco se usan streakCountedToday y los
+     done_<id>. Los días siguientes sin abrir la app se tratan como
+     incompletos si había tareas programadas ese DOW.
 
      ┌────────────────────────────────────┬─────────────────────────────────┐
-     │ Situación de ayer                  │ Efecto                          │
+     │ Situación del día evaluado         │ Efecto                          │
      ├────────────────────────────────────┼─────────────────────────────────┤
-     │ streakCountedToday == true         │ Racha sana: streakBroken=false, │
-     │ (completó todo)                    │ missedDays=0                    │
+     │ Primer día + streakCountedToday    │ Racha sana: streakBroken=false, │
+     │ (completó todo)                    │ missedDays=0; limpia acumulador │
+     │                                    │ de escudos usados               │
      │ No existe ninguna tarea en la app  │ missedDays+1 (mono se ensucia   │
      │                                    │ igual, incentivo a crear)       │
-     │ Ayer era día de descanso           │ Sin cambios: racha intacta      │
-     │ (0 tareas programadas ese día)     │ pero NO suma                    │
+     │ Día de descanso                    │ Sin cambios: racha intacta      │
+     │ (0 tareas programadas ese día)     │                                 │
      │ Tenía tareas y NO completó todas   │ Si hay escudo: consume 1,       │
-     │                                    │ conserva racha, mensaje UI.     │
+     │                                    │ conserva racha, acumula usos.   │
      │                                    │ Si no: streakCount=0,           │
-     │                                    │ streakBroken, missedDays+1      │
+     │                                    │ streakBroken, missedDays+1,     │
+     │                                    │ pending overlay racha rota      │
      └────────────────────────────────────┴─────────────────────────────────┘
 
   2. Borra todos los done_<taskId> (día nuevo en blanco).
@@ -117,17 +126,21 @@ ya es hoy, no hace nada. Si cambió el día:
 Matices importantes:
 
   - DÍA DE DESCANSO: mantiene la racha pero no la incrementa.
-  - Si la app estuvo cerrada VARIOS días, el reset solo evalúa el día de
-    lastResetDate (un solo día). Un escudo protege como máximo ese día.
+  - Si la app estuvo cerrada VARIOS días, el reset recorre TODOS los días
+    del hueco. Puede consumir varios escudos (uno por día incompleto) y,
+    si se agotan, romper la racha en el mismo pase.
+  - Si en el hueco se usaron escudos y al final la racha se rompió: solo
+    aparece el overlay de racha rota (no el de escudo protegido), con el
+    conteo de escudos usados y la racha perdida (animación N→0).
   - Las bananas NUNCA se pierden al fallar un día; solo la racha vuelve a 0
     (salvo que un escudo la proteja).
-  - Día evaluado = lastResetDate (no lastReset+1). Zona: LocalDate del dispositivo.
+  - Zona: LocalDate del dispositivo (+ debugDayOffset si aplica).
 
 
 3.1 ESCUDOS DE PULCRITUD
 ------------------------
-Resumen: consumibles (máx. 3) que protegen la racha en el día evaluado
-del reset si había tareas incompletas. Doc completo:
+Resumen: consumibles (máx. 3) que protegen la racha en cada día incompleto
+del reset si había tareas. Doc completo:
 
   → docs/escudos_de_pulcritud.md
 
@@ -280,11 +293,12 @@ SUCIO1_PHRASES, SUCIO2_PHRASES en MainScreen.kt).
         └──────────────────────────────────────────┘
                           "¡Seguir!" → home
 
-  [Nuevo día] checkAndResetForNewDay
-        ├── ayer completo      → racha se conserva
-        ├── ayer descanso      → racha intacta (no suma)
-        ├── ayer incompleto + escudo → consume 1, racha intacta
-        ├── ayer incompleto sin escudo → racha=0, streakBroken, missedDays+1
+  [Nuevo día] checkAndResetForNewDay (recorre lastReset…ayer)
+        ├── día completo       → racha se conserva
+        ├── día descanso       → racha intacta (no suma)
+        ├── incompleto + escudo → consume 1, racha intacta (acumula usos)
+        ├── incompleto sin escudo → racha=0, streakBroken, missedDays+1,
+        │                           pending StreakBrokenOverlay
         └── limpia checks y flags del día
 
 

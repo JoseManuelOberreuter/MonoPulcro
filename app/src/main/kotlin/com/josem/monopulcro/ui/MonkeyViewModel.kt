@@ -67,6 +67,10 @@ sealed interface MonkeyUiEffect {
     data object ShowRewardedAdForDouble : MonkeyUiEffect
     data object ShowRewardedAdForShopChest : MonkeyUiEffect
     data object ShowShieldProtectedMessage : MonkeyUiEffect
+    data class ShowStreakBrokenMessage(
+        val lostStreak: Int,
+        val shieldsUsed: Int,
+    ) : MonkeyUiEffect
 }
 
 data class MonkeyUiState(
@@ -113,7 +117,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     init {
         manager.checkAndResetForNewDay()
         refreshState()
-        emitShieldProtectedIfPending()
+        emitPendingStreakMessages()
         viewModelScope.launch {
             val hasWidget = GlanceAppWidgetManager(getApplication())
                 .getGlanceIds(MonkeyWidget::class.java)
@@ -280,10 +284,21 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     fun refresh() {
         refreshState()
-        emitShieldProtectedIfPending()
+        emitPendingStreakMessages()
     }
 
-    private fun emitShieldProtectedIfPending() {
+    /** Racha rota tiene prioridad sobre overlay de escudo (mutuamente excluyentes). */
+    private fun emitPendingStreakMessages() {
+        val broken = manager.consumePendingStreakBrokenMessage()
+        if (broken != null) {
+            _effects.tryEmit(
+                MonkeyUiEffect.ShowStreakBrokenMessage(
+                    lostStreak = broken.lostStreak,
+                    shieldsUsed = broken.shieldsUsed,
+                )
+            )
+            return
+        }
         if (manager.consumePendingShieldUsedMessage()) {
             _effects.tryEmit(MonkeyUiEffect.ShowShieldProtectedMessage)
         }

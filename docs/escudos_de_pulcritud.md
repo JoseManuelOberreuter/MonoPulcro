@@ -44,32 +44,36 @@ Ningún grant (inicial ni por hito) puede superar el máximo:
 
 3. CUÁNDO SE CONSUME UN ESCUDO
 ------------------------------
-Solo dentro de `checkAndResetForNewDay()`, al evaluar el día de
-`lastResetDate` (el día evaluado; **no** es lastReset+1).
+Dentro de `checkAndResetForNewDay()`, al evaluar **cada** día desde
+`lastResetDate` inclusive hasta ayer (`today − 1`).
 
 Zona horaria: `LocalDate` del dispositivo (igual que la racha).
 
 Un día es **protegible** solo si:
 
-  1. `streakCountedToday == false` (no se completó el día),
+  1. No está marcado como completado (solo el primer día del hueco puede
+     tener `streakCountedToday == true`),
   2. hay tareas en la app,
   3. había al menos una tarea programada ese día de la semana (DOW ISO),
-  4. no todas esas tareas tenían `done_<id> == true`.
+  4. no todas esas tareas estaban hechas (días posteriores al primero
+     del hueco se consideran incompletos si no se abrió la app).
 
 Casos que **no** consumen escudo:
 
-  - Día ya completado (`streakCountedToday`).
+  - Día ya completado (`streakCountedToday` en el primer día del hueco).
   - Día de descanso (tareas en la app, ninguna ese DOW) → racha intacta.
   - Cero tareas en la app → solo sube `missedDays` (no rompe racha hoy).
   - Mismo día calendario otra vez (`lastResetDate == hoy`) → no-op.
 
-Si la app estuvo cerrada varios días, el reset sigue evaluando **un solo
-día** (`lastResetDate`). Como máximo se consume **un** escudo por reset.
+Si la app estuvo cerrada varios días, el reset recorre **todos** los días
+del hueco y puede consumir **varios** escudos (uno por día incompleto).
+Si se agotan a mitad del hueco, la racha se rompe y los días siguientes
+solo suman `missedDays`.
 
 
 4. ALGORITMO DE CONSUMO
 -----------------------
-Si el día es protegible:
+Por cada día protegible del hueco:
 
   si lastShieldProtectedDate == díaEvaluado
       → ya protegido (idempotente); no re-consumir ni romper racha
@@ -77,11 +81,14 @@ Si el día es protegible:
       → shieldsCount −= 1
       → lastShieldProtectedDate = díaEvaluado
       → streakBroken = false
-      → pendingShieldUsedMessage = true
+      → shieldsUsedAccumulator += 1
+      → pendingShieldUsedMessage = true (si la racha sobrevive al hueco)
       → streakCount intacto; missedDays no sube
   si no
-      → streakCount = 0, streakBroken = true, missedDays += 1
-        (ruptura clásica)
+      → guardar streak previo; streakCount = 0, streakBroken = true
+      → missedDays += 1
+      → pendingStreakBrokenMessage (+ lostStreak + shieldsUsed)
+      → pendingShieldUsedMessage = false
 
 La mutación del reset usa `commit()` para visibilidad inmediata ante
 llamadas concurrentes (app + widget).
@@ -122,6 +129,11 @@ Reglas:
                                         ("7","30","60","90","180","365").
   lastShieldProtectedDate     String    Día yyyy-MM-dd ya protegido.
   pendingShieldUsedMessage    Bool      Overlay de protección pendiente.
+  shieldsUsedAccumulator      Int       Escudos usados en el hueco actual
+                                        (hasta overlay o ruptura).
+  pendingStreakBrokenMessage  Bool      Overlay de racha rota pendiente.
+  pendingBrokenStreakCount    Int       Racha perdida (animación N→0).
+  pendingBrokenShieldsUsed    Int       Escudos usados antes de romper.
 
 
 7. TIENDA Y UI
@@ -136,15 +148,21 @@ Tienda (`ShopScreen`) con pestañas (tap o swipe):
 Bananas disponibles: arriba a la derecha en el TopAppBar.
 No hay contador de escudos en el header de la pantalla principal.
 
-Al usar un escudo:
+Al usar un escudo (y la racha sobrevive):
 
   ViewModel emite `MonkeyUiEffect.ShowShieldProtectedMessage`
   → Overlay a pantalla completa (`ShieldProtectionOverlay`), estilo
     celebración de racha/cofre: escudo grande, "¡Racha protegida!",
     CTA "¡Seguir!".
 
+Si en el mismo hueco se usaron escudos y la racha igual se rompió:
+
+  ViewModel emite `ShowStreakBrokenMessage(lostStreak, shieldsUsed)`
+  → `StreakBrokenOverlay`: contador N→0, copy de escudos usados si > 0,
+    CTA "Continuar". No se muestra el overlay de escudo.
+
 El widget no muestra escudos (v1). Sí puede ejecutar el reset y consumir
-uno; el overlay aparece al abrir/reanudar la app.
+uno o más; el overlay aparece al abrir/reanudar la app.
 
 
 8. ARCHIVOS PRINCIPALES
@@ -152,7 +170,8 @@ uno; el overlay aparece al abrir/reanudar la app.
   data/MonkeyStateManager.kt   — init, consumo, hitos, buyShield, claves prefs.
   ui/MonkeyViewModel.kt        — shieldsCount en MonkeyUiState; efecto UI.
   ui/ShopScreen.kt             — ShieldShopCard (primer ítem, 100 bananas).
-  ui/MainScreen.kt             — ShieldProtectionOverlay a pantalla completa.
+  ui/MainScreen.kt             — ShieldProtectionOverlay / StreakBrokenOverlay.
+
   res/drawable/escudo_pulcritud.png
 
 
@@ -172,11 +191,12 @@ uno; el overlay aparece al abrir/reanudar la app.
   [Cambio de día — checkAndResetForNewDay]
          │
          ▼
-  Evalúa lastResetDate
+  Evalúa cada día lastReset…ayer
          │
          ├── completo / descanso / sin obligaciones → sin escudo
-         ├── incompleto + escudo → consume 1, racha intacta, snackbar
-         └── incompleto sin escudo → racha = 0, streakBroken
+         ├── incompleto + escudo → consume 1, racha intacta
+         └── incompleto sin escudo → racha = 0, streakBroken,
+                                     pending StreakBrokenOverlay
 
 
 10. DEBUG (panel amarillo, solo BuildConfig.DEBUG)
@@ -205,7 +225,6 @@ todayTasks y el reset usan esa fecha.
 11. FUERA DE ALCANCE
 --------------------
   - Recuperar tareas de días anteriores pagando bananas (otro sistema).
-  - Recorrer automáticamente todos los días de un hueco multi-día.
   - Historial detallado de cada protección (solo lastShieldProtectedDate).
   - Mostrar escudos en el widget.
 

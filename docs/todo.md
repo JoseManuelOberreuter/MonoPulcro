@@ -9,7 +9,7 @@ Pendientes de producto / UX / gamificación.
 - [ ] Cambiar la imagen del splash/inicio de la app Android por la cara del mono (no el onboarding de "Mono Pulcro · tu mono siempre pulcro")
 - [x] Agregar la skin de mago (`mono_mago_1/2/3/4`)
 - [x] Agregar la skin de vikingo (`mono_vikingo_1/2/3`)
-- [ ] Agregar overlay de racha rota
+- [x] Agregar overlay de racha rota
 - [ ] Agregar funcionalidades de recuperar tareas del día anterior por bananas
 - [ ] Agregar overlay de compra de objeto
 
@@ -17,4 +17,4 @@ Pendientes de producto / UX / gamificación.
 
 ## Hecho
 
-*(mover ítems aquí al completarlos)*
+- [x] Agregar overlay de racha rota (reset multi-día + `StreakBrokenOverlay`)

@@ -35,6 +35,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -42,7 +43,9 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -176,8 +179,10 @@ fun MainScreen(
 
     val showTour = state.showMainTour
     var showShieldProtection by remember { mutableStateOf(false) }
+    var streakBrokenOverlay by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val rewardFlowActive =
-        celebration != null || chestCelebration != null || showShieldProtection
+        celebration != null || chestCelebration != null || showShieldProtection ||
+            streakBrokenOverlay != null
     val interactionLocked = showTour || rewardFlowActive
     var tourStep by remember { mutableIntStateOf(0) }
     val tourBounds = remember { mutableStateMapOf<MainTourStep, Rect>() }
@@ -242,6 +247,9 @@ fun MainScreen(
                 }
                 MonkeyUiEffect.ShowShieldProtectedMessage -> {
                     showShieldProtection = true
+                }
+                is MonkeyUiEffect.ShowStreakBrokenMessage -> {
+                    streakBrokenOverlay = effect.lostStreak to effect.shieldsUsed
                 }
                 MonkeyUiEffect.ShowRewardedAdForShopChest -> {
                     // Lo maneja ShopScreen; ignorar en MainScreen.
@@ -503,6 +511,13 @@ fun MainScreen(
                 shieldsRemaining = state.shieldsCount,
                 maxShields = state.maxShields,
                 onFinished = { showShieldProtection = false }
+            )
+        }
+        streakBrokenOverlay?.let { (lostStreak, shieldsUsed) ->
+            StreakBrokenOverlay(
+                lostStreak = lostStreak,
+                shieldsUsed = shieldsUsed,
+                onFinished = { streakBrokenOverlay = null }
             )
         }
         celebration?.let { event ->
@@ -1744,6 +1759,267 @@ private fun BananaCounter(count: Int) {
 private val ShieldBgTop = Color(0xFF38BDF8)
 private val ShieldBgBottom = Color(0xFF0284C7)
 private val ShieldGlow = Color(0xFFBAE6FD)
+
+private val BrokenBgTop = Color(0xFF78716C)
+private val BrokenBgBottom = Color(0xFF44403C)
+private val BrokenGlow = Color(0xFFFDA4AF)
+
+@Composable
+private fun StreakBrokenOverlay(
+    lostStreak: Int,
+    shieldsUsed: Int,
+    onFinished: () -> Unit,
+) {
+    val context = LocalContext.current
+    val sounds = remember { SoundManager.get(context) }
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+
+    val overlayAlpha = remember { Animatable(0f) }
+    val counter = remember { Animatable(lostStreak.toFloat().coerceAtLeast(0f)) }
+    val headlineAlpha = remember { Animatable(0f) }
+    val headlineY = remember { Animatable(28f) }
+    val ctaAlpha = remember { Animatable(0f) }
+    val glowAlpha = remember { Animatable(1f) }
+
+    // Mitades del fuego: split → caída / apagado
+    val fireSplit = remember { Animatable(0f) }      // 0 = juntas, 1 = separadas
+    val fireFall = remember { Animatable(0f) }       // 0 = arriba, 1 = caídas
+    val fireFade = remember { Animatable(1f) }
+    val fireScale = remember { Animatable(1f) }
+    val counterAlpha = remember { Animatable(1f) }
+    val monkeyAlpha = remember { Animatable(0f) }
+    val monkeyScale = remember { Animatable(0.3f) }
+
+    val splitPx = with(density) { 40.dp.toPx() }
+    val fallPx = with(density) { 110.dp.toPx() }
+
+    var closing by remember { mutableStateOf(false) }
+    fun dismiss() {
+        if (closing || ctaAlpha.value < 0.5f) return
+        closing = true
+        scope.launch {
+            overlayAlpha.animateTo(0f, tween(280))
+            onFinished()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        overlayAlpha.animateTo(1f, tween(250, easing = FastOutSlowInEasing))
+        launch {
+            headlineAlpha.animateTo(1f, tween(220))
+            headlineY.animateTo(0f, tween(320, easing = FastOutSlowInEasing))
+        }
+        delay(280)
+        counter.animateTo(
+            0f,
+            tween(
+                durationMillis = if (lostStreak <= 0) 0 else (500 + lostStreak * 40).coerceAtMost(900),
+                easing = FastOutSlowInEasing
+            )
+        )
+        // Beat: el 0 ya se ve, el fuego aún intacto
+        delay(150)
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        sounds.playMonkeyCheer()
+        // Parte en dos
+        fireSplit.animateTo(1f, tween(240, easing = FastOutSlowInEasing))
+        // Se derrumban / apagan
+        coroutineScope {
+            launch { fireFall.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) }
+            launch { fireScale.animateTo(0.35f, tween(420, easing = FastOutSlowInEasing)) }
+            launch { fireFade.animateTo(0f, tween(380, easing = FastOutSlowInEasing)) }
+            launch { glowAlpha.animateTo(0f, tween(360, easing = FastOutSlowInEasing)) }
+        }
+        // Sale el 0; entra el mono sucio llorando
+        counterAlpha.animateTo(0f, tween(180))
+        delay(60)
+        coroutineScope {
+            launch {
+                monkeyAlpha.animateTo(1f, tween(220))
+            }
+            launch {
+                monkeyScale.animateTo(
+                    1f,
+                    spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+            }
+        }
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        ctaAlpha.animateTo(1f, tween(280, delayMillis = 80))
+    }
+
+    val subtitle = when {
+        shieldsUsed <= 0 -> "No completaste tus tareas y tu racha se terminó."
+        shieldsUsed == 1 ->
+            "Usaste 1 escudo mientras no estuviste, pero tu racha se rompió igual."
+        else ->
+            "Usaste $shieldsUsed escudos mientras no estuviste, pero tu racha se rompió igual."
+    }
+
+    val splitAmount = fireSplit.value
+    val fallAmount = fireFall.value
+    val pieceAlpha = fireFade.value
+    val pieceScale = fireScale.value
+
+    Box(
+        modifier = Modifier
+            .modalOverlayScrim(onBackgroundTap = { dismiss() })
+            .graphicsLayer { alpha = overlayAlpha.value }
+            .background(Brush.verticalGradient(listOf(BrokenBgTop, BrokenBgBottom))),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 28.dp, vertical = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier.size(260.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(
+                        modifier = Modifier
+                            .size(320.dp)
+                            .graphicsLayer { alpha = glowAlpha.value }
+                    ) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    BrokenGlow.copy(alpha = 0.35f),
+                                    BrokenGlow.copy(alpha = 0.08f),
+                                    Color.Transparent
+                                )
+                            ),
+                            radius = size.minDimension * 0.5f
+                        )
+                    }
+                    // Fuego (partido) + contador
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.graphicsLayer { alpha = counterAlpha.value }
+                    ) {
+                        Box(
+                            modifier = Modifier.size(180.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.fuego),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(180.dp)
+                                    .graphicsLayer {
+                                        translationX = -splitAmount * splitPx
+                                        translationY = fallAmount * fallPx
+                                        rotationZ = -splitAmount * 12f - fallAmount * 18f
+                                        scaleX = pieceScale
+                                        scaleY = pieceScale
+                                        alpha = pieceAlpha
+                                        transformOrigin = TransformOrigin(0.5f, 0.85f)
+                                    }
+                                    .drawWithContent {
+                                        val fullContent = this
+                                        clipRect(right = size.width / 2f) {
+                                            fullContent.drawContent()
+                                        }
+                                    }
+                            )
+                            Image(
+                                painter = painterResource(R.drawable.fuego),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(180.dp)
+                                    .graphicsLayer {
+                                        translationX = splitAmount * splitPx
+                                        translationY = fallAmount * fallPx
+                                        rotationZ = splitAmount * 12f + fallAmount * 22f
+                                        scaleX = pieceScale
+                                        scaleY = pieceScale
+                                        alpha = pieceAlpha
+                                        transformOrigin = TransformOrigin(0.5f, 0.85f)
+                                    }
+                                    .drawWithContent {
+                                        val fullContent = this
+                                        clipRect(left = size.width / 2f) {
+                                            fullContent.drawContent()
+                                        }
+                                    }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${counter.value.toInt()}",
+                            fontSize = 72.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                    }
+                    // Mono sucio llorando (al final)
+                    Image(
+                        painter = painterResource(R.drawable.mono_sucio_llorando),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(220.dp)
+                            .graphicsLayer {
+                                alpha = monkeyAlpha.value
+                                scaleX = monkeyScale.value
+                                scaleY = monkeyScale.value
+                            }
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "¡Racha rota!",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = headlineAlpha.value
+                        translationY = headlineY.value
+                    }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.95f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer { alpha = headlineAlpha.value }
+                )
+            }
+
+            Button(
+                onClick = { dismiss() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = BrokenBgBottom
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .graphicsLayer { alpha = ctaAlpha.value }
+            ) {
+                Text(
+                    text = "Continuar",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun ShieldProtectionOverlay(
