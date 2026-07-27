@@ -723,7 +723,8 @@ class MonkeyStateManager(
             AccessoryItem("payaso",    "Payaso",     50),
             AccessoryItem("vikingo",   "Vikingo",    60),
             AccessoryItem("astronaut", "Astronauta", 70),
-            AccessoryItem("mago",      "Mago",       80)
+            AccessoryItem("mago",      "Mago",       80),
+            AccessoryItem("lazo",      "Lazo",       90)
         )
     }
 }

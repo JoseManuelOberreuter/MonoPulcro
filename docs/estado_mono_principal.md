@@ -80,6 +80,7 @@ imagen (solo aplica cuando isCleanToday == true).
   vikingo     Vikingo         60     mono_vikingo_1 / _2 / _3
   astronaut   Astronauta      70     mono_astronauta_1 / _2 / _3
   mago        Mago            80     mono_mago_1 / _2 / _3 / _4
+  lazo        Lazo            90     mono_lazo_1 / _2 / _3 / _4
 
 Cada accesorio con variantes usa la misma lógica “diaria”: una variante por
 día, estable hasta medianoche.
