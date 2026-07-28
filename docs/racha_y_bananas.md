@@ -1,317 +1,184 @@
 # Racha y bananas — Mono Pulcro
 
-Resumen
--------
+## Resumen
+
 La racha (streak), las bananas y los Escudos de Pulcritud son el núcleo
 de la gamificación:
 
-  - RACHA    → días consecutivos completando TODAS las tareas del día.
-               Es el progreso emocional (fuego en el header y celebración).
-  - BANANAS  → moneda virtual. Se gana al abrir el cofre del día (loot
-               aleatorio), en hitos de racha y limpiando motas de polvo.
-               Se gasta en la tienda.
-  - ESCUDOS  → consumibles (máx. 3). Protegen la racha cuando el día
-               evaluado en el reset diario habría roto la racha. No
-               completan tareas ni generan recompensas de cofre.
+- **Racha** → días consecutivos completando **todas** las tareas del día.
+- **Bananas** → moneda virtual. Se gana al completar el día (loot del cofre),
+  en hitos de racha, limpiando motas, duplicando con anuncio o abriendo el
+  cofre de tienda. Se gasta en la tienda.
+- **Escudos** → consumibles (máx. 3). Protegen la racha en el reset diario.
+  No completan tareas ni generan loot. Doc: [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md).
 
-Toda la lógica vive en data/MonkeyStateManager.kt sobre SharedPreferences
-(archivo "monkey_prefs"). No hay backend: todo es local y síncrono.
+Toda la lógica vive en `data/MonkeyStateManager.kt` sobre SharedPreferences
+(`monkey_prefs`). No hay backend.
 
+---
 
-1. VARIABLES PERSISTIDAS (SharedPreferences)
---------------------------------------------
-  Clave                Tipo     Significado
-  ─────────────────────────────────────────────────────────────────────────
-  streakCount          Int      Racha actual (días seguidos completados).
-  bananas              Int      Bananas disponibles (nunca baja de 0).
-  rewardGivenToday     Bool     Ya se pagó la recompensa del día de hoy.
-  rewardBananasToday   Int      Cuántas bananas pagó el cofre hoy (1–6).
-                                Se usa para revertir exacto al desmarcar.
-  streakCountedToday   Bool     Hoy ya sumó a la racha (lo usa el reset
-                                para saber si ayer se completó).
-  streakBonusGiven     Bool     La recompensa de hoy incluyó el bono x7.
-  streakBroken         Bool     Se rompió la racha (día fallido reciente);
-                                afecta imagen del mono y frases.
-  missedDaysCount      Int      Días fallidos acumulados desde la última
-                                vez que se completó un día.
-  lastResetDate        String   Fecha (yyyy-MM-dd) del último reset diario.
-  done_<taskId>        Bool     Checkbox de cada tarea, se borra a diario.
-  shieldsCount         Int      Escudos de Pulcritud disponibles (0–3).
-  shieldsInitialized   Bool     Ya se otorgaron los 3 escudos iniciales.
-  shieldMilestonesClaimed  Set  Hitos de racha que ya dieron escudos
-                                ("7","30","60","90","180","365").
-  lastShieldProtectedDate  String  Día (yyyy-MM-dd) ya protegido (idempotencia).
-  pendingShieldUsedMessage Bool  Overlay de protección pendiente.
-  shieldsUsedAccumulator   Int   Escudos usados en el hueco actual.
-  pendingStreakBrokenMessage Bool Overlay de racha rota pendiente.
-  pendingBrokenStreakCount Int   Racha perdida (para animar N→0).
-  pendingBrokenShieldsUsed Int   Escudos usados antes de romper.
+## 1. Variables persistidas
 
+Ver tabla completa en [`persistencia.md`](persistencia.md). Claves clave:
 
-2. CÓMO SE GANA LA RACHA Y EL LOOT DEL COFRE (toggleTask)
-----------------------------------------------------------
-Cada marca/desmarca de tarea pasa por MonkeyStateManager.toggleTask(id):
+| Clave | Significado |
+|---|---|
+| `streakCount` | Racha actual |
+| `bananas` | Saldo (≥ 0) |
+| `rewardGivenToday` | Ya se pagó el cofre hoy |
+| `rewardBananasToday` | Monto del loot (para revertir / duplicar) |
+| `rewardDoubledToday` | Ya se usó el anuncio de duplicar |
+| `streakCountedToday` | Hoy sumó a la racha |
+| `streakBroken` / `missedDaysCount` | Estado visual del mono |
+| `shieldsCount` | Escudos 0–3 |
 
-  1. Se invierte el estado de la tarea (done_<id>).
-  2. Se evalúa: ¿todas las tareas de HOY están completadas?
-     (todayTasks = tareas cuyo scheduledDays incluye el día actual, 1=Lun…7=Dom)
+---
 
-  CASO A — Se marcó la última tarea pendiente y aún no se pagó hoy
-           (newState && allTodayDone && !rewardGivenToday):
+## 2. Cómo se gana la racha y el loot (`toggleTask`)
 
-     nuevaRacha   = streakCount + 1
-     esHito       = nuevaRacha % 7 == 0          (7, 14, 21, …)
-     lootCofre    = random(1..3) + (3 si esHito)  → entre 1 y 3, o 4 y 6 en x7
-     bananas     += lootCofre
-     rewardBananasToday = lootCofre
-     streakCount  = nuevaRacha
-     rewardGivenToday   = true
-     streakCountedToday = true
-     streakBroken       = false
-     missedDaysCount    = 0
-     streakBonusGiven   = esHito
-     → claimShieldMilestonesIfNeeded(nuevaRacha) (escudos one-shot, capped)
-     → devuelve true → el ViewModel dispara la celebración.
+1. Se invierte `done_<id>`.
+2. ¿Todas las tareas de **hoy** completadas?
 
-  CASO B — Se desmarcó una tarea DESPUÉS de haber completado el día
-           (!newState && rewardGivenToday):
+**Caso A — Última tarea y aún no se pagó hoy:**
 
-     awarded = rewardBananasToday   (revierte el monto exacto del cofre)
-     bananas = max(0, bananas − awarded)
-     streakCount = max(0, streakCount − 1)
-     rewardGivenToday / streakCountedToday / streakBonusGiven = false
-     rewardBananasToday = 0
-     → anti-exploit de marcar/desmarcar.
-     → si vuelve a marcar todo, se tira un NUEVO random(1..3) para el cofre.
+```
+nuevaRacha   = streakCount + 1
+esHito       = nuevaRacha % 7 == 0
+lootCofre    = random(1..3) + (3 si esHito)   → 1–3 o 4–6
+bananas     += lootCofre
+streakCount  = nuevaRacha
+rewardGivenToday / streakCountedToday = true
+streakBroken = false, missedDays = 0
+→ claimShieldMilestonesIfNeeded(nuevaRacha)
+→ ViewModel dispara celebración + flujo de cofre (posible duplicar con ad)
+```
 
-  CASO C — Cualquier otro toggle intermedio: no toca racha ni bananas.
+**Caso B — Desmarcar tras completar el día:**
 
-IMPORTANTE: la recompensa se paga UNA sola vez por día (rewardGivenToday).
-El número aleatorio se fija al completar el día; el overlay del cofre solo
-lo revela visualmente.
+- Resta `rewardBananasToday` exacto, racha −1, limpia flags de recompensa.
+- Si vuelve a marcar todo, se tira un **nuevo** random.
 
+**Caso C — Toggle intermedio:** no toca racha ni bananas.
 
-3. RESET DIARIO (checkAndResetForNewDay)
-----------------------------------------
-Se ejecuta al crear el MonkeyViewModel (inicio de app) y también desde
-el widget. Si lastResetDate ya es hoy, no hace nada. Si cambió el día:
+---
 
-  1. EVALÚA CADA DÍA desde lastResetDate inclusive hasta ayer (today−1).
-     Para el primer día del hueco se usan streakCountedToday y los
-     done_<id>. Los días siguientes sin abrir la app se tratan como
-     incompletos si había tareas programadas ese DOW.
+## 3. Reset diario (`checkAndResetForNewDay`)
 
-     ┌────────────────────────────────────┬─────────────────────────────────┐
-     │ Situación del día evaluado         │ Efecto                          │
-     ├────────────────────────────────────┼─────────────────────────────────┤
-     │ Primer día + streakCountedToday    │ Racha sana: streakBroken=false, │
-     │ (completó todo)                    │ missedDays=0; limpia acumulador │
-     │                                    │ de escudos usados               │
-     │ No existe ninguna tarea en la app  │ missedDays+1 (mono se ensucia   │
-     │                                    │ igual, incentivo a crear)       │
-     │ Día de descanso                    │ Sin cambios: racha intacta      │
-     │ (0 tareas programadas ese día)     │                                 │
-     │ Tenía tareas y NO completó todas   │ Si hay escudo: consume 1,       │
-     │                                    │ conserva racha, acumula usos.   │
-     │                                    │ Si no: streakCount=0,           │
-     │                                    │ streakBroken, missedDays+1,     │
-     │                                    │ pending overlay racha rota      │
-     └────────────────────────────────────┴─────────────────────────────────┘
+Si `lastResetDate` ya es hoy → no-op. Si no:
 
-  2. Borra todos los done_<taskId> (día nuevo en blanco).
-  3. Resetea rewardGivenToday, streakCountedToday, streakBonusGiven,
-     rewardBananasToday.
-  4. Guarda lastResetDate = hoy.
+1. Evalúa cada día desde `lastResetDate` hasta ayer (completo / descanso /
+   incompleto + escudo / incompleto sin escudo).
+2. Borra todos los `done_<taskId>`.
+3. Resetea flags del día: reward, streakCounted, bonus, rewardBananas,
+   **rewardDoubled**, **shopChestOpensToday**, pending shop chest ad.
+4. Guarda `lastResetDate = hoy`.
 
-Matices importantes:
+Matices: día de descanso mantiene racha sin sumar; huecos multi-día pueden
+consumir varios escudos; las bananas **nunca** se pierden al fallar.
 
-  - DÍA DE DESCANSO: mantiene la racha pero no la incrementa.
-  - Si la app estuvo cerrada VARIOS días, el reset recorre TODOS los días
-    del hueco. Puede consumir varios escudos (uno por día incompleto) y,
-    si se agotan, romper la racha en el mismo pase.
-  - Si en el hueco se usaron escudos y al final la racha se rompió: solo
-    aparece el overlay de racha rota (no el de escudo protegido), con el
-    conteo de escudos usados y la racha perdida (animación N→0).
-  - Las bananas NUNCA se pierden al fallar un día; solo la racha vuelve a 0
-    (salvo que un escudo la proteja).
-  - Zona: LocalDate del dispositivo (+ debugDayOffset si aplica).
+---
 
+## 4. Fuentes y gastos de bananas
 
-3.1 ESCUDOS DE PULCRITUD
-------------------------
-Resumen: consumibles (máx. 3) que protegen la racha en cada día incompleto
-del reset si había tareas. Doc completo:
+| Fuente | Cantidad | Dónde |
+|---|---|---|
+| Cofre del día | +1 a +3 | `toggleTask` |
+| Hito racha (×7) | +3 extra (total 4–6) | `toggleTask` |
+| Duplicar cofre (ad) | +mismo monto otra vez | `doubleChestReward` |
+| Limpiar motas | +1 | `rewardDustCleaning` |
+| Cofre tienda (ad) | +5 | `completeShopChestReward` (máx. 3/día) |
+| Debug | +100 | panel debug |
 
-  → docs/escudos_de_pulcritud.md
+| Gasto | Cantidad | Dónde |
+|---|---|---|
+| Escudo de Pulcritud | 100 | `buyShield` |
+| Accesorio | precio | `buyAccessory` |
 
+### Precios de accesorios (código actual)
 
-4. FUENTES Y GASTOS DE BANANAS
-------------------------------
-  Fuente                                   Cantidad   Dónde
-  ─────────────────────────────────────────────────────────────────────────
-  Cofre del día (loot aleatorio)            +1 a +3   toggleTask (caso A)
-  Hito de racha (múltiplos de 7)            +3 extra  toggleTask (caso A)
-                                            (total 4–6 en hito)
-  Limpiar motas de polvo (tap al mono)      +1        rewardDustCleaning()
-                                                      (ver docs/motas_de_polvo.md)
-  [Debug] botón "100 bananas"               +100      panel de debug
+| ID | Nombre | Precio |
+|---|---|---|
+| glasses | Lentes | 10 |
+| hat | Gorro | 20 |
+| chaleco | Chaleco | 30 |
+| crown | Corona | 40 |
+| payaso | Payaso | 50 |
+| vikingo | Vikingo | 60 |
+| astronaut | Astronauta | 70 |
+| mago | Mago | 80 |
+| lazo | Lazo | 90 |
 
-  Gasto                                    Cantidad   Dónde
-  ─────────────────────────────────────────────────────────────────────────
-  Escudo de Pulcritud (tienda, 1º ítem)      100     buyShield()
-  Comprar accesorio en la tienda           precio     buyAccessory()
+Balance resumido: [`economia.md`](economia.md). Tienda/ads: [`tienda_y_anuncios.md`](tienda_y_anuncios.md).
 
-  Precios actuales (ACCESSORIES en MonkeyStateManager):
+---
 
-    glasses    Lentes       5
-    hat        Gorro       12
-    chaleco    Chaleco     20
-    crown      Corona      30
-    payaso     Payaso      40
-    astronaut  Astronauta  60
+## 5. Flujo UI — celebración y cofre
 
-  Reversa: desmarcar una tarea tras completar el día descuenta el monto
-  exacto guardado en rewardBananasToday (piso en 0).
+Al marcar la última tarea:
 
+1. `StreakCelebrationOverlay` (fuego, contador de racha) → CTA “Abrir cofre”
+2. `ChestCelebrationOverlay` (cofre, burst de bananas, “+N”)
+3. Opcional: botón **duplicar** con rewarded ad (`ShowRewardedAdForDouble`)
+4. CTA “¡Seguir!” → home
 
-5. FLUJO EN LA UI — DOS PANTALLAS (MonkeyViewModel + MainScreen)
-----------------------------------------------------------------
-Al marcar la última tarea del día:
+El loot ya está acreditado al completar el día; el overlay lo revela.
+El duplicado solo suma si `onUserEarnedReward` confirma.
 
-  MainScreen ──► vm.toggleTask(id)
-                    │  (loot ya calculado y acreditado en prefs)
-                    ▼
-             ¿earned == true?
-                    │
-                    ▼
-      StreakCelebration(previousStreak, newStreak,
-                        bananasEarned = manager.lastRewardBananas,
-                        isMilestone)
-                    │  (viaja en MonkeyUiState.celebration; MainScreen la
-                    │   copia a estado local y llama consumeCelebration())
-                    ▼
-      PANTALLA 1: StreakCelebrationOverlay  (naranja, fuego)
-                    + notificación + grito_mono.mp3 + haptic
-                    │
-                    │  CTA "Abrir cofre" (fade-out → transición)
-                    ▼
-      PANTALLA 2: ChestCelebrationOverlay   (dorado, cofre protagonista)
-                    │
-                    ▼
-      Vuelve a la home
+---
 
+## 6. Relación racha ↔ imagen del mono
 
-5.1 PANTALLA 1 — StreakCelebrationOverlay (racha)
--------------------------------------------------
-Fondo degradado naranja (StreakBgTop → StreakBgBottom).
+Ver [`estado_mono_principal.md`](estado_mono_principal.md):
 
-  1. Fade-in del fondo.
-  2. Llama de fuego entra con rebote.
-  3. Contador anima previousStreak → newStreak (650 ms).
-  4. Punch de la llama + partículas de fuego + sonido + haptic.
-  5. Titular ("¡Tu mono sigue impecable!" / "¡Meta alcanzada!…" si es hito).
-  6. Preview del cofre CERRADO (cofre_cerrado.png, pequeño) + "¡Ganaste un cofre!"
-  7. CTA "Abrir cofre" → fade-out y navega a la pantalla 2.
+- `streakBroken` → `mono_sucio_2`
+- `missedDays` 3 / 4+ → `mono_sucio_3` / extremos
+- Completar el día → limpio, contadores sanos
 
-La racha es el héroe; el cofre solo se anuncia, no se abre aquí.
+---
 
+## 7. Anti-exploit
 
-5.2 PANTALLA 2 — ChestCelebrationOverlay (cofre)
--------------------------------------------------
-Fondo degradado dorado (ChestBgTop → ChestBgBottom). Pantalla completa
-dedicada al cofre, al estilo Duolingo.
+- `rewardGivenToday` bloquea doble pago del cofre base.
+- `rewardBananasToday` permite reversión exacta.
+- `rewardDoubledToday` bloquea duplicar dos veces el mismo día.
+- Nuevo random al re-completar tras desmarcar.
+- Piso de bananas en 0.
+- Sin tareas → mono sucio y `missedDays` sube.
+- Día de descanso: ni suma ni rompe racha.
 
-  1. Fade-in + cofre grande centrado (180 dp) con glow radial.
-  2. Titular "¡Tu cofre te espera!" + "Toca el cofre para abrirlo".
-  3. CTA inferior "Abrir cofre" (mismo gesto que tocar el cofre o el fondo).
-  4. Al abrir:
-     - Shake horizontal de anticipación (4 ciclos).
-     - Swap a cofre_abierto.png con punch elástico.
-     - BURST de bananas: 6–12 partículas de banana salen del cofre en
-       arco radial (ángulos y distancias aleatorias, rotación, fade).
-     - Sonido caja registradora + haptic.
-     - Chip "+N" con el loot real (bananasEarned) + "¡bonus x7!" si aplica.
-     - Titular cambia a "¡Tesoro encontrado!"
-  5. CTA "¡Seguir!" → vuelve a la home.
+---
 
-El número mostrado (+N) coincide con rewardBananasToday ya acreditado.
-Las partículas visuales son decorativas; el contador muestra el monto real.
+## 8. Archivos involucrados
 
+- `data/MonkeyStateManager.kt` — toggle, reset, escudos, double, shop chest
+- `ui/MonkeyViewModel.kt` — celebración, efectos AdMob, escudos
+- `ui/MainScreen.kt` — overlays de racha / cofre / racha rota / escudo
+- `ui/ShopScreen.kt` — gasto de bananas
+- `ads/RewardedAdManager.kt` — carga/show de anuncios
+- `widget/` — refleja racha/estado
 
-6. RELACIÓN RACHA ↔ ESTADO DEL MONO
-------------------------------------
-La racha alimenta la imagen del mono (ver docs/estado_mono_principal.md):
+---
 
-  streakBroken == true      → mono_sucio_2 y frases de alerta.
-  missedDays 3 / 4+         → mono_sucio_3 / estados extremos.
-  Completar el día          → limpio, missedDays=0, streakBroken=false.
+## 9. Flujo resumido
 
-El texto bajo el mono también cambia según racha/missedDays (TIPS_PHRASES,
-SUCIO1_PHRASES, SUCIO2_PHRASES en MainScreen.kt).
+```
+[Marcar última tarea] → loot + racha↑ → overlay racha → overlay cofre
+                                         └─ opcional: ad duplicar
 
+[Nuevo día] checkAndResetForNewDay
+  ├── completo / descanso → racha intacta
+  ├── incompleto + escudo → consume 1
+  └── incompleto sin escudo → racha=0, streakBroken, overlay
+```
 
-7. CASOS BORDE Y REGLAS ANTI-EXPLOIT
--------------------------------------
-  - Doble pago imposible: rewardGivenToday bloquea repetir la recompensa.
-  - Reversión exacta: rewardBananasToday guarda el monto del random para
-    descontarlo tal cual al desmarcar (no asume siempre +1).
-  - Nuevo random al re-completar: si desmarcas y vuelves a marcar todo,
-    se tira otro random(1..3) independiente.
-  - Piso de bananas en 0: nunca queda saldo negativo al revertir.
-  - Sin tareas creadas → isCleanToday=false y missedDays sube a diario.
-  - Día de descanso: ni suma ni rompe racha.
+---
 
+## 10. Futuro (no implementado)
 
-8. ARCHIVOS INVOLUCRADOS
-------------------------
-  data/MonkeyStateManager.kt  — toggleTask (loot random), checkAndResetForNewDay,
-                                escudos (init/consumo/hitos), lastRewardBananas,
-                                buyAccessory.
-  ui/MonkeyViewModel.kt       — StreakCelebration, efecto ShowShieldProtectedMessage.
-  ui/MainScreen.kt            — StreakCelebrationOverlay (pantalla 1),
-                                ChestCelebrationOverlay (pantalla 2),
-                                header (bananas, escudos N/3, racha).
-  ui/ShopScreen.kt            — Gasto de bananas en accesorios.
-  notifications/…             — Notificación al completar el día.
-  widget/…                    — Refleja racha/estado en el widget.
+- Acreditar bananas solo al abrir el cofre (hoy se acreditan al completar).
+- XP / niveles del mono.
+- Recuperar día anterior pagando bananas (ver `todo.md`).
 
+---
 
-9. FLUJO RESUMIDO
------------------
-
-  [Usuario marca tareas]
-        │
-        ▼
-  toggleTask ──último check──► loot=random(1..3)+bonus, racha+1, bananas+=loot
-        │
-        ▼
-  Pantalla racha (fuego) ──► "Abrir cofre" ──► Pantalla cofre (dorada)
-        │                                          │
-        │                                          ▼
-        │                                    tap → burst bananas → "+N"
-        │                                          │
-        └──────────────────────────────────────────┘
-                          "¡Seguir!" → home
-
-  [Nuevo día] checkAndResetForNewDay (recorre lastReset…ayer)
-        ├── día completo       → racha se conserva
-        ├── día descanso       → racha intacta (no suma)
-        ├── incompleto + escudo → consume 1, racha intacta (acumula usos)
-        ├── incompleto sin escudo → racha=0, streakBroken, missedDays+1,
-        │                           pending StreakBrokenOverlay
-        └── limpia checks y flags del día
-
-
-10. FUTURO (no implementado)
----------------------------
-  - Mover el pago de bananas al momento exacto de abrir el cofre (hoy se
-    acredita al completar el día, el cofre solo revela).
-  - Rewarded Ads opt-in para duplicar loot del cofre.
-  - XP / niveles del mono como progreso a largo plazo.
-
-
-================================================================================
-  Relacionado: docs/estado_mono_principal.md (imagen del mono)
-               docs/motas_de_polvo.md (banana extra por limpieza)
-               docs/puntos_de_mejora.md (§6 monetización futura)
-================================================================================
+Relacionado: [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md) · [`motas_de_polvo.md`](motas_de_polvo.md) · [`tienda_y_anuncios.md`](tienda_y_anuncios.md) · [`puntos_de_mejora.md`](puntos_de_mejora.md)

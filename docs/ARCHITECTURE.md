@@ -13,7 +13,7 @@ El paradigma arquitectónico es **cliente monolítico offline-first**: toda la l
 | Categoría | Tecnología / Librería | Uso / Propósito |
 |---|---|---|
 | Lenguaje | Kotlin 2.0 | Código de la aplicación |
-| Plataforma | Android (minSdk 26, target/compileSdk 35) | Runtime y APIs del sistema |
+| Plataforma | Android (minSdk 26, target/compileSdk 36) | Runtime y APIs del sistema |
 | Build | Gradle + AGP 8.5 | Compilación y empaquetado |
 | UI | Jetpack Compose + Material 3 | Pantallas declarativas |
 | Navegación | Navigation Compose | Rutas entre onboarding, main, edición de tareas y tienda |
@@ -45,7 +45,7 @@ MonoPulcro/
 │       │   └── widget/               # Glance widget y actualización periódica
 │       ├── res/                      # Drawables, layouts, values, xml del widget
 │       └── assets/sounds/            # Recursos de audio
-├── docs/                             # Documentación técnica de dominio
+├── docs/                             # Documentación (índice: docs/INDEX.md)
 ├── page/                             # Landing estática (GitHub Pages)
 ├── img/                              # Assets de referencia del mono
 ├── gradle/                           # Wrapper de Gradle
@@ -157,6 +157,7 @@ Flujo de notificación local:
 - Lectura JSON defensiva: fallo de parseo devuelve lista vacía.
 - Programación de alarmas y creación de canales envueltas en `try/catch` para no crashear en dispositivos restrictivos.
 - Fallo de AdMob degrada el flujo del cofre (`AdUnavailable`) sin bloquear la recompensa base.
+- Índice de documentación: `docs/INDEX.md`.
 
 ### Patrones utilizados
 
@@ -173,11 +174,14 @@ Flujo de notificación local:
 - Día de descanso (cero tareas programadas hoy) cuenta como limpio.
 - Sin tareas creadas, el mono permanece sucio (incentivo a configurar hábitos).
 - Accesorios de tienda solo se reflejan en la imagen cuando el mono está limpio.
-- Documentación de reglas de negocio detallada en `docs/` (estado del mono, widget, racha/bananas, motas, notificaciones).
+- Documentación de reglas de negocio en `docs/` (ver `docs/INDEX.md`).
 
 ### Monetización
 
-- AdMob rewarded opcional al abrir el cofre del día.
-- IDs de prueba en builds debug; ID de producción en release.
-- La recompensa duplicada solo se aplica si el callback `onUserEarnedReward` confirma la visualización.
+- AdMob rewarded:
+  - duplicar loot del cofre del día (`doubleChestReward`);
+  - cofre de tienda (+5 bananas, máx. 3 aperturas/día).
+- IDs de prueba si el APK es debuggable; ID de producción en release.
+- La recompensa solo se acredita si el callback `onUserEarnedReward` confirma la visualización.
+- Detalle: `docs/tienda_y_anuncios.md`.
 )

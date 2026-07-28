@@ -1,174 +1,214 @@
 # Puntos de mejora — Mono Pulcro
 
-Análisis de producto, UX y técnica para la app Android de hábitos de limpieza del hogar.
+Documento vivo de mejoras técnicas, de producto y de documentación.
+Sustituye el análisis anterior centrado en v1.0.10.
 
 **Fecha:** Julio 2026  
-**Versión analizada:** 1.0.10 (versionCode 11)
+**Versión analizada:** 1.2.3 (versionCode 19)  
+**Alcance:** código + docs + landing + monetización existente (AdMob rewarded)
+
+Pendientes concretos de producto también en [`todo.md`](todo.md).
 
 ---
 
-## Resumen
+## 1. Resumen ejecutivo
 
-Mono Pulcro tiene un loop de gamificación sólido (tareas → mono limpio → bananas → tienda → racha) y está más avanzada de lo que refleja el README. Los principales gaps están en **distribución**, **viralidad**, **retención a largo plazo** y **pulido pre-lanzamiento**, no en la mecánica central.
+Mono Pulcro es un MVP maduro de hábitos de limpieza con gamificación local
+(racha, bananas, escudos, tienda, motas, widget, notificaciones, AdMob
+rewarded). El loop central está bien cerrado.
 
----
+Los mayores retornos ahora **no** son “más mecánicas”, sino:
 
-## 2. Retención después de la semana 1
-
-**Situación actual:** El loop funciona bien al inicio, pero puede volverse repetitivo cuando el usuario ya compró accesorios y domina la mecánica.
-
-**Mejoras:**
-
-- Metas semanales (ej. "completa 5 de 7 días").
-- Sistema de logros visibles (primer día, racha 7, racha 30, primera compra).
-- Nuevos accesorios por temporadas o eventos.
-- Integrar assets ya preparados pero no conectados (ej. `mono_payaso_1/2/3.png`).
-- Progreso visible a largo plazo: días limpios del mes, mejor racha histórica.
-- Mini-desafíos semanales con recompensa extra de bananas.
+1. **Calidad y confianza** (tests, crash reporting, docs al día)
+2. **Retención post-semana-1** (logros, historial, metas)
+3. **Adquisición orgánica** (compartir racha, ASO, plantillas día 1)
+4. **Pulido UX** (ajustes, i18n, splash, overlays de `todo.md`)
 
 ---
 
+## 2. Deuda documental
 
+| Acción | Por qué |
+|---|---|
+| Mantener README / INDEX alineados con features | Onboarding, shop, ads, escudos |
+| Unificar precios/accesorios con el código | Evitar tablas contradictorias |
+| Documentar rotación de imagen cada 3 h | Antes se decía “diaria” |
+| Completar docs de tienda, persistencia, economía | Huecos de dominio |
 
-## 3. UX y pulido de producto
-
-
-| Área          | Problema                                  | Mejora sugerida                                                       |
-| ------------- | ----------------------------------------- | --------------------------------------------------------------------- |
-| Configuración | No hay pantalla de ajustes                | Hora del recordatorio, silenciar sonidos, reiniciar progreso          |
-| Accesibilidad | Algunas imágenes sin `contentDescription` | Mejorar soporte TalkBack                                              |
-| Localización  | Textos hardcodeados en Kotlin             | Mover a `strings.xml`; preparar inglés                                |
-| Tema visual   | Colores inline vs `Theme.kt`              | Unificar diseño; considerar modo oscuro                               |
-| Onboarding    | Sin opción "Saltar"                       | Reducir abandono de usuarios impacientes                              |
-| Widget        | Solo informativo                          | Permitir marcar tareas desde el widget                                |
-| Documentación | README desactualizado                     | Reflejar tienda, notificaciones, tour, motas de polvo, precios reales |
-
+Índice: [`INDEX.md`](INDEX.md).
 
 ---
 
+## 3. Mejoras técnicas (Android)
 
+### P0 — Estabilidad y regresiones
 
-## 4. Viralidad y adquisición
+- **Tests unitarios** de `MonkeyStateManager` (ya admite `todayProvider` +
+  `prefsOverride`):
+  - `isCleanToday` (0 tareas / descanso / todas hechas)
+  - `toggleTask` (loot, reversión, anti-doble-pago, `doubleChestReward`)
+  - `checkAndResetForNewDay` multi-día + consumo de escudos
+  - `syncDustSpawns` / `rewardDustCleaning`
+  - shop chest (máx. 3/día, cancel vs complete)
+- **CI Android** en GitHub Actions: `assembleDebug` + unit tests en PR
+  (hoy solo hay workflow de Pages)
+- **Crashlytics / Sentry** en release
 
-**Situación actual:** No hay compartir logros, invitaciones ni contenido social. Para apps de hábitos, esto suele ser el mayor motor de nuevos usuarios.
+### P1 — Arquitectura sostenible
 
-**Mejoras:**
+- Extraer de `MonkeyStateManager` (~730 LOC):
+  `TaskRepository`, `StreakEngine`, `EconomyStore`, `DustSpawner`, `ShieldService`
+- SharedPreferences OK para MVP; si crece el estado → DataStore o Room
+  con migración explícita
+- Refrescar widget tras CRUD de tareas (hoy solo toggle / polvo / tienda)
+- Deep link desde notificaciones a `task_edit/{id}`
+- Revisar `android:allowBackup="true"` vs privacidad / restore inesperado
 
-- Botón "Compartir mi racha" (imagen del mono + texto tipo "Llevo 14 días con Mono Pulcro").
-- Reto de 7 días compartible con amigos o familia.
-- Deep link a Play Store desde la imagen compartida.
-- Calendario visual de cumplimiento (estilo contribuciones de GitHub), fácil de compartir.
+### P2 — Calidad de producto en código
 
----
+- Strings hardcodeados → `strings.xml` (+ base EN)
+- Unificar colores (`Theme.kt` vs hardcodes en MainScreen / widget)
+- Accesibilidad TalkBack (`contentDescription` en imágenes/overlays)
+- Pantalla de **Ajustes**: hora recordatorio, mute audio, reset progreso,
+  enlace a privacidad
+- Completar variantes de assets si alguna skin queda corta
 
-
-
-## 5. Técnico y calidad
-
-**Situación actual:** Sin tests automatizados, sin CI Android, sin crash reporting. Persistencia en SharedPreferences + Gson, adecuada para MVP pero limitada a largo plazo.
-
-**Mejoras:**
-
-- Tests unitarios para lógica crítica: reset diario, racha, compras, motas de polvo.
-- CI Android (build + tests en cada PR).
-- Crash reporting (Firebase Crashlytics, Sentry u otro).
-- Migración de datos más robusta si crece la complejidad del estado.
-- Eliminar código muerto (ej. `completeOnboarding()` no usado).
-- Completar variantes de assets faltantes (ej. astronauta `_2/_3`).
-- Revisar `android:allowBackup="true"` vs expectativas de privacidad del usuario.
-
----
-
-
-
-## 6. Monetización (opcional, post-lanzamiento)
-
-**Situación actual:** Sin ingresos. La moneda (bananas) es 100 % virtual y local.
-
-**Opciones que encajan con el producto:**
-
-
-| Modelo             | Descripción                                               |
-| ------------------ | --------------------------------------------------------- |
-| Freemium           | App gratis + accesorios premium o packs temáticos         |
-| Suscripción ligera | Estadísticas avanzadas, temas, recordatorios inteligentes |
-| Ads no intrusivos  | Banner fuera de la pantalla principal                     |
-
-
-**Recomendación:** No monetizar al inicio. Priorizar retención y reviews. Introducir freemium con cosméticos cuando haya tracción.
+Ver también [`calidad_y_testing.md`](calidad_y_testing.md).
 
 ---
 
+## 4. Mejoras de producto / UX
 
+### Ya en `todo.md`
 
-## 7. Funciones nuevas con potencial de atraer usuarios
+- [ ] Splash con cara del mono
+- [ ] Recuperar tareas del día anterior pagando bananas
+- [ ] Overlay de confirmación de compra en tienda
 
+### Retención (semana 2+)
 
+- Logros visibles (1er día, racha 7/30, primera compra, primer escudo)
+- Calendario / historial de días limpios (compartible)
+- Meta semanal (“5 de 7 días”) con banana extra
+- Mejor racha histórica + días limpios del mes
+- Escudos visibles en header de Main (hoy solo en tienda)
+
+### Activación día 1
+
+- Plantillas de rutina (“Depto”, “Casa con niños”, “Fin de semana”)
+  empaquetando `PredefinedTasks`
+- Skip en onboarding
+- Primera tarea sugerida en un tap
+
+### Widget
+
+- Mostrar bananas o progreso N/M tareas
+- Acción rápida Glance (marcar 1 tarea / abrir tienda)
+- Ver limitaciones actuales: [`estado_widget.md`](estado_widget.md)
+
+### Notificaciones
+
+- Deep link a tarea
+- Recordatorio inteligente: “quedan 2 antes de las 21:00”
+- Aviso post-racha-rota (además del overlay al abrir)
+
+---
+
+## 5. Monetización (AdMob ya existe — optimizar)
+
+Estado actual:
+
+- Doble bananas del cofre diario (rewarded, 1×/día vía `rewardDoubledToday`)
+- Cofre de tienda: +5 bananas, máx. 3/día
+
+Mejoras:
+
+- Medir eCPR / fill rate; **no** añadir banners en Main (rompe el loop)
+- Cap diario claro en UI (“3/3 cofres hoy”)
+- Freemium cosmético solo tras tracción (packs temáticos de pago)
+- No vender ventaja de racha con IAP (rompe fairness del hábito)
+
+Detalle: [`tienda_y_anuncios.md`](tienda_y_anuncios.md) · [`economia.md`](economia.md).
+
+---
+
+## 6. Adquisición y distribución
+
+- Play Store listing + ASO (hábitos, limpieza, checklist hogar)
+- Botón “Compartir mi racha” (imagen mono + texto + link store)
+- Actualizar landing `page/` con features reales (tienda, escudos, widget)
+- Screenshots que muestren el mono sucio → limpio
+
+Checklist: [`lanzamiento_play_store.md`](lanzamiento_play_store.md).
+
+---
+
+## 7. Funciones nuevas con potencial
 
 ### Alta prioridad
 
-1. **Modo hogar / pareja / roommates** — Tareas asignadas por persona; mono compartido o individual. La limpieza es un problema social; mucha gente busca apps para repartir tareas.
-2. **Plantillas de rutina** — "Departamento pequeño", "Casa con niños", "Limpieza fin de semana". Reduce fricción del primer día.
-3. **Compartir progreso y retos** — Tarjeta visual para WhatsApp/Instagram. Adquisición orgánica sin pagar ads.
-4. **Recordatorios inteligentes** — "Te quedan 2 tareas antes de las 21:00"; aviso cuando el mono se ensucia tras perder la racha.
-
-
+1. Plantillas de rutina — reduce abandono día 1
+2. Compartir progreso / retos — adquisición orgánica
+3. Recuperar día anterior con bananas — recuperación emocional
+4. Recordatorios inteligentes
 
 ### Media prioridad
 
-1. **Calendario / historial visual** — Ver qué días se cumplieron las tareas.
-2. **Widget interactivo** — Completar tareas sin abrir la app.
-3. **Integración con asistentes** — "Ok Google, ¿qué me falta limpiar hoy?" (nicho, pero memorable en marketing).
-
-
+1. Calendario / historial visual
+2. Widget interactivo
+3. Pantalla de ajustes + mute
 
 ### Baja prioridad (mayor coste)
 
-1. Sincronización en la nube / multi-dispositivo.
-2. Versión iOS (duplica audiencia, mucho esfuerzo).
-3. IA para sugerir tareas según tamaño o tipo de hogar.
+1. Sync en la nube / multi-dispositivo
+2. iOS
+3. Modo hogar / roommates (mono compartido)
+4. IA para sugerir tareas
 
 ---
 
-
-
-## Roadmap sugerido (60 días)
+## 8. Roadmap sugerido (90 días)
 
 ```
-Semana 1–2  → Publicar en Play Store + ASO + enlace en landing
-Semana 3–4  → Plantillas predefinidas + compartir racha
-Mes 2       → Logros/estadísticas + integrar accesorio payaso
-Mes 3       → Modo hogar compartido (si hay tracción)
+Semana 1     Docs sync + tests críticos reset/racha/escudos
+Semana 2–3   Crash reporting + CI + splash/cara mono
+Semana 4     Plantillas de rutina + overlay compra
+Mes 2        Compartir racha + logros/estadísticas básicas
+Mes 2–3      Recuperar día anterior + ajustes
+Mes 3+       Widget interactivo / modo hogar solo si hay tracción
 ```
 
 ---
 
+## 9. Prioridad resumida
 
-
-## Prioridad resumida
-
-
-| Prioridad | Área                         | Impacto                |
-| --------- | ---------------------------- | ---------------------- |
-| 🔴 Alta   | Publicar en Play Store       | Descubrimiento         |
-| 🔴 Alta   | Plantillas de rutina         | Reduce abandono día 1  |
-| 🔴 Alta   | Compartir racha              | Viralidad orgánica     |
-| 🟡 Media  | Logros y estadísticas        | Retención largo plazo  |
-| 🟡 Media  | Pantalla de ajustes          | Pulido y confianza     |
-| 🟡 Media  | Tests + CI + crash reporting | Estabilidad pre-escala |
-| 🟢 Baja   | Monetización                 | Ingresos post-tracción |
-| 🟢 Baja   | iOS / nube                   | Crecimiento futuro     |
-
+| Prioridad | Mejora | Impacto |
+|---|---|---|
+| 🔴 P0 | Tests + CI + crash reporting | Confianza al iterar |
+| 🔴 P0 | Mantener docs y listing al día | Menos regresiones / descubrimiento |
+| 🟡 P1 | Plantillas + compartir racha | Activación + viralidad |
+| 🟡 P1 | Logros / historial / ajustes | Retención |
+| 🟡 P1 | Recuperar día (`todo.md`) | Recuperación post-fallo |
+| 🟢 P2 | Refactor StateManager | Velocidad de desarrollo |
+| 🟢 P2 | i18n + a11y + widget actions | Pulido / escala |
+| 🟢 P2 | IAP cosméticos | Ingresos post-tracción |
 
 ---
 
+## 10. Fuera de alcance (por ahora)
 
+- Backend / cuentas / sync multi-dispositivo
+- iOS
+- IA para sugerir tareas
+- Push remoto (FCM): las notificaciones locales bastan si se pulen
 
-## Referencias en el código
+---
 
-- Lógica de estado: `app/src/main/kotlin/com/josem/monopulcro/data/MonkeyStateManager.kt`
-- UI principal: `app/src/main/kotlin/com/josem/monopulcro/ui/MainScreen.kt`
-- Tienda y accesorios: `app/src/main/kotlin/com/josem/monopulcro/ui/ShopScreen.kt`
-- Landing: `page/index.html`
-- README (desactualizado): `README.md`
+## 11. Referencias de código
 
+- Dominio: `data/MonkeyStateManager.kt`
+- UI: `ui/MainScreen.kt`, `ShopScreen.kt`, `MonkeyViewModel.kt`
+- Ads: `ads/RewardedAdManager.kt`
+- Widget: `widget/MonkeyWidget.kt`
+- Arquitectura: [`ARCHITECTURE.md`](ARCHITECTURE.md)
+- Índice docs: [`INDEX.md`](INDEX.md)

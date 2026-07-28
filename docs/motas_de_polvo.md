@@ -110,6 +110,9 @@ Constantes:
          └── Sin motas ──► solo animación
 
 
-================================================================================
-  Última actualización: según código en DustMote.SLOTS (5 slots, sin hombro izq.)
-================================================================================
+Última actualización: según código en `DustMote.SLOTS` (5 slots).
+
+Relacionado: [`estado_mono_principal.md`](estado_mono_principal.md) ·
+[`estado_widget.md`](estado_widget.md) ·
+[`audio.md`](audio.md) ·
+[`INDEX.md`](INDEX.md)

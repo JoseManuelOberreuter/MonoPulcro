@@ -1,242 +1,135 @@
 # Widget de pantalla de inicio — Mono Pulcro
 
-Documentación del estado actual del widget (Glance). Versión de app: 1.0.8
-(versionCode 9).
+Documentación del widget Glance. Versión de app: **1.2.3** (versionCode 19).
 
+## Resumen
 
-Resumen
--------
 El widget muestra en la pantalla de inicio:
 
-  - Imagen del mono según el mismo criterio que la app (MonkeyImageResolver).
-  - Motas de polvo encima del mono (escaladas desde la pantalla principal).
-  - Racha: icono de fuego + número de días.
+- Imagen del mono según el mismo criterio que la app (`MonkeyImageResolver`).
+- Motas de polvo encima del mono (escaladas desde la pantalla principal).
+- Racha: icono de fuego + número de días.
 
-Al tocar cualquier parte del widget se abre MainActivity. No hay acciones
+Al tocar cualquier parte del widget se abre `MainActivity`. No hay acciones
 rápidas (marcar tareas, limpiar polvo, etc.) desde el widget.
 
+---
 
-1. ARCHIVOS INVOLUCRADOS
-------------------------
-  widget/MonkeyWidget.kt
-      UI Glance y lectura de estado en provideGlance.
+## 1. Archivos involucrados
 
-  widget/MonkeyWidgetReceiver.kt
-      GlanceAppWidgetReceiver + updateWidget() manual.
+| Archivo | Rol |
+|---|---|
+| `widget/MonkeyWidget.kt` | UI Glance y lectura de estado |
+| `widget/MonkeyWidgetReceiver.kt` | Receiver + `updateWidget()` |
+| `widget/WidgetUpdateScheduler.kt` | Alarm horario |
+| `widget/WidgetUpdateReceiver.kt` | Tick: reset + sync polvo + update |
+| `res/xml/monkey_widget_info.xml` | Tamaño, resize, periodo |
+| `res/layout/widget_initial_layout.xml` | Placeholder de carga |
+| `data/MonkeyStateManager.kt` | Fuente de verdad |
+| `ui/MonkeyImageResolver.kt` | Drawable del mono |
 
-  res/xml/monkey_widget_info.xml
-      Tamaño, resize, preview, periodo de actualización.
+Dependencias: `glance-appwidget:1.1.1`, `glance-material3:1.1.1`.
 
-  res/layout/widget_initial_layout.xml
-      Placeholder mientras carga Glance (emoji mono).
+---
 
-  data/MonkeyStateManager.kt
-      Fuente de verdad (SharedPreferences).
+## 2. Configuración (`monkey_widget_info.xml`)
 
-  ui/MonkeyImageResolver.kt
-      Elección del drawable del mono.
+| Parámetro | Valor |
+|---|---|
+| Tamaño mínimo | 180 × 140 dp |
+| Celdas objetivo | 2 × 2 |
+| Redimensionable | horizontal y vertical |
+| Categoría | home_screen |
+| `updatePeriodMillis` | 3_600_000 (1 h, respaldo del sistema) |
 
-  data/DustMote.kt
-      Posiciones fijas de las motas de polvo.
+---
 
-  ui/MonkeyViewModel.kt
-      Dispara updateWidget() en ciertos eventos.
+## 3. Flujo de datos (`provideGlance`)
 
-  AndroidManifest.xml
-      Registro del receiver del widget.
+```
+provideGlance()
+  → MonkeyStateManager
+  → checkAndResetForNewDay()
+  → syncDustSpawns()
+  → lee streak, accessory, isClean, streakBroken, missedDays, dustMotes
+  → MonkeyImageResolver.resolve(...)
+  → provideContent { WidgetContent(...) }
+```
 
-Dependencias Gradle:
-  androidx.glance:glance-appwidget:1.1.1
-  androidx.glance:glance-material3:1.1.1
-  (Material 3 de Glance declarado pero no usado aún en el widget.)
+---
 
+## 4. Contenido visual
 
-2. CONFIGURACIÓN DEL PROVIDER (monkey_widget_info.xml)
-------------------------------------------------------
-  Tamaño mínimo         180 x 140 dp
-  Celdas objetivo       2 x 2
-  Redimensionable       horizontal y vertical
-  Categoría             solo pantalla de inicio (home_screen)
-  updatePeriodMillis    3600000 (1 h, respaldo del sistema)
-  Preview               mono_pulcro_1 + layout inicial placeholder
+`SizeMode.Responsive` + breakpoints 180×140, 260×140, 180×260, 260×260.
 
+- Mono: ~58 % del lado útil, entre 72 y 128 dp.
+- Racha: fuego + número (naranja `#FF6D00`).
+- Fondo: `0xFFFFF8F0`.
 
-3. FLUJO DE DATOS (provideGlance)
-----------------------------------
-  provideGlance()
-      |
-      +-- MonkeyStateManager(context)
-      +-- syncDustSpawns()     // sincroniza motas (+1 cada 2 h, máx. 5)
-      |
-      +-- Lee: streak, equippedAccessory, isCleanToday,
-      |         streakBroken, missedDaysCount, dustMotes
-      |
-      +-- MonkeyImageResolver.resolve(...)
-      |
-      +-- provideContent { WidgetContent(...) }
+---
 
-NOTA: provideGlance llama a checkAndResetForNewDay() y syncDustSpawns() en cada
-refresco (manual, alarm horario o APPWIDGET_UPDATE del sistema).
+## 5. Imagen del mono
 
+Misma función que MainScreen. Prioridad: limpio+accesorio → pulcro →
+extremos → sucio_3 → sucio_2 → sucio_1.
 
-4. CONTENIDO VISUAL (WidgetContent)
------------------------------------
-Layout responsive (SizeMode.Responsive + LocalSize): misma estructura minimalista
-en todos los tamaños; mono, fuego y número escalan proporcionalmente.
+Diferencias vs app:
 
-Breakpoints definidos:
-  180 x 140 dp  — compacto (2 x 2, tamaño por defecto)
-  260 x 140 dp  — ancho
-  180 x 260 dp  — alto
-  260 x 260 dp  — grande
+| Aspecto | App | Widget |
+|---|---|---|
+| Tamaño | ~220–240 dp | 72–128 dp |
+| Mensajes / bananas / checklist | Sí | No |
+| Motas | Limpiables | Solo visual |
 
-Escala (widgetLayoutMetrics):
-  - Mono: 58% del lado útil (min ancho/alto menos padding), entre 72 y 128 dp.
-  - Fuego, número y separadores: factor = monoDp / 72.
+Variantes de imagen: rotación cada **3 horas** (igual que la app).
 
-Estructura:
-  a) Mono — Box escalable con Image y motas superpuestas.
-  b) Racha — Row con fuego + número (naranja #FF6D00, bold).
+---
 
-Colores hardcodeados en el widget:
+## 6. Motas de polvo
 
-  Uso      ARGB
-  ----     ----------------
-  Fondo    0xFFFFF8F0
-  Racha    0xFFFF6D00
+Misma lista que la app; `syncDustSpawns()` en cada refresh.
+Escala: `monkeyDp / MAIN_MONKEY_DP`. Detalle: [`motas_de_polvo.md`](motas_de_polvo.md).
 
+---
 
-5. IMAGEN DEL MONO
-------------------
-Usa la misma función que la pantalla principal:
+## 7. Actualización
 
-  MonkeyImageResolver.resolve(isClean, equippedAccessory, streakBroken, missedDays)
+### Manual — `MonkeyWidgetReceiver.updateWidget`
 
-Prioridad de resolución (ver docs/estado_mono_principal.md y MonkeyImageResolver.kt):
+Actualiza todas las instancias Glance en `Dispatchers.IO`.
 
-  1. Limpio + accesorio     -> variante del accesorio (rotación cada 3 h)
-  2. Limpio sin accesorio   -> mono_pulcro_1 / _2 / _3
-  3. Sucio + missedDays>=4  -> estados extremos
-  4. Sucio + missedDays==3  -> mono_sucio_3
-  5. Sucio + streakBroken   -> mono_sucio_2
-  6. Resto sucio            -> mono_sucio_1
+### Horaria — `WidgetUpdateScheduler` (1 h)
 
-Diferencias respecto a MainScreen:
+Se programa en `onEnabled`, `onUpdate`, `BOOT_COMPLETED`, al abrir la app
+si hay widget, y tras cada tick. Se cancela en `onDisabled`.
 
-  Aspecto              App principal                          Widget
-  ─────────────────────────────────────────────────────────────────────────────
-  Mono de oro (gold)   GoldMonkeyImage (pila + brillos)       mono_de_oro estático
-  Tamaño del mono      ~220-240 dp                            72-128 dp (responsive)
-  Mensajes             Frases contextuales                    Sin texto de estado
-  Progreso tareas      Lista con checkboxes                   No mostrado
-  Bananas              Visible en la UI                       No mostrado
-  Sombra radial        Sí (Canvas)                            No
+### Desde `MonkeyViewModel`
 
+| Evento | ¿Actualiza? |
+|---|---|
+| Marcar/desmarcar tarea | Sí |
+| Limpiar motas | Sí |
+| Comprar / equipar accesorio | Sí |
+| Agregar / editar / borrar tarea | No (hasta tick o abrir app) |
 
-6. MOTAS DE POLVO EN EL WIDGET
-------------------------------
-  - Origen: MonkeyStateManager.dustMotes (misma lista que la app).
-  - En provideGlance se llama syncDustSpawns() antes de leer las motas.
-  - Escala: monkeyDp / MAIN_MONKEY_DP (mono entre 72 y 128 dp según tamaño del widget).
-  - Tamaño mínimo por mota en widget: 10 dp.
-  - Posición: mismas fracciones xFrac/yFrac que DustMote.SLOTS, sobre 72 dp.
-  - Implementación: cada mota es un Box(fillMaxSize()) con Image(mota_polvo)
-    posicionada vía padding(start, top).
+---
 
-Las motas se muestran tanto si el mono está limpio como sucio (igual que en la app).
-Ver también docs/motas_de_polvo.md.
+## 8. Manifest
 
+`MonkeyWidgetReceiver` exportado con `APPWIDGET_UPDATE` + meta-data del provider.
+`WidgetUpdateReceiver` no exportado.
 
-7. ACTUALIZACIÓN DEL WIDGET
----------------------------
+---
 
-7.1 Mecanismo manual (MonkeyWidgetReceiver.updateWidget)
+## 9. Limitaciones conocidas
 
-  1. Obtiene todos los GlanceId del widget instalado.
-  2. Lanza corrutina en Dispatchers.IO.
-  3. Llama MonkeyWidget().update(context, id) por cada instancia.
+1. CRUD de tareas no refresca el widget al instante.
+2. Sin progreso N/M, bananas ni escudos.
+3. Solo abre la app; sin acciones Glance.
+4. Colores hardcodeados (Glance Material 3 declarado pero poco usado).
 
-7.2 Actualización horaria en background (WidgetUpdateScheduler)
+Mejoras propuestas: [`puntos_de_mejora.md`](puntos_de_mejora.md).
 
-  widget/WidgetUpdateScheduler.kt
-      AlarmManager.setAndAllowWhileIdle cada 1 hora (HOUR_MS = 3_600_000).
+---
 
-  widget/WidgetUpdateReceiver.kt
-      Al disparar el alarm:
-        - checkAndResetForNewDay()
-        - syncDustSpawns()
-        - actualiza todas las instancias del widget
-        - reprograma el siguiente alarm (si sigue instalado)
-
-  Cuándo se programa el alarm:
-    - Primera vez que el usuario añade el widget (onEnabled)
-    - Cada onUpdate del widget (incl. APPWIDGET_UPDATE del sistema)
-    - BOOT_COMPLETED si hay widget instalado
-    - Al abrir la app si hay widget instalado (MonkeyViewModel.init)
-    - Tras cada tick horario exitoso
-
-  Cuándo se cancela:
-    - onDisabled (usuario quitó el último widget)
-
-  Respaldo adicional: updatePeriodMillis=3600000 en monkey_widget_info.xml
-  (el launcher también puede pedir APPWIDGET_UPDATE ~cada hora).
-
-7.3 Cuándo se llama updateWidget() desde MonkeyViewModel
-
-  Evento                              Actualiza
-  ──────────────────────────────────  ─────────
-  Marcar/desmarcar tarea              Sí
-  Limpiar motas (completeDustCleaning) Sí
-  Comprar accesorio                   Sí
-  Equipar accesorio                   Sí
-  Agregar tarea                       No
-  Editar tarea                        No
-  Borrar tarea                        No
-  Abrir app / refresh()               No (solo ViewModel)
-
-7.4 Sin actualización inmediata (solo espera al próximo refresh o a la app)
-
-  Evento                              Comportamiento actual
-  ──────────────────────────────────  ─────────────────────────────────────
-  Agregar/editar/borrar tarea         No refresca al instante (hasta 1 h o abrir app)
-  Rotación variante imagen (cada 3 h) Se refleja en el próximo refresh horario
-
-Las acciones del usuario dentro de la app siguen refrescando al instante vía
-updateWidget() (toggle tarea, polvo, tienda).
-
-
-8. REGISTRO EN EL MANIFEST
---------------------------
-  <receiver android:name=".widget.MonkeyWidgetReceiver" android:exported="true">
-      <intent-filter>
-          <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-      </intent-filter>
-      <meta-data
-          android:name="android.appwidget.provider"
-          android:resource="@xml/monkey_widget_info" />
-  </receiver>
-
-
-9. PLACEHOLDER DE CARGA
------------------------
-widget_initial_layout.xml muestra un LinearLayout crema con TextView "mono" (32 sp)
-hasta que Glance renderiza el contenido real. Es también el previewLayout en el
-selector de widgets.
-
-
-10. LIMITACIONES CONOCIDAS (estado actual)
-------------------------------------------
-  1. Desincronización por cambios de tareas sin abrir la app — el refresh horario
-     no cubre add/edit/delete de tareas hasta el próximo tick o apertura de la app.
-  2. Paridad visual incompleta — sin mono de oro especial, sin progreso completadas/total.
-  3. Sin acciones — solo abre la app; no toggle de tareas ni limpieza de polvo.
-  4. Glance Material 3 — dependencia presente; colores definidos a mano.
-  5. updateWidget — crea nueva instancia de MonkeyWidget() cada vez en lugar de
-     reutilizar glanceAppWidget del receiver.
-
-
-Referencias cruzadas
---------------------
-  docs/estado_mono_principal.md  — Estado del mono e imágenes.
-  docs/motas_de_polvo.md       — Spawn y recompensa de motas.
-  app/.../widget/               — Código del widget.
+Relacionado: [`estado_mono_principal.md`](estado_mono_principal.md) · [`motas_de_polvo.md`](motas_de_polvo.md)

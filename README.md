@@ -2,20 +2,28 @@
 
 Aplicación Android nativa para mantener hábitos de limpieza del hogar. Cada día completas tus tareas, el mono se pone contento y ganas bananas. Si no las haces, el mono se ensucia.
 
+**Versión actual:** 1.2.3 (versionCode 19)
+
 ## ¿Qué hace?
 
-- **Lista de tareas diarias**: lavar platos, hacer la cama, sacar la basura, limpiar el baño.
-- **Racha de días**: se acumula cada día que completas todas las tareas.
-- **Bananas como recompensa**: ganas 1 banana por día limpio. Con 10 bananas puedes comprarle lentes al mono.
-- **Widget para la pantalla de inicio**: muestra el estado del mono y tu racha sin abrir la app.
-- **Reset automático diario**: las tareas se reinician cada día y el sistema detecta si completaste o no el día anterior.
+- **Lista de tareas diarias** con días programados y vista semanal.
+- **Racha de días** consecutivos al completar todas las tareas del día.
+- **Bananas** como moneda: loot del cofre al completar el día, motas de polvo y anuncios rewarded.
+- **Escudos de Pulcritud** que protegen la racha si fallas un día.
+- **Tienda**: accesorios cosméticos, escudos y cofre por anuncio (máx. 3/día).
+- **Widget** de pantalla de inicio con el estado del mono y la racha.
+- **Notificaciones locales**: recordatorio diario, por tarea y celebración.
+- **Reset automático diario** (incluye huecos de varios días sin abrir la app).
 
 ## Pantallas
 
 | Pantalla | Descripción |
 |---|---|
-| `SplashScreen` | Pantalla de carga inicial |
-| `MainScreen` | Pantalla principal con el mono, las tareas y el contador |
+| `SplashScreen` | Carga inicial + jingle |
+| `OnboardingScreen` | Primeras veces (hábitos, bananas, racha, polvo, tienda) |
+| `MainScreen` | Mono, tareas (hoy/semana), racha, bananas, overlays |
+| `TaskEditScreen` | Crear / editar tarea + notificación por tarea |
+| `ShopScreen` | Atuendos y objetos (escudo, cofre rewarded) |
 
 ## Estructura del proyecto
 
@@ -25,37 +33,40 @@ page/                                # Sitio público (GitHub Pages)
 ├── privacidad.html                  # Política de privacidad
 └── assets/                          # Imágenes del sitio
 
-docs/                                # Documentación técnica interna
-├── estado_mono_principal.md
-├── estado_widget.md
-└── motas_de_polvo.md
+docs/                                # Documentación técnica (ver docs/INDEX.md)
+├── INDEX.md
+├── ARCHITECTURE.md
+├── puntos_de_mejora.md
+└── … (dominio, tienda, persistencia, etc.)
 
 app/src/main/
 ├── kotlin/com/josem/monopulcro/
-│   ├── MainActivity.kt              # Entry point
-│   ├── data/
-│   │   └── MonkeyStateManager.kt    # Lógica de estado (SharedPreferences)
-│   ├── ui/
-│   │   ├── MainScreen.kt            # UI principal (Jetpack Compose)
-│   │   ├── MonkeyViewModel.kt       # ViewModel
-│   │   ├── SplashScreen.kt          # Splash
-│   │   └── theme/Theme.kt           # Tema visual
-│   └── widget/
-│       ├── MonkeyWidget.kt          # Widget de pantalla de inicio
-│       └── MonkeyWidgetReceiver.kt  # Receptor de eventos del widget
+│   ├── MainActivity.kt              # Entry point, NavHost, permisos
+│   ├── ads/                         # RewardedAdManager (AdMob)
+│   ├── audio/                       # SoundManager
+│   ├── data/                        # Task, DustMote, MonkeyStateManager
+│   ├── notifications/               # Canales, schedulers, receiver
+│   ├── ui/                          # Compose screens, ViewModel, theme
+│   └── widget/                      # Glance widget + refresh horario
 └── res/
-    ├── drawable/                    # Assets del mono y splash
-    └── xml/monkey_widget_info.xml   # Configuración del widget
+    ├── drawable/                    # Assets del mono, cofre, polvo, etc.
+    └── xml/monkey_widget_info.xml
 ```
 
 ## Stack técnico
 
-- **Lenguaje**: Kotlin
-- **UI**: Jetpack Compose
-- **Estado**: ViewModel + StateFlow
-- **Persistencia**: SharedPreferences
-- **Widget**: Glance (Jetpack)
-- **Min SDK**: Android 8.0 (API 26)
+| Área | Tecnología |
+|---|---|
+| Lenguaje | Kotlin |
+| UI | Jetpack Compose + Material 3 |
+| Estado | ViewModel + StateFlow / SharedFlow |
+| Persistencia | SharedPreferences + Gson |
+| Widget | Glance AppWidget |
+| Notificaciones | AlarmManager + NotificationCompat |
+| Ads | Google Mobile Ads (rewarded) |
+| Min / target SDK | 26 / 36 |
+
+Documentación de arquitectura: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Índice completo: [`docs/INDEX.md`](docs/INDEX.md).
 
 ## Cómo correr el proyecto
 
@@ -67,11 +78,15 @@ app/src/main/
 3. Sincroniza Gradle.
 4. Ejecuta en un emulador o dispositivo físico (Android 8.0+).
 
-## Assets
+## Assets del mono
 
-Las imágenes del mono están en `/img` y en `app/src/main/res/drawable/`:
+Imágenes en `app/src/main/res/drawable/` (y referencias en `/img`):
 
-- `mono_pulcro` — mono limpio y feliz
-- `mono_cool` — mono con lentes (desbloqueable)
-- `mono_sucio_1/2/3` — estados de suciedad progresiva
-- `banana` / `fuego` — íconos de recompensa y racha
+- `mono_pulcro_1/2/3` — limpio (variante cada 3 h)
+- Accesorios: lentes, gorro, chaleco, corona, payaso, vikingo, astronauta, mago, lazo
+- `mono_sucio_1/2/3` + estados extremos (cansado, enfermo, frustrado, llorando)
+- `banana`, `fuego`, `mota_polvo`, `cofre_cerrado` / `cofre_abierto`, `escudo_pulcritud`
+
+## Documentación
+
+Empieza por [`docs/INDEX.md`](docs/INDEX.md). Para backlog de producto y técnica: [`docs/puntos_de_mejora.md`](docs/puntos_de_mejora.md) y [`docs/todo.md`](docs/todo.md).

@@ -1,6 +1,7 @@
 # TODO — Mono Pulcro
 
-Pendientes de producto / UX / gamificación.
+Pendientes concretos de producto / UX / gamificación.
+Priorización amplia y backlog técnico: `[puntos_de_mejora.md](puntos_de_mejora.md)`.
 
 ---
 
@@ -13,8 +14,11 @@ Pendientes de producto / UX / gamificación.
 - [x] Agregar overlay de racha rota
 - [ ] Agregar funcionalidades de recuperar tareas del día anterior por bananas
 - [ ] Agregar overlay de compra de objeto
+- [ ] Logros de racha de dias
 
 ---
+
+
 
 ## Hecho
 

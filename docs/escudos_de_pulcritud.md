@@ -229,7 +229,8 @@ todayTasks y el reset usan esa fecha.
   - Mostrar escudos en el widget.
 
 
-================================================================================
-  Relacionado: docs/racha_y_bananas.md (reset diario y racha)
-               docs/estado_mono_principal.md (imagen del mono)
-================================================================================
+Relacionado: [`racha_y_bananas.md`](racha_y_bananas.md) ·
+[`estado_mono_principal.md`](estado_mono_principal.md) ·
+[`tienda_y_anuncios.md`](tienda_y_anuncios.md) ·
+[`persistencia.md`](persistencia.md) ·
+[`INDEX.md`](INDEX.md)

@@ -212,5 +212,7 @@ Sin extras, sin URI, sin ruta a una pantalla o tarea.
 
 Relacionado:
 
-  docs/racha_y_bananas.md       — Completar el día y racha.
-  docs/estado_mono_principal.md — isCleanToday / missedDays usados en textos.
+- [`racha_y_bananas.md`](racha_y_bananas.md) — Completar el día y racha
+- [`estado_mono_principal.md`](estado_mono_principal.md) — `isCleanToday` / `missedDays`
+- [`tareas_y_calendario.md`](tareas_y_calendario.md) — modelo Task y UI
+- [`INDEX.md`](INDEX.md)

@@ -1,224 +1,220 @@
 # Estado principal del mono — Mono Pulcro
 
-Resumen
--------
+## Resumen
+
 El mono de la pantalla principal refleja cómo va el usuario con sus tareas del
 día y su historial reciente. No es un estado guardado como imagen fija: se
-CALCULA en tiempo real a partir de tareas, racha y días perdidos, y luego
-MonkeyImageResolver elige qué drawable mostrar.
+**calcula** en tiempo real a partir de tareas, racha y días perdidos, y luego
+`MonkeyImageResolver` elige qué drawable mostrar.
 
 Las motas de polvo son independientes: se dibujan encima del mono (limpio o
-sucio). Ver docs/motas_de_polvo.md.
+sucio). Ver [`motas_de_polvo.md`](motas_de_polvo.md).
 
+---
 
-1. ¿CUÁNDO ESTÁ LIMPIO O SUCIÓ? (isCleanToday)
-------------------------------------------------
-Definido en MonkeyStateManager.isCleanToday:
+## 1. ¿Cuándo está limpio o sucio? (`isCleanToday`)
 
-  Sin ninguna tarea creada     → SIEMPRE sucio (incentivo a crear tareas).
-  Día de descanso (ninguna     → LIMPIO (no hay nada que hacer hoy).
-  tarea programada para hoy)
-  Hay tareas hoy                 → LIMPIO solo si TODAS están marcadas.
+Definido en `MonkeyStateManager.isCleanToday`:
 
-“Día de descanso” = ninguna tarea tiene el día de la semana actual en su
-lista scheduledDays (1=Lun … 7=Dom).
+| Situación | Resultado |
+|---|---|
+| Sin ninguna tarea creada | Siempre **sucio** (incentivo a crear tareas) |
+| Día de descanso (ninguna tarea programada hoy) | **Limpio** |
+| Hay tareas hoy | **Limpio** solo si **todas** están marcadas |
 
+“Día de descanso” = ninguna tarea tiene el día de la semana actual en
+`scheduledDays` (1=Lun … 7=Dom).
 
-2. VARIABLES DE ESTADO (SharedPreferences)
-------------------------------------------
-  streakCount      — Racha de días completados seguidos.
-  streakBroken     — true si se perdió la racha (día fallido reciente).
-  missedDaysCount  — Contador de días sin completar (sube al fallar).
-  rewardGivenToday — Ya se dio la banana del día al completar todo.
-  streakCountedToday — Hoy contó para la racha (evita doble penalización).
-  lastResetDate    — Última fecha en que se hizo reset diario.
-  equippedAccessory — Accesorio equipado (glasses, hat, crown, astronaut, gold).
-  ownedAccessories — Set de accesorios comprados en la tienda.
+---
 
+## 2. Variables de estado (SharedPreferences)
 
-3. ELECCIÓN DE IMAGEN (MonkeyImageResolver.resolve)
----------------------------------------------------
-Entrada: isClean, equippedAccessory, streakBroken, missedDays
+| Clave / getter | Significado |
+|---|---|
+| `streakCount` | Racha de días completados seguidos |
+| `streakBroken` | `true` si se perdió la racha (día fallido reciente) |
+| `missedDaysCount` | Días sin completar desde la última vez limpia |
+| `rewardGivenToday` | Ya se dio el loot del cofre hoy |
+| `streakCountedToday` | Hoy contó para la racha |
+| `lastResetDate` | Última fecha de reset diario |
+| `equippedAccessory` | Accesorio equipado (ids de tienda) |
+| `ownedAccessories` | Set de accesorios comprados |
+
+Esquema completo: [`persistencia.md`](persistencia.md).
+
+---
+
+## 3. Elección de imagen (`MonkeyImageResolver.resolve`)
+
+Entrada: `isClean`, `equippedAccessory`, `streakBroken`, `missedDays`.
 
 Prioridad (de arriba a abajo):
 
-  A) LIMPIO + accesorio equipado
-     → Variante del accesorio (ver tabla abajo).
-     → En pantalla principal, si el accesorio es "gold" y está limpio, se usa
-       GoldMonkeyImage (brillos + pila de oro) en lugar del Image normal.
+1. **LIMPIO + accesorio equipado** → variante del accesorio (tabla abajo).
+2. **LIMPIO sin accesorio** → `mono_pulcro_1/2/3` (variante cada 3 h).
+3. **SUCIO + missedDays ≥ 4** → extremo aleatorio:
+   `mono_sucio_cansado`, `enfermo`, `frustrado`, `llorando`.
+4. **SUCIO + missedDays == 3** → `mono_sucio_3`.
+5. **SUCIO + streakBroken** → `mono_sucio_2`.
+6. **SUCIO (resto)** → `mono_sucio_1`.
 
-  B) LIMPIO sin accesorio
-     → mono_pulcro_1 / _2 / _3 (variante aleatoria DIARIA).
+Si el mono está sucio, el accesorio equipado **no** se muestra.
 
-  C) SUCIO + missedDays >= 4
-     → Estado extremo aleatorio entre:
-        mono_sucio_cansado, mono_sucio_enfermo,
-        mono_sucio_frustrado, mono_sucio_llorando
+> Nota: el accesorio `gold` / mono de oro fue retirado; al abrir la app se
+> limpia de prefs (`migrateRemoveGoldAccessory`).
 
-  D) SUCIO + missedDays == 3
-     → mono_sucio_3
+---
 
-  E) SUCIO + streakBroken == true
-     → mono_sucio_2
+## 4. Accesorios (solo en estado limpio)
 
-  F) SUCIO (resto: tareas pendientes hoy, 1 día perdido, etc.)
-     → mono_sucio_1
+Precios actuales (`MonkeyStateManager.ACCESSORIES`):
 
-IMPORTANTE: Si el mono está sucio, el accesorio equipado NO se muestra en la
-imagen (solo aplica cuando isCleanToday == true).
+| ID | Nombre | Precio | Drawables |
+|---|---|---|---|
+| glasses | Lentes | 10 | `mono_cool_1/2/3` |
+| hat | Gorro | 20 | `mono_gorro_1/2/3` |
+| chaleco | Chaleco | 30 | `mono_chaleco_1/2/3` |
+| crown | Corona | 40 | `mono_corona_1/2/3` |
+| payaso | Payaso | 50 | `mono_payaso_1/2/3` |
+| vikingo | Vikingo | 60 | `mono_vikingo_1/2/3` |
+| astronaut | Astronauta | 70 | `mono_astronauta_1/2/3` |
+| mago | Mago | 80 | `mono_mago_1/2/3/4` |
+| lazo | Lazo | 90 | `mono_lazo_1/2/3/4` |
 
+Cada accesorio con variantes usa la misma lógica de rotación cada 3 horas.
 
-4. ACCESORIOS (solo en estado limpio)
--------------------------------------
-  ID          Nombre        Precio   Drawables
-  ─────────────────────────────────────────────────────────
-  glasses     Lentes          10     mono_cool_1 / _2 / _3
-  hat         Gorro           20     mono_gorro_1 / _2 / _3
-  chaleco     Chaleco         30     mono_chaleco_1 / _2 / _3
-  crown       Corona          40     mono_corona_1 / _2 / _3
-  payaso      Payaso          50     mono_payaso_1 / _2 / _3
-  vikingo     Vikingo         60     mono_vikingo_1 / _2 / _3
-  astronaut   Astronauta      70     mono_astronauta_1 / _2 / _3
-  mago        Mago            80     mono_mago_1 / _2 / _3 / _4
-  lazo        Lazo            90     mono_lazo_1 / _2 / _3 / _4
+---
 
-Cada accesorio con variantes usa la misma lógica “diaria”: una variante por
-día, estable hasta medianoche.
+## 5. Variante cada 3 horas (`variantRandom`)
 
-
-5. VARIANTE DIARIA (dailyRandom)
---------------------------------
 Para mono limpio y accesorios con varias imágenes:
 
-  seed = día actual (epoch day) XOR hash del accesorio
-  → Misma imagen todo el día, cambia al día siguiente.
+```
+slot = nowMs / (3 * 60 * 60 * 1000)
+seed = slot XOR hash(accesorio)
+→ misma imagen durante el bloque de 3 h; cambia al siguiente bloque
+```
 
-Splash, onboarding y placeholders usan DEFAULT_PULCRO = mono_pulcro_1.
+Splash, onboarding y placeholders usan `DEFAULT_PULCRO = mono_pulcro_1`.
 
+---
 
-6. COMPLETAR TAREAS Y RECOMPENSA
---------------------------------
-Al marcar la última tarea del día (toggleTask):
+## 6. Completar tareas y recompensa
 
-  +1 banana
-  +1 a la racha (streakCount)
-  streakBroken = false, missedDaysCount = 0
-  Cada 7 días de racha: +3 bananas extra (hito semanal)
+Al marcar la última tarea del día (`toggleTask`):
 
-Si se desmarca una tarea después de haber completado el día:
-  Se revierte la banana, la racha -1, y el bono semanal si aplicaba.
+- Loot del cofre: `random(1..3)`; en hito de racha (múltiplos de 7): +3 extra → total 4–6
+- +1 a la racha
+- `streakBroken = false`, `missedDaysCount = 0`
+- Posible grant de escudos por hito (ver [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md))
+- Overlay de celebración + opción de **duplicar** con anuncio rewarded
 
-Al completar el día:
-  - Sonido pop al marcar cada tarea.
-  - Overlay de fuego (FireCelebrationOverlay) + grito_mono.mp3.
-  - Notificación de celebración.
+Si se desmarca una tarea después de completar el día: se revierte el monto
+exacto del cofre y la racha −1.
 
+Detalle de economía: [`racha_y_bananas.md`](racha_y_bananas.md),
+[`tienda_y_anuncios.md`](tienda_y_anuncios.md).
 
-7. RESET DIARIO (checkAndResetForNewDay)
-----------------------------------------
-Se ejecuta al iniciar el ViewModel y al simular día ganado (debug).
+---
 
-Al cambiar de día (lastResetDate != hoy):
+## 7. Reset diario (`checkAndResetForNewDay`)
 
-  1. Evalúa AYER:
-     - Si ayer completaste todo (streakCounted) → racha sana, missedDays = 0.
-     - Si ayer era día de descanso → sin penalización.
-     - Si ayer tenías tareas y no las completaste → racha = 0, streakBroken,
-       missedDays + 1.
-     - Si no hay tareas en la app → missedDays + 1 (mono se ensucia igual).
+Se ejecuta al iniciar el ViewModel, desde el widget y en debug.
 
-  2. Borra el estado “completado” de todas las tareas (nuevo día en blanco).
+Al cambiar de día (`lastResetDate != hoy`):
 
-  3. Resetea flags del día: rewardGiven, streakCounted, streakBonus.
+1. Evalúa **cada día** desde `lastResetDate` hasta ayer (escudos / ruptura).
+2. Borra los flags `done_<taskId>`.
+3. Resetea flags del día (recompensa, streak counted, doble anuncio, cofre tienda).
 
-El mono puede amanecer sucio aunque ayer lo tuvieras limpio si fallaste.
+El mono puede amanecer sucio si fallaste ayer (salvo protección de escudo).
 
+---
 
-8. TEXTO BAJO EL MONO (MainScreen)
-----------------------------------
-  Sin tareas              → "¡Agrega tareas para empezar!"
-  Día de descanso         → "¡Hoy es día de descanso! 😎"
-  Limpio hoy              → Frases motivacionales (TIPS_PHRASES, rotan).
-  missedDays >= 2 o       → Frases de alerta fuerte (SUCIO2_PHRASES).
-  streakBroken
-  missedDays == 1         → Frases suaves (SUCIO1_PHRASES).
-  Sucio con tareas        → "Hay tareas pendientes..."
+## 8. Texto bajo el mono (`MainScreen`)
 
-Colores del texto van acorde (verde limpio, rojo/marrón sucio, etc.).
+| Situación | Mensaje |
+|---|---|
+| Sin tareas | "¡Agrega tareas para empezar!" |
+| Día de descanso | "¡Hoy es día de descanso! 😎" |
+| Limpio hoy | Frases motivacionales (`TIPS_PHRASES`) |
+| missedDays ≥ 2 o streakBroken | Frases de alerta (`SUCIO2_PHRASES`) |
+| missedDays == 1 | Frases suaves (`SUCIO1_PHRASES`) |
+| Sucio con tareas | "Hay tareas pendientes..." |
 
+---
 
-9. PANTALLA PRINCIPAL (layout del mono)
----------------------------------------
-  - Caja 240×240 dp, imagen 220×220 dp.
-  - Sombra radial debajo (Canvas).
-  - Mono de oro: GoldMonkeyImage con pila_de_oro y brillos animados.
-  - Motas de polvo: overlay encima si hay (DustMotesOverlay).
-  - Tap en el mono: animación de limpieza (spray/paño), independiente del
-    estado limpio/sucio de tareas.
+## 9. Pantalla principal (layout del mono)
 
-Header: bananas (izq), icono mono (centro), racha fuego (der).
+- Caja ~240×240 dp, imagen ~220×220 dp.
+- Sombra radial debajo (Canvas).
+- Motas de polvo: overlay encima si hay (`DustMotesOverlay`).
+- Tap en el mono: animación de limpieza (spray/paño), independiente del
+  estado limpio/sucio de tareas.
 
+Header: bananas (izq), icono tienda (centro), racha fuego (der).
 
-10. WIDGET
-----------
-Usa los mismos datos: isCleanToday, streakBroken, missedDaysCount,
-equippedAccessory → MonkeyImageResolver.resolve(...).
+---
 
-Muestra la misma imagen de estado y las motas de polvo (sin limpieza).
+## 10. Widget
 
+Usa los mismos datos → `MonkeyImageResolver.resolve(...)`.
+Muestra la misma imagen de estado y las motas (sin limpieza).
+Ver [`estado_widget.md`](estado_widget.md).
 
-11. ARCHIVOS PRINCIPALES
-------------------------
-  data/MonkeyStateManager.kt   — Lógica de tareas, racha, limpio/sucio, reset.
-  ui/MonkeyImageResolver.kt    — Árbol de decisión de drawable.
-  ui/MonkeyViewModel.kt        — Estado UI (MonkeyUiState), refreshState.
-  ui/MainScreen.kt             — Dibuja mono, texto, celebración, tap limpieza.
-  ui/GoldMonkeyImage.kt        — Mono de oro con brillos y pila.
-  ui/ShopScreen.kt             — Compra y preview de accesorios.
-  widget/MonkeyWidget.kt       — Mismo resolver en el widget.
+---
 
+## 11. Archivos principales
 
-12. DEBUG (panel amarillo, solo BuildConfig.DEBUG)
---------------------------------------------------
-Panel en MainScreen. Controles de días/escudos: ver docs/escudos_de_pulcritud.md §10.
+| Archivo | Rol |
+|---|---|
+| `data/MonkeyStateManager.kt` | Tareas, racha, limpio/sucio, reset |
+| `ui/MonkeyImageResolver.kt` | Árbol de decisión de drawable |
+| `ui/MonkeyViewModel.kt` | `MonkeyUiState`, `refreshState` |
+| `ui/MainScreen.kt` | Mono, texto, celebración, limpieza |
+| `ui/ShopScreen.kt` | Compra y preview de accesorios |
+| `widget/MonkeyWidget.kt` | Mismo resolver en el widget |
 
-  Día perdido →  — Marca incompleto, avanza día, dispara reset (prueba escudo).
-  Día ganado →   — Marca completado, avanza día (no consume escudo).
-  +1/−1 escudo   — Ajusta contador (0–3).
-  Reset prefs    — Borra preferencias y re-inicializa escudos.
-  +100 bananas / +2h polvo — utilidades varias.
+---
 
+## 12. Debug (panel amarillo, solo `BuildConfig.DEBUG`)
 
-13. FLUJO RESUMIDO
-------------------
+Controles de días/escudos: ver [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md) §10.
 
-  [App abre]
-       │
-       ▼
-  checkAndResetForNewDay() ──¿cambió el día?──► evalúa ayer, limpia checks
-       │
-       ▼
-  isCleanToday + streakBroken + missedDays + accesorio
-       │
-       ▼
-  MonkeyImageResolver.resolve() ──► drawable del mono
-       │
-       ├── Usuario completa tareas ──► limpio + banana + racha ↑
-       ├── Usuario no completa ──► sucio (mono_sucio_*)
-       ├── Nuevo día sin completar ayer ──► missedDays ↑, posible mono_sucio_2+
-       └── Equipa accesorio (si limpio) ──► variante con accesorio
+- Día perdido / ganado → avanza día y dispara reset
+- +1/−1 escudo, Reset prefs
+- +100 bananas / +2h polvo
 
+---
 
-14. PROGRESIÓN VISUAL DE SUCIEDAD
----------------------------------
-  Tareas pendientes hoy        → mono_sucio_1
-  Racha rota (día fallido)     → mono_sucio_2
-  3 días perdidos acumulados   → mono_sucio_3
-  4+ días perdidos             → estado extremo (cansado/enfermo/frustrado/llorando)
+## 13. Flujo resumido
 
-Completar el día resetea missedDaysCount y streakBroken a valores sanos.
+```
+[App abre]
+     │
+     ▼
+checkAndResetForNewDay() ──¿cambió el día?──► evalúa hueco, limpia checks
+     │
+     ▼
+isCleanToday + streakBroken + missedDays + accesorio
+     │
+     ▼
+MonkeyImageResolver.resolve() ──► drawable del mono
+```
 
+---
 
-================================================================================
-  Relacionado: docs/motas_de_polvo.md (capa visual encima del mono)
-================================================================================
+## 14. Progresión visual de suciedad
+
+| Condición | Imagen |
+|---|---|
+| Tareas pendientes hoy | `mono_sucio_1` |
+| Racha rota | `mono_sucio_2` |
+| 3 días perdidos | `mono_sucio_3` |
+| 4+ días perdidos | estado extremo |
+
+Completar el día resetea `missedDaysCount` y `streakBroken`.
+
+---
+
+Relacionado: [`motas_de_polvo.md`](motas_de_polvo.md) · [`racha_y_bananas.md`](racha_y_bananas.md) · [`INDEX.md`](INDEX.md)
