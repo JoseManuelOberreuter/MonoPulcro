@@ -16,6 +16,7 @@ class MonkeyStateManager(
     context: Context,
     private val todayProvider: () -> LocalDate = { LocalDate.now() },
     prefsOverride: SharedPreferences? = null,
+    private val chestLootProvider: () -> Int = { (1..3).random() },
 ) {
 
     private val prefs: SharedPreferences =
@@ -360,7 +361,7 @@ class MonkeyStateManager(
                 val isMilestone = newStreak % 7 == 0
                 val bonusBananas = if (isMilestone) 3 else 0
                 // Loot del cofre: 1 a 3 bananas al azar (+ bono de hito x7)
-                val chestBananas = (1..3).random() + bonusBananas
+                val chestBananas = chestLootProvider() + bonusBananas
                 prefs.edit()
                     .putInt(KEY_BANANAS, bananas + chestBananas)
                     .putInt(KEY_REWARD_BANANAS, chestBananas)

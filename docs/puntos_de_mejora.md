@@ -184,7 +184,7 @@ Mes 3+       Widget interactivo / modo hogar solo si hay tracción
 
 | Prioridad | Mejora | Impacto |
 |---|---|---|
-| 🔴 P0 | Tests + CI + crash reporting | Confianza al iterar |
+| 🔴 P0 | Tests + CI en GitHub | En marcha — ver [`calidad_y_testing.md`](calidad_y_testing.md) |
 | 🔴 P0 | Mantener docs y listing al día | Menos regresiones / descubrimiento |
 | 🟡 P1 | Plantillas + compartir racha | Activación + viralidad |
 | 🟡 P1 | Logros / historial / ajustes | Retención |

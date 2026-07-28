@@ -2,70 +2,64 @@
 
 ## Estado actual
 
-- **Sin** carpetas `test/` / `androidTest/` con tests de la app.
-- CI de GitHub Actions: solo publica la landing (`page/`) — no compila Android.
-- Sin crash reporting en release.
+- Tests unitarios JVM en `app/src/test/` (JUnit + Robolectric).
+- CI Android: [`.github/workflows/android.yml`](../.github/workflows/android.yml) en cada push/PR a `main`.
+- Crashes en producción: **Android Vitals** en Play Console (sin SDK en la app). Subir `mapping.txt` en cada release.
 - ProGuard/R8 activo en release (`isMinifyEnabled = true`).
 
 ---
 
-## 1. Qué testear primero (unit)
+## Ejecutar tests en local
 
-`MonkeyStateManager` ya es testeable sin device:
+Con Gradle en el PATH (o Android Studio → Run tests en `*Test.kt`):
 
-```kotlin
-MonkeyStateManager(
-    context,
-    todayProvider = { fixedDate },
-    prefsOverride = inMemoryOrRobolectricPrefs,
-)
+```bash
+gradle :app:testDebugUnitTest
 ```
 
-Casos prioritarios:
+Compilar debug:
 
-| Área | Escenarios |
+```bash
+gradle :app:assembleDebug
+```
+
+Mismo conjunto que en CI: `testDebugUnitTest` + `assembleDebug`.
+
+---
+
+## Qué cubren los tests (v1)
+
+| Archivo | Contenido |
 |---|---|
-| `isCleanToday` | 0 tareas; descanso; parcial; todas hechas |
-| `toggleTask` | loot 1–3; hito ×7; revertir; no doble pago |
-| `doubleChestReward` | ok / ya duplicado / sin reward |
-| `checkAndResetForNewDay` | mismo día; +1 incompleto; multi-día; descanso |
-| Escudos | consume; agota; idempotencia `lastShieldProtectedDate`; hitos |
-| Dust | primer sync sin mota; +1 cada 2 h; máx 5; reward |
-| Shop chest | begin / complete / cancel; tope 3 |
+| `data/DustMoteTest.kt` | `dustMotesForCount` |
+| `data/MonkeyStateManagerTest.kt` | `isCleanToday`, toggle/revertir, doble cofre, reset diario, escudo, motas |
+
+`MonkeyStateManager` admite `todayProvider`, `prefsOverride` y `chestLootProvider` para asserts deterministas.
+
+Ampliar después: tienda, shop chest, ViewModel, widget, notificaciones.
 
 ---
 
-## 2. Tests de UI / instrumentados (después)
+## CI en GitHub
 
-- Tour / onboarding smoke
-- Navegación Main ↔ Shop ↔ TaskEdit
-- Widget: al menos que `provideGlance` no lance con prefs vacías
+Workflow **Android CI**: JDK 17, Android SDK, Gradle 8.9, luego:
 
----
+`gradle :app:testDebugUnitTest :app:assembleDebug`
 
-## 3. CI sugerido
-
-```
-on: pull_request, push
-jobs:
-  - ./gradlew :app:testDebugUnitTest
-  - ./gradlew :app:assembleDebug
-```
-
-Opcional: lint (`lintDebug`) cuando el baseline esté limpio.
+El workflow de Pages ([`pages.yml`](../.github/workflows/pages.yml)) sigue siendo independiente.
 
 ---
 
-## 4. Observabilidad
+## Observabilidad
 
-- Integrar Firebase Crashlytics o Sentry en el flavor release.
-- No loguear IDs de AdMob / PII.
+- **Vitals:** no requiere código; distribución por Play + `mapping.txt` opcional pero recomendado.
+- Crashlytics/Sentry: opcional, no implementado.
 
 ---
 
-## 5. Manual QA (checklist corta)
+## Manual QA (checklist corta)
 
-- Completar día → celebración → duplicar ad (debug unit)
+- Completar día → celebración → duplicar ad (debug)
 - Fallar día con escudos → overlay protección
 - Fallar sin escudos → overlay racha rota
 - Motas + limpieza + banana
