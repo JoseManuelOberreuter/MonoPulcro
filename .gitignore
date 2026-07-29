@@ -22,6 +22,9 @@ local.properties
 *.iml
 .DS_Store
 
+# Kotlin compiler daemon / session (local, no versionar)
+.kotlin/
+
 # Logs
 *.log
 

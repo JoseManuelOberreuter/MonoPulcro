@@ -81,6 +81,7 @@ fun OnboardingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 16.dp)
+                .navigationBarsPadding()
         ) {
             HorizontalPager(
                 state = pagerState,

@@ -851,6 +851,7 @@ private fun WeekDayDetailSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
+                .navigationBarsPadding()
         ) {
             Text(
                 text = if (day.isToday) "Hoy · ${day.shortLabel} ${day.dayOfMonth}"
@@ -1274,6 +1275,7 @@ private fun StreakCelebrationOverlay(
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .fillMaxWidth()
                 .padding(horizontal = 32.dp, vertical = 40.dp)
                 .height(54.dp)
@@ -1586,6 +1588,7 @@ internal fun ChestCelebrationOverlay(
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp, vertical = 40.dp)
                     .height(54.dp)
@@ -1597,6 +1600,7 @@ internal fun ChestCelebrationOverlay(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp, vertical = 32.dp)
                     .graphicsLayer { alpha = ctaAlpha.value },
@@ -1877,6 +1881,7 @@ private fun StreakBrokenOverlay(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .padding(horizontal = 28.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
@@ -2074,6 +2079,7 @@ private fun ShieldProtectionOverlay(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .padding(horizontal = 28.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
