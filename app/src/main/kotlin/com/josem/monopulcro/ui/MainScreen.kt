@@ -68,6 +68,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.ComponentActivity
 import com.josem.monopulcro.R
+import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.ads.AdLoadState
 import com.josem.monopulcro.ads.RewardedAdManager
 import com.josem.monopulcro.audio.SoundManager
@@ -1612,7 +1613,7 @@ internal fun ChestCelebrationOverlay(
                         adReady = adReady,
                         adLoading = adLoading,
                         phase = phase,
-                        extraBananas = bananasEarned,
+                        extraBananas = bananasEarned * (MonkeyStateManager.CHEST_AD_MULTIPLIER - 1),
                         onClick = onRequestDouble
                     )
                 }
@@ -1711,7 +1712,7 @@ internal fun DoubleRewardButton(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Duplicar bananas",
+                        text = "Triplicar bananas",
                         fontSize = 17.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
@@ -1729,7 +1730,7 @@ internal fun DoubleRewardButton(
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "x2",
+                    text = "x${MonkeyStateManager.CHEST_AD_MULTIPLIER}",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Black
                 )

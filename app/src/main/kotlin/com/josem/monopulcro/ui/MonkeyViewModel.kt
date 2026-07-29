@@ -334,7 +334,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     /** Llamar solo desde onUserEarnedReward del RewardedAd. */
     fun onAdRewardEarnedForDouble() {
-        if (!manager.doubleChestReward()) {
+        if (!manager.tripleChestReward()) {
             _chestReward.update { it.copy(phase = ChestRewardPhase.AdUnavailable) }
             return
         }

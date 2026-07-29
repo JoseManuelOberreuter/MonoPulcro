@@ -90,14 +90,14 @@ class MonkeyStateManagerTest {
   }
 
   @Test
-  fun doubleChestReward_succeedsOnceThenFails() {
+  fun tripleChestReward_succeedsOnceThenFails() {
     val m = manager()
     val task = addTaskForDow(m, wednesday.dayOfWeek.value)
     m.toggleTask(task.id)
-    assertTrue(m.doubleChestReward())
-    assertEquals(4, m.bananas)
+    assertTrue(m.tripleChestReward())
+    assertEquals(6, m.bananas)
     assertTrue(m.rewardDoubledToday)
-    assertFalse(m.doubleChestReward())
+    assertFalse(m.tripleChestReward())
   }
 
   @Test

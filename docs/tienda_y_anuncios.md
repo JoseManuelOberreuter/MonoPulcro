@@ -5,8 +5,8 @@
 La tienda (`ShopScreen`) vende cosméticos y objetos. La monetización real
 usa **AdMob rewarded** en dos flujos:
 
-1. **Duplicar** el loot del cofre del día (Main, tras completar tareas).
-2. **Cofre de tienda**: ver anuncio → +5 bananas (máx. 3/día).
+1. **Triplicar** el loot del cofre del día (Main, tras completar tareas).
+2. **Cofre de tienda**: ver anuncio → +10 bananas (máx. 3/día).
 
 No hay banners ni interstitial. Offline-first: sin anuncio, el flujo base
 de bananas sigue funcionando.
@@ -66,7 +66,7 @@ Reglas de consumo: [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md).
 
 Constantes:
 
-- `SHOP_CHEST_REWARD = 5`
+- `SHOP_CHEST_REWARD = 10`
 - `MAX_SHOP_CHEST_OPENS_PER_DAY = 3`
 
 Flujo:
@@ -85,7 +85,7 @@ Al reset diario se ponen a 0 `shopChestOpensToday` y el pending.
 
 ---
 
-## 5. Duplicar cofre del día (rewarded)
+## 5. Triplicar cofre del día (rewarded)
 
 Tras la celebración de racha / cofre en Main:
 
@@ -95,10 +95,10 @@ beginChestFlow(baseBananas)
   → requestDoubleReward() si canOfferDouble
   → ShowRewardedAdForDouble
   → onAdRewardEarnedForDouble
-      → doubleChestReward()   // +rewardBananasToday otra vez, flag doubled
+      → tripleChestReward()   // total ×CHEST_AD_MULTIPLIER (3)
 ```
 
-`doubleChestReward` exige:
+`tripleChestReward` exige:
 
 - `rewardGivenToday == true`
 - `rewardDoubledToday == false`

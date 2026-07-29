@@ -84,9 +84,9 @@ consumir varios escudos; las bananas **nunca** se pierden al fallar.
 |---|---|---|
 | Cofre del día | +1 a +3 | `toggleTask` |
 | Hito racha (×7) | +3 extra (total 4–6) | `toggleTask` |
-| Duplicar cofre (ad) | +mismo monto otra vez | `doubleChestReward` |
+| Duplicar cofre (ad) | total ×3 (extra = 2× loot base) | `tripleChestReward` |
 | Limpiar motas | +1 | `rewardDustCleaning` |
-| Cofre tienda (ad) | +5 | `completeShopChestReward` (máx. 3/día) |
+| Cofre tienda (ad) | +10 | `completeShopChestReward` (máx. 3/día) |
 | Debug | +100 | panel debug |
 
 | Gasto | Cantidad | Dónde |

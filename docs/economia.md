@@ -11,9 +11,9 @@ Fuente de verdad: `MonkeyStateManager` + [`tienda_y_anuncios.md`](tienda_y_anunc
 |---|---|---|
 | Cofre del día | 1–3 | 1×/día al completar todas las tareas |
 | Bonus hito racha (×7) | +3 (total 4–6) | Cada 7 días de racha |
-| Duplicar cofre (ad) | ×2 el loot | 1×/día si ve el anuncio |
+| Duplicar cofre (ad) | ×3 el loot | 1×/día si ve el anuncio |
 | Motas de polvo | +1 | Al limpiar; spawn +1 cada 2 h, máx. 5 |
-| Cofre tienda (ad) | +5 | Máx. 3/día |
+| Cofre tienda (ad) | +10 | Máx. 3/día |
 
 **Ejemplo día limpio “opt-in ads”:** loot 2 + duplicar 2 + 1 mota + 3×5 cofre
 tienda = hasta ~20 bananas en un día intenso (poco realista diario).

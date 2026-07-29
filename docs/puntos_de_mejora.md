@@ -46,7 +46,7 @@ Los mayores retornos ahora **no** son “más mecánicas”, sino:
 - **Tests unitarios** de `MonkeyStateManager` (ya admite `todayProvider` +
   `prefsOverride`):
   - `isCleanToday` (0 tareas / descanso / todas hechas)
-  - `toggleTask` (loot, reversión, anti-doble-pago, `doubleChestReward`)
+  - `toggleTask` (loot, reversión, anti-doble-pago, `tripleChestReward`)
   - `checkAndResetForNewDay` multi-día + consumo de escudos
   - `syncDustSpawns` / `rewardDustCleaning`
   - shop chest (máx. 3/día, cancel vs complete)
@@ -118,7 +118,7 @@ Ver también [`calidad_y_testing.md`](calidad_y_testing.md).
 
 Estado actual:
 
-- Doble bananas del cofre diario (rewarded, 1×/día vía `rewardDoubledToday`)
+- Triplicar bananas del cofre diario (rewarded, 1×/día vía `rewardDoubledToday`)
 - Cofre de tienda: +5 bananas, máx. 3/día
 
 Mejoras:

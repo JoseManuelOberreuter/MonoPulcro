@@ -399,15 +399,16 @@ class MonkeyStateManager(
     val rewardDoubledToday: Boolean
         get() = prefs.getBoolean(KEY_REWARD_DOUBLED, false)
 
-    /** Duplica el loot del cofre de hoy (+X bananas extra). */
-    fun doubleChestReward(): Boolean {
+    /** Tras el anuncio del cofre diario: total × [CHEST_AD_MULTIPLIER] (loot base + extra). */
+    fun tripleChestReward(): Boolean {
         if (!prefs.getBoolean(KEY_REWARD_GIVEN, false)) return false
         if (prefs.getBoolean(KEY_REWARD_DOUBLED, false)) return false
         val awarded = prefs.getInt(KEY_REWARD_BANANAS, 0)
         if (awarded <= 0) return false
+        val extra = awarded * (CHEST_AD_MULTIPLIER - 1)
         prefs.edit()
-            .putInt(KEY_BANANAS, bananas + awarded)
-            .putInt(KEY_REWARD_BANANAS, awarded * 2)
+            .putInt(KEY_BANANAS, bananas + extra)
+            .putInt(KEY_REWARD_BANANAS, awarded * CHEST_AD_MULTIPLIER)
             .putBoolean(KEY_REWARD_DOUBLED, true)
             .apply()
         return true
@@ -698,8 +699,10 @@ class MonkeyStateManager(
         const val MAX_SHIELDS = 3
         const val INITIAL_SHIELDS = 3
         const val SHIELD_SHOP_PRICE = 100
-        const val SHOP_CHEST_REWARD = 5
+        const val SHOP_CHEST_REWARD = 10
         const val MAX_SHOP_CHEST_OPENS_PER_DAY = 3
+        /** Multiplicador del loot del cofre diario tras ver el anuncio (3 = triplicar). */
+        const val CHEST_AD_MULTIPLIER = 3
 
         const val KEY_SHOP_CHEST_OPENS_TODAY = "shopChestOpensToday"
         const val KEY_PENDING_SHOP_CHEST_AD = "pendingShopChestAd"

@@ -179,7 +179,7 @@ Flujo de notificación local:
 ### Monetización
 
 - AdMob rewarded:
-  - duplicar loot del cofre del día (`doubleChestReward`);
+  - triplicar loot del cofre del día (`tripleChestReward`);
   - cofre de tienda (+5 bananas, máx. 3 aperturas/día).
 - IDs de prueba si el APK es debuggable; ID de producción en release.
 - La recompensa solo se acredita si el callback `onUserEarnedReward` confirma la visualización.
