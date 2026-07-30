@@ -109,6 +109,10 @@ object MonkeyImageResolver {
     fun previewForAccessory(accessoryId: String): Int =
         ACCESSORY_STATES[accessoryId]?.firstOrNull() ?: DEFAULT_PULCRO
 
+    /** Todas las variantes visuales de un atuendo (para overlay de compra). */
+    fun statesForAccessory(accessoryId: String): List<Int> =
+        ACCESSORY_STATES[accessoryId].orEmpty().ifEmpty { listOf(DEFAULT_PULCRO) }
+
     private fun resolveCleanAccessory(accessoryId: String): Int =
         ACCESSORY_STATES[accessoryId]?.let { variantRandom(it, accessoryId) }
             ?: variantRandom(PULCRO_STATES)

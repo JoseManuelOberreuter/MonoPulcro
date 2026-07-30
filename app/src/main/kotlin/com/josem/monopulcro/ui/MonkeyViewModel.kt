@@ -111,6 +111,9 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     private val _shopChestOverlayBananas = MutableStateFlow<Int?>(null)
     val shopChestOverlayBananas: StateFlow<Int?> = _shopChestOverlayBananas.asStateFlow()
 
+    private val _purchaseOverlayAccessoryId = MutableStateFlow<String?>(null)
+    val purchaseOverlayAccessoryId: StateFlow<String?> = _purchaseOverlayAccessoryId.asStateFlow()
+
     private val _effects = MutableSharedFlow<MonkeyUiEffect>(extraBufferCapacity = 1)
     val effects: SharedFlow<MonkeyUiEffect> = _effects.asSharedFlow()
 
@@ -213,7 +216,19 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
             sounds.playCashRegister()
             refreshState()
             updateWidget()
+            _purchaseOverlayAccessoryId.value = accessoryId
         }
+    }
+
+    fun consumePurchaseOverlay() {
+        _purchaseOverlayAccessoryId.value = null
+    }
+
+    fun usePurchasedAccessory(accessoryId: String) {
+        manager.useAccessory(accessoryId)
+        _purchaseOverlayAccessoryId.value = null
+        refreshState()
+        updateWidget()
     }
 
     fun buyShield() {

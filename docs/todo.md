@@ -13,13 +13,16 @@ Priorización amplia y backlog técnico: `[puntos_de_mejora.md](puntos_de_mejora
 - [x] Agregar la skin de vikingo (`mono_vikingo_1/2/3`)
 - [x] Agregar overlay de racha rota
 - [ ] Agregar funcionalidades de recuperar tareas del día anterior por bananas
-- [ ] Agregar overlay de compra de objeto
+- [x] Agregar overlay de compra de objeto
 - [ ] Logros de racha de dias
+- [ ] dar +1 de bananas para cuando tachen una tarea
+- [ ] agreegar base de datos
+- [ ] agregar suscripciones
+- [ ] agregar funcion de compartir tareas de la casa
 
 ---
 
-
-
 ## Hecho
 
+- [x] Agregar overlay de compra de objeto (cicla variantes del atuendo; Usar / Más tarde)
 - [x] Agregar overlay de racha rota (reset multi-día + `StreakBrokenOverlay`)

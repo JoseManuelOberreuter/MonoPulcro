@@ -66,6 +66,7 @@ fun ShopScreen(
     val state by vm.uiState.collectAsStateWithLifecycle()
     val chestRewardState by vm.chestReward.collectAsStateWithLifecycle()
     val shopChestOverlayBananas by vm.shopChestOverlayBananas.collectAsStateWithLifecycle()
+    val purchaseOverlayAccessoryId by vm.purchaseOverlayAccessoryId.collectAsStateWithLifecycle()
     val tabs = ShopTab.entries
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
@@ -197,6 +198,16 @@ fun ShopScreen(
                 onChestRevealed = { vm.onChestRevealed() },
                 onRequestDouble = { },
                 onFinished = { vm.consumeShopChestOverlay() }
+            )
+        }
+
+        purchaseOverlayAccessoryId?.let { accessoryId ->
+            val name = ACCESSORIES.find { it.id == accessoryId }?.name ?: accessoryId
+            OutfitPurchaseOverlay(
+                accessoryId = accessoryId,
+                accessoryName = name,
+                onUse = { vm.usePurchasedAccessory(accessoryId) },
+                onDismiss = { vm.consumePurchaseOverlay() }
             )
         }
     }
