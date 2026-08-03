@@ -17,7 +17,7 @@ Versión documentada: **1.2.3** (versionCode 19).
 
 ## 2. AdMob y privacidad
 
-- [ ] Application ID y rewarded unit de **producción** (no test) en release
+- [ ] Application ID, rewarded y native unit de **producción** (no test) en release
 - [ ] Declaración de Ad ID / Data safety form en Play Console
 - [ ] Política de privacidad publicada: `page/privacidad.html` (GitHub Pages)
 - [ ] Enlace a privacidad accesible desde la ficha y, idealmente, desde la app

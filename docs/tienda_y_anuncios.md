@@ -2,14 +2,15 @@
 
 ## Resumen
 
-La tienda (`ShopScreen`) vende cosméticos y objetos. La monetización real
-usa **AdMob rewarded** en dos flujos:
+La tienda (`ShopScreen`) vende cosméticos y objetos. La monetización usa
+**AdMob**:
 
-1. **Triplicar** el loot del cofre del día (Main, tras completar tareas).
-2. **Cofre de tienda**: ver anuncio → +10 bananas (máx. 3/día).
+1. **Rewarded — triplicar** el loot del cofre del día (Main).
+2. **Rewarded — cofre de tienda**: ver anuncio → +10 bananas (máx. 3/día).
+3. **Native advanced — Tareas diarias**: tarjeta bajo la lista de hoy en Main.
 
-No hay banners ni interstitial. Offline-first: sin anuncio, el flujo base
-de bananas sigue funcionando.
+No hay banners ni interstitial. Offline-first: si un anuncio falla, el flujo
+base de bananas sigue funcionando; el nativo simplemente no se muestra.
 
 ---
 
@@ -123,6 +124,29 @@ Estados: `Idle` / `Loading` / `Ready` / `Failed`.
 
 ---
 
+## 6b. Native advanced — Tareas diarias
+
+Unidad AdMob: `ca-app-pub-5537054947047840/2685525587` (nombre: Tareas diarias).
+
+Archivos:
+
+- `ads/NativeAdLoader.kt` — carga + bind de assets
+- `ui/DailyTasksNativeAd.kt` — Compose + `AndroidView`
+- `res/layout/native_ad_tasks.xml` — plantilla compacta
+
+Colocación: debajo de la sección de tareas en `MainScreen`, solo en vista
+**Hoy**. Si falla la carga, no se reserva espacio.
+
+Política:
+
+- Atribución visible `"Anuncio"` (`strings.xml` / `ad_attribution`)
+- AdChoices arriba a la derecha (`ADCHOICES_TOP_RIGHT`)
+- Assets registrados en `NativeAdView` (headline, body, icon, CTA)
+- `nativeAd.destroy()` en `DisposableEffect.onDispose`
+- Debug usa unit de prueba Google `…/2247696110`
+
+---
+
 ## 7. Efectos en ViewModel
 
 `MonkeyUiEffect`:
@@ -143,7 +167,9 @@ Estado de overlay: `ChestRewardUiState` + `ChestRewardPhase`.
 | `ui/MainScreen.kt` | Cofre día + botón duplicar |
 | `ui/MonkeyViewModel.kt` | Efectos y estado de cofre |
 | `data/MonkeyStateManager.kt` | buy*, double*, shop chest |
-| `ads/RewardedAdManager.kt` | AdMob |
+| `ads/RewardedAdManager.kt` | AdMob rewarded |
+| `ads/NativeAdLoader.kt` | AdMob native (Tareas diarias) |
+| `ui/DailyTasksNativeAd.kt` | UI nativo en Main |
 
 ---
 

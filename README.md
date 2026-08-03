@@ -42,7 +42,7 @@ docs/                                # Documentación técnica (ver docs/INDEX.m
 app/src/main/
 ├── kotlin/com/josem/monopulcro/
 │   ├── MainActivity.kt              # Entry point, NavHost, permisos
-│   ├── ads/                         # RewardedAdManager (AdMob)
+│   ├── ads/                         # Rewarded + Native AdMob
 │   ├── audio/                       # SoundManager
 │   ├── data/                        # Task, DustMote, MonkeyStateManager
 │   ├── notifications/               # Canales, schedulers, receiver
@@ -63,7 +63,7 @@ app/src/main/
 | Persistencia | SharedPreferences + Gson |
 | Widget | Glance AppWidget |
 | Notificaciones | AlarmManager + NotificationCompat |
-| Ads | Google Mobile Ads (rewarded) |
+| Ads | Google Mobile Ads (rewarded + native) |
 | Min / target SDK | 26 / 36 |
 
 Documentación de arquitectura: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Índice completo: [`docs/INDEX.md`](docs/INDEX.md).

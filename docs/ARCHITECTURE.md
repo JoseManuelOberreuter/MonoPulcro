@@ -21,7 +21,7 @@ El paradigma arquitectónico es **cliente monolítico offline-first**: toda la l
 | Persistencia | SharedPreferences + Gson | Estado del mono, tareas, rachas y bananas |
 | Widget | Glance AppWidget | Widget de pantalla de inicio |
 | Notificaciones | AlarmManager + NotificationCompat | Recordatorios locales (sin push remoto) |
-| Monetización | Google Mobile Ads (AdMob) | Anuncios rewarded para duplicar recompensa |
+| Monetización | Google Mobile Ads (AdMob) | Rewarded + native (tareas diarias) |
 | Audio | SoundPool (SoundManager) | Feedback sonoro de acciones |
 | Landing | HTML / CSS / JS estático (`page/`) | Sitio público y política de privacidad |
 | CI | GitHub Actions (`.github/`) | Automatización del repositorio |
@@ -61,7 +61,7 @@ Carpetas clave del código Kotlin:
 | `ui/` | Pantallas Compose, `MonkeyViewModel`, resolución de imagen del mono y tema |
 | `widget/` | Presentación Glance y sincronización con el estado local |
 | `notifications/` | Programación y entrega de notificaciones locales |
-| `ads/` | Carga y visualización de anuncios rewarded |
+| `ads/` | Rewarded + carga de anuncios nativos |
 | `audio/` | Reproducción de efectos de sonido |
 
 ---
@@ -100,7 +100,7 @@ La app organiza el código en capas claras, sin inyección de dependencias exter
 |---|---|
 | `notifications/` | Alarmas locales (hábito A/B por horarios, por tarea, celebración); `BOOT_COMPLETED` reprograma |
 | `widget/` | Lectura del mismo estado local; refresh por Glance y por `AlarmManager` horario |
-| `ads/` | Anuncios rewarded para duplicar bananas del cofre |
+| `ads/` | Rewarded (cofre) + native bajo tareas diarias |
 | `audio/` | Feedback inmediato sin acoplarse a la lógica de negocio |
 
 ### 5. Entrada de aplicación

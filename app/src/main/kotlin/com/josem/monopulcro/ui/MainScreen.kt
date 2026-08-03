@@ -491,6 +491,13 @@ fun MainScreen(
                     }
                 }
 
+                // Anuncio nativo "Tareas diarias" (solo vista Hoy; si no carga, no ocupa espacio)
+                if (state.tasksViewMode == TasksViewMode.TODAY) {
+                    // Espacio ≈ una fila de tarea invisible entre la lista y el anuncio
+                    Spacer(modifier = Modifier.height(TaskRowHeight))
+                    DailyTasksNativeAd()
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
