@@ -12,7 +12,7 @@ Aplicación Android nativa para mantener hábitos de limpieza del hogar. Cada d�
 - **Escudos de Pulcritud** que protegen la racha si fallas un día.
 - **Tienda**: accesorios cosméticos, escudos y cofre por anuncio (máx. 3/día).
 - **Widget** de pantalla de inicio con el estado del mono y la racha.
-- **Notificaciones locales**: recordatorio diario, por tarea y celebración.
+- **Notificaciones locales**: recordatorios de hábito (mañana/tarde/noche), por tarea y celebración.
 - **Reset automático diario** (incluye huecos de varios días sin abrir la app).
 
 ## Pantallas

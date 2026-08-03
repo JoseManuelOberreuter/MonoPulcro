@@ -98,7 +98,7 @@ La app organiza el código en capas claras, sin inyección de dependencias exter
 
 | Módulo | Rol |
 |---|---|
-| `notifications/` | Alarmas locales (diario 20:00, por tarea, celebración); `BOOT_COMPLETED` reprograma |
+| `notifications/` | Alarmas locales (hábito A/B por horarios, por tarea, celebración); `BOOT_COMPLETED` reprograma |
 | `widget/` | Lectura del mismo estado local; refresh por Glance y por `AlarmManager` horario |
 | `ads/` | Anuncios rewarded para duplicar bananas del cofre |
 | `audio/` | Feedback inmediato sin acoplarse a la lógica de negocio |

@@ -27,10 +27,10 @@ object NotificationHelper {
 
         NotificationChannel(
             CHANNEL_REMINDER,
-            "Recordatorios diarios",
+            "Recordatorios del mono",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "Recuerda completar tus tareas de limpieza"
+            description = "Avisos para cuidar a Mono Pulcro durante el día"
             manager.createNotificationChannel(this)
         }
 
@@ -53,38 +53,74 @@ object NotificationHelper {
         }
     }
 
-    // ─── Recordatorio diario (llamado por el alarm a las 8 PM) ────────────────
+    // ─── Recordatorio de hábito (slots A/B) ───────────────────────────────────
 
-    fun showReminderNotification(context: Context) {
+    fun showHabitNotification(context: Context, slot: HabitNotificationSlot) {
         val manager = MonkeyStateManager(context)
+        manager.checkAndResetForNewDay()
 
-        // Solo si el mono del estado principal NO está limpio
-        // (limpio = todas las tareas de hoy hechas, o día de descanso)
-        if (manager.isCleanToday) return
-
-        val allTasks   = manager.loadTasks()
+        val hasAnyTasks = manager.loadTasks().isNotEmpty()
         val todayTasks = manager.todayTasks
-        val missedDays = manager.missedDaysCount
+        val restDay = hasAnyTasks && todayTasks.isEmpty()
+        if (restDay) return
 
-        val (title, body) = when {
-            allTasks.isEmpty() -> Pair(
-                "El mono te necesita",
-                "Agrega tus primeras tareas para empezar tu racha"
-            )
-            missedDays >= 2 -> Pair(
-                "Tu racha esta en peligro",
-                "Llevas $missedDays dias sin limpiar. El mono esta muy triste"
-            )
-            else -> {
-                val pending = todayTasks.count { !manager.isTaskCompleted(it.id) }
-                Pair(
-                    "El mono te espera",
-                    "Te quedan $pending tarea${if (pending != 1) "s" else ""} por completar hoy"
-                )
+        val streak = manager.streakCount
+        val missed = manager.missedDaysCount
+        val clean = manager.isCleanToday
+
+        val copy = when (slot.family) {
+            HabitNotificationSlot.Family.A -> {
+                if (streak <= 0) return
+                if (clean) return
+                if (todayTasks.isEmpty()) return
+                habitCopyA(slot)
             }
-        }
+            HabitNotificationSlot.Family.B -> {
+                if (streak > 0) return
+                if (missed < 1) return
+                habitCopyB(missed)
+            }
+        } ?: return
 
-        postNotification(context, NOTIF_ID_REMINDER, CHANNEL_REMINDER, title, body, highPriority = true)
+        postNotification(
+            context,
+            NOTIF_ID_REMINDER,
+            CHANNEL_REMINDER,
+            copy.first,
+            copy.second,
+            highPriority = true,
+        )
+    }
+
+    private fun habitCopyA(slot: HabitNotificationSlot): Pair<String, String>? = when (slot) {
+        HabitNotificationSlot.A1 -> "Mono Pulcro te espera" to
+            "Ya despertó. Hoy otra vez, ¿lo ayudas?"
+        HabitNotificationSlot.A2 -> "Mono Pulcro te busca" to
+            "Medio día y todavía no lo has mirado."
+        HabitNotificationSlot.A3 -> "Mono Pulcro se ensucia" to
+            "Ya casi anochece y tus tareas siguen ahí."
+        HabitNotificationSlot.A4 -> "Mono Pulcro sigue esperando" to
+            "Son las 9 y sigue sucio. Dale un ratito."
+        HabitNotificationSlot.A5 -> "Mono Pulcro: ¿olvidaste marcar?" to
+            "Si ya lo limpiaste, márcalo. Si no… aún puedes."
+        HabitNotificationSlot.B -> null
+    }
+
+    private fun habitCopyB(missedDays: Int): Pair<String, String> = when {
+        missedDays <= 1 -> "Mono Pulcro te echa de menos" to
+            "Ayer no viniste y ya se nota. Ayúdalo un poco."
+        missedDays == 2 -> "Mono Pulcro ya no brilla" to
+            "Dos días sin ti. Vuelve un minuto."
+        missedDays == 3 -> "Mono Pulcro se siente solo" to
+            "Tres días… Una tarea tuya le cambia el día."
+        missedDays == 4 -> "Mono Pulcro necesita ayuda" to
+            "El polvo le está ganando. Ábrele la app."
+        missedDays == 5 -> "Mono Pulcro casi no espera" to
+            "Cinco días. Si vuelves, se ilusiona."
+        missedDays == 6 -> "No dejes a Mono Pulcro así" to
+            "Seis días. Sigue siendo tuyo. Ve a verlo."
+        else -> "Mono Pulcro no te olvidó" to
+            "Lleva días sucio, pero sigue siendo tuyo."
     }
 
     // ─── Recordatorio por tarea (hora personalizada) ─────────────────────────

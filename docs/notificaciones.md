@@ -12,10 +12,11 @@ navegación a una tarea concreta.
 
 1. TIPOS DE NOTIFICACIÓN
 ------------------------
-  Recordatorio diario     — Cada día ~20:00. Canal HIGH.
-  Recordatorio por tarea  — Hora elegida por el usuario en días programados.
-  Celebración             — 30 min después de completar todas las tareas del día.
-                            Canal LOW.
+  Hábito familia A     — Con racha y tareas pendientes: 09:00, 12:00, 18:00, 21:00, 23:00.
+  Hábito familia B     — Sin racha y missedDays >= 1: ~10:30 según días perdidos.
+  Recordatorio por tarea — Hora elegida por el usuario en días programados.
+  Celebración            — 30 min después de completar todas las tareas del día.
+                           Canal LOW.
 
 
 2. ARQUITECTURA
@@ -30,10 +31,12 @@ navegación a una tarea concreta.
 
 Archivos:
 
+  notifications/HabitNotificationSlot.kt
+      Enum de slots A1–A5 y B (hora + requestCode).
   notifications/NotificationHelper.kt
       Canales, textos y posteo de notificaciones.
   notifications/NotificationScheduler.kt
-      Alarm diario a las 20:00.
+      Agenda / cancela slots de hábito según racha y estado.
   notifications/TaskNotificationScheduler.kt
       Alarms por tarea (hora + días).
   notifications/NotificationReceiver.kt
@@ -42,7 +45,7 @@ Archivos:
 Integración:
 
   MainActivity          — Crea canales, pide permiso, programa alarms al inicio.
-  MonkeyViewModel       — Reprograma al CRUD de tareas; dispara celebración.
+  MonkeyViewModel       — Reprograma al CRUD / al completar el día; dispara celebración.
   TaskEditScreen        — Switch + TimePicker para configurar por tarea.
   data/Task.kt          — notificationEnabled, notificationHour, notificationMinute.
 
@@ -68,58 +71,86 @@ crashea (dispositivos restrictivos / OEMs).
 ----------
 Creados en NotificationHelper.createChannels (una vez al arranque):
 
-  mono_reminder_channel     "Recordatorios diarios"      IMPORTANCE_HIGH
+  mono_reminder_channel     "Recordatorios del mono"     IMPORTANCE_HIGH
   mono_task_channel         "Recordatorios de tareas"    IMPORTANCE_HIGH
   mono_celebration_channel  "Celebraciones"              IMPORTANCE_LOW
 
 
 5. FLUJO GENERAL
 ----------------
-  App start (MainActivity)
+  App start (MainActivity / ViewModel)
     → createChannels()
     → pedir POST_NOTIFICATIONS si hace falta
-    → NotificationScheduler.schedule()           // diario 20:00
+    → NotificationScheduler.schedule()           // slots A/B según estado
     → TaskNotificationScheduler.scheduleAll()    // tareas con notif ON
 
-  Alarm dispara → NotificationReceiver.onReceive(action)
-    → Helper muestra (o no, según condiciones)
-    → Reprograma el siguiente alarm (diario / tarea)
+  Alarm hábito → NotificationReceiver (ACTION_HABIT_REMINDER + slot_id)
+    → checkAndResetForNewDay()
+    → Helper muestra solo si aplica el slot
+    → Reprograma (schedule)
 
   Completar última tarea del día (MonkeyViewModel.toggleTask, earned == true)
+    → NotificationScheduler.schedule()  // cancela A de hoy (modo limpio → mañana)
     → NotificationHelper.showCelebrationNotification()
     → Alarm a now + 30 min → postCelebrationNotification()
 
   BOOT_COMPLETED
-    → Reprograma diario + todas las tareas
+    → Reprograma hábito + todas las tareas
     → También reprograma el widget si hay widgets instalados
 
 
-6. RECORDATORIO DIARIO (20:00)
+6. HÁBITO FAMILIA A (con racha)
 ------------------------------
-NotificationScheduler:
+Se agenda si `streakCount > 0`.
 
-  Cancela el alarm previo y agenda el próximo 20:00.
-  Si ya pasó hoy → mañana 20:00.
-  Usa setAndAllowWhileIdle (inexacto, ~±15 min; no pide SCHEDULE_EXACT_ALARM).
+  Si hoy hay tareas pendientes → slots de hoy que aún no pasaron.
+  Si ya está limpio o es día de descanso → todos los A pasan a mañana.
 
-Al disparar (ACTION_DAILY_REMINDER):
+Al disparar, se muestra SOLO si:
 
-  showReminderNotification() y luego reprograma el siguiente día.
+  streak > 0
+  !isCleanToday
+  hay tareas programadas hoy
 
-Regla: se envía SOLO si el mono del estado principal NO está limpio
-(isCleanToday == false). Limpio = todas las tareas de hoy completadas,
-o día de descanso (sin tareas programadas hoy).
+Textos:
 
-Si isCleanToday → no se muestra la notificación.
+  09:00  Mono Pulcro te espera
+         Ya despertó. Hoy otra vez, ¿lo ayudas?
+  12:00  Mono Pulcro te busca
+         Medio día y todavía no lo has mirado.
+  18:00  Mono Pulcro se ensucia
+         Ya casi anochece y tus tareas siguen ahí.
+  21:00  Mono Pulcro sigue esperando
+         Son las 9 y sigue sucio. Dale un ratito.
+  23:00  Mono Pulcro: ¿olvidaste marcar?
+         Si ya lo limpiaste, márcalo. Si no… aún puedes.
 
-Textos según estado (solo cuando NO está limpio):
 
-  Sin tareas creadas     → "El mono te necesita" / agrega primeras tareas.
-  missedDays >= 2        → "Tu racha esta en peligro".
-  Hay tareas pendientes  → "El mono te espera" / quedan N tareas.
+7. HÁBITO FAMILIA B (sin racha)
+------------------------------
+Se agenda si `streakCount == 0` y `missedDaysCount >= 1`, a las **10:30**.
+
+Textos según missedDays:
+
+  1   Mono Pulcro te echa de menos
+      Ayer no viniste y ya se nota. Ayúdalo un poco.
+  2   Mono Pulcro ya no brilla
+      Dos días sin ti. Vuelve un minuto.
+  3   Mono Pulcro se siente solo
+      Tres días… Una tarea tuya le cambia el día.
+  4   Mono Pulcro necesita ayuda
+      El polvo le está ganando. Ábrele la app.
+  5   Mono Pulcro casi no espera
+      Cinco días. Si vuelves, se ilusiona.
+  6   No dejes a Mono Pulcro así
+      Seis días. Sigue siendo tuyo. Ve a verlo.
+  7+  Mono Pulcro no te olvidó
+      Lleva días sucio, pero sigue siendo tuyo.
+
+A y B no se mezclan: con racha solo A; sin racha y con missed solo B.
 
 
-7. RECORDATORIO POR TAREA
+8. RECORDATORIO POR TAREA
 -------------------------
 Datos en Task:
 
@@ -154,7 +185,7 @@ Cuándo NO se muestra:
 Texto: "Es hora de: {task.name}".
 
 
-8. CELEBRACIÓN
+9. CELEBRACIÓN
 --------------
 Disparo: al completar la última tarea del día (earned == true en toggleTask).
 
@@ -169,29 +200,32 @@ Texto:
 Prioridad baja (no interrumpe).
 
 
-9. IDs Y ACTIONS
-----------------
+10. IDs Y ACTIONS
+-----------------
 Notification IDs:
 
-  Diario       1001
+  Hábito       1001  (reutiliza el id del viejo recordatorio diario)
   Celebración  1002
   Por tarea    5000 + (taskId.hashCode() and 0x7FFF)
 
 Alarm request codes:
 
-  Diario       2001
-  Por tarea    3000 + (taskId.hashCode() and 0xFFFF)
-  Celebración  1002 (mismo id que la notif)
+  Legacy diario  2001 (se cancela al migrar)
+  A1–A5          2101–2105
+  B              2110
+  Por tarea      3000 + (taskId.hashCode() and 0xFFFF)
+  Celebración    1002 (mismo id que la notif)
 
 Actions del receiver:
 
-  com.josem.monopulcro.DAILY_REMINDER
+  com.josem.monopulcro.HABIT_REMINDER  (+ extra slot_id)
+  com.josem.monopulcro.DAILY_REMINDER  (legacy → solo reprograma)
   com.josem.monopulcro.TASK_REMINDER   (+ extra task_id)
   com.josem.monopulcro.CELEBRATION
   android.intent.action.BOOT_COMPLETED
 
 
-10. TAP EN LA NOTIFICACIÓN
+11. TAP EN LA NOTIFICACIÓN
 --------------------------
 PendingIntent → MainActivity con:
 
@@ -200,14 +234,15 @@ PendingIntent → MainActivity con:
 Sin extras, sin URI, sin ruta a una pantalla o tarea.
 
 
-11. DETALLES IMPORTANTES
+12. DETALLES IMPORTANTES
 ------------------------
   Local only         — Sin tokens ni servidor.
   Inexact alarms     — setAndAllowWhileIdle; margen ~±15 min a propósito.
   Boot reschedule    — Mitiga OEMs que matan alarms al reiniciar.
-  Idempotencia       — schedule cancela el PendingIntent previo antes de crear.
+  Idempotencia       — schedule cancela PendingIntents previos antes de crear.
   Auto-cancel        — La notificación se cierra al tocarla.
-  Icono              — R.drawable.cara_mono (smallIcon de las 3 notifs).
+  Icono              — R.drawable.cara_mono (smallIcon).
+  Reset en alarm     — showHabitNotification llama checkAndResetForNewDay().
   Sin tests          — No hay tests unitarios de notificaciones a día de hoy.
 
 Relacionado:

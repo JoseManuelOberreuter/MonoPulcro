@@ -8,6 +8,7 @@ import com.josem.monopulcro.data.DustMote
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.Task
 import com.josem.monopulcro.notifications.NotificationHelper
+import com.josem.monopulcro.notifications.NotificationScheduler
 import com.josem.monopulcro.notifications.TaskNotificationScheduler
 import com.josem.monopulcro.widget.MonkeyWidgetReceiver
 import com.josem.monopulcro.widget.WidgetUpdateScheduler
@@ -128,6 +129,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
             if (hasWidget) WidgetUpdateScheduler.schedule(getApplication())
         }
         try {
+            NotificationScheduler.schedule(application)
             TaskNotificationScheduler.scheduleAll(application)
         } catch (_: Exception) {
             // No bloquear el arranque si falla la programación de alarmas
@@ -157,6 +159,9 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         updateWidget()
 
         if (earned) {
+            try {
+                NotificationScheduler.schedule(getApplication())
+            } catch (_: Exception) { }
             NotificationHelper.showCelebrationNotification(getApplication())
         }
     }

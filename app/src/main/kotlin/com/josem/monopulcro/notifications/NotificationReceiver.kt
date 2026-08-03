@@ -20,8 +20,17 @@ class NotificationReceiver : BroadcastReceiver() {
                     WidgetUpdateScheduler.schedule(context)
                 }
             }
+            // Legacy 20:00 — migrar al nuevo sistema sin mostrar el texto viejo
             ACTION_DAILY_REMINDER -> {
-                NotificationHelper.showReminderNotification(context)
+                NotificationScheduler.schedule(context)
+            }
+            ACTION_HABIT_REMINDER -> {
+                val slot = HabitNotificationSlot.fromId(
+                    intent.getStringExtra(EXTRA_SLOT_ID)
+                )
+                if (slot != null) {
+                    NotificationHelper.showHabitNotification(context, slot)
+                }
                 NotificationScheduler.schedule(context)
             }
             ACTION_TASK_REMINDER -> {
@@ -46,8 +55,10 @@ class NotificationReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_DAILY_REMINDER = "com.josem.monopulcro.DAILY_REMINDER"
+        const val ACTION_HABIT_REMINDER = "com.josem.monopulcro.HABIT_REMINDER"
         const val ACTION_TASK_REMINDER  = "com.josem.monopulcro.TASK_REMINDER"
         const val ACTION_CELEBRATION    = "com.josem.monopulcro.CELEBRATION"
         const val EXTRA_TASK_ID         = "task_id"
+        const val EXTRA_SLOT_ID         = "slot_id"
     }
 }
