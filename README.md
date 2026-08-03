@@ -2,7 +2,7 @@
 
 Aplicación Android nativa para mantener hábitos de limpieza del hogar. Cada día completas tus tareas, el mono se pone contento y ganas bananas. Si no las haces, el mono se ensucia.
 
-**Versión actual:** 1.2.4 (versionCode 20)
+**Versión actual:** 1.2.5 (versionCode 21)
 
 ## ¿Qué hace?
 
