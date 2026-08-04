@@ -46,6 +46,7 @@ Definidos en `MonkeyStateManager.ACCESSORIES`:
 | astronaut | Astronauta | 70 |
 | mago | Mago | 80 |
 | lazo | Lazo | 90 |
+| vampiro | Vampiro | 100 |
 
 - `buyAccessory(id)`: descuenta bananas, añade a `ownedAccessories`.
 - `useAccessory(id)`: equipa (solo se ve si `isCleanToday`).

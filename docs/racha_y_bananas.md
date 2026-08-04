@@ -107,6 +107,7 @@ consumir varios escudos; las bananas **nunca** se pierden al fallar.
 | astronaut | Astronauta | 70 |
 | mago | Mago | 80 |
 | lazo | Lazo | 90 |
+| vampiro | Vampiro | 100 |
 
 Balance resumido: [`economia.md`](economia.md). Tienda/ads: [`tienda_y_anuncios.md`](tienda_y_anuncios.md).
 

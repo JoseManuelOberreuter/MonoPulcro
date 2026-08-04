@@ -80,6 +80,7 @@ Precios actuales (`MonkeyStateManager.ACCESSORIES`):
 | astronaut | Astronauta | 70 | `mono_astronauta_1/2/3` |
 | mago | Mago | 80 | `mono_mago_1/2/3/4` |
 | lazo | Lazo | 90 | `mono_lazo_1/2/3/4` |
+| vampiro | Vampiro | 100 | `mono_vampiro_1/2/3` |
 
 Cada accesorio con variantes usa la misma lógica de rotación cada 3 horas.
 
