@@ -14,6 +14,9 @@ Fuente de verdad: `MonkeyStateManager` + [`tienda_y_anuncios.md`](tienda_y_anunc
 | Duplicar cofre (ad) | ×3 el loot | 1×/día si ve el anuncio |
 | Motas de polvo | +1 | Al limpiar; spawn +1 cada 2 h, máx. 5 |
 | Cofre tienda (ad) | +10 | Máx. 3/día |
+| Cofre IAP pequeño | +50 | Ilimitado (consumible Play) |
+| Cofre IAP mediano | +150 | Ilimitado (consumible Play) |
+| Cofre IAP grande | +400 | Ilimitado (consumible Play) |
 
 **Ejemplo día limpio “opt-in ads”:** loot 2 + duplicar 2 + 1 mota + 3×5 cofre
 tienda = hasta ~20 bananas en un día intenso (poco realista diario).

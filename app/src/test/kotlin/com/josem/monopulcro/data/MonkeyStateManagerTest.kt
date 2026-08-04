@@ -173,4 +173,23 @@ class MonkeyStateManagerTest {
     assertEquals(1, m.bananas)
     assertEquals(0, m.dustCount)
   }
+
+  @Test
+  fun grantPurchasedBananas_addsOncePerToken() {
+    val m = manager()
+    assertEquals(50, m.grantPurchasedBananas(50, "token-a"))
+    assertEquals(50, m.bananas)
+    assertEquals(null, m.grantPurchasedBananas(50, "token-a"))
+    assertEquals(50, m.bananas)
+    assertEquals(150, m.grantPurchasedBananas(150, "token-b"))
+    assertEquals(200, m.bananas)
+  }
+
+  @Test
+  fun grantPurchasedBananas_rejectsInvalidAmount() {
+    val m = manager()
+    assertEquals(null, m.grantPurchasedBananas(0, "token-z"))
+    assertEquals(null, m.grantPurchasedBananas(-5, "token-z"))
+    assertEquals(0, m.bananas)
+  }
 }

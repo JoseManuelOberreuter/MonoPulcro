@@ -629,6 +629,33 @@ class MonkeyStateManager(
         prefs.edit().putInt(KEY_BANANAS, maxOf(0, bananas + amount)).commit()
     }
 
+    /**
+     * Otorga bananas de un IAP consumible. Idempotente por [purchaseToken]
+     * para no duplicar si Play reentrega la compra antes del consume.
+     * @return bananas otorgadas, o null si el token ya estaba procesado / amount inválido.
+     */
+    fun grantPurchasedBananas(amount: Int, purchaseToken: String): Int? {
+        if (amount <= 0 || purchaseToken.isBlank()) return null
+        val processed = loadProcessedIapTokens()
+        if (purchaseToken in processed) return null
+        val nextTokens = (processed + purchaseToken).takeLast(MAX_PROCESSED_IAP_TOKENS)
+        val ok = prefs.edit()
+            .putInt(KEY_BANANAS, bananas + amount)
+            .putString(KEY_PROCESSED_IAP_TOKENS, gson.toJson(nextTokens))
+            .commit()
+        return if (ok) amount else null
+    }
+
+    private fun loadProcessedIapTokens(): List<String> {
+        val json = prefs.getString(KEY_PROCESSED_IAP_TOKENS, null) ?: return emptyList()
+        return try {
+            val type = object : TypeToken<List<String>>() {}.type
+            gson.fromJson<List<String>>(json, type) ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     /** Retrocede el reloj de motas para forzar spawn al sincronizar. */
     fun debugAdvanceDustHours(hours: Int) {
         val last = prefs.getLong(KEY_DUST_LAST_SPAWN_MS, currentTimeMs())
@@ -706,6 +733,8 @@ class MonkeyStateManager(
 
         const val KEY_SHOP_CHEST_OPENS_TODAY = "shopChestOpensToday"
         const val KEY_PENDING_SHOP_CHEST_AD = "pendingShopChestAd"
+        const val KEY_PROCESSED_IAP_TOKENS = "processedIapTokens"
+        const val MAX_PROCESSED_IAP_TOKENS = 50
 
         /** Hitos one-shot de racha → escudos. Independiente del bonus banana % 7. */
         val SHIELD_MILESTONES: Map<Int, Int> = linkedMapOf(

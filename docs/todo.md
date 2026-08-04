@@ -19,6 +19,7 @@ Priorización amplia y backlog técnico: `[puntos_de_mejora.md](puntos_de_mejora
 - [ ] agreegar base de datos
 - [ ] agregar suscripciones
 - [ ] agregar funcion de compartir tareas de la casa
+- [x] Activar en Play Console los 3 productos IAP (`bananas_chest_small/medium/xlarge`) + license testing
 
 ---
 
@@ -26,3 +27,4 @@ Priorización amplia y backlog técnico: `[puntos_de_mejora.md](puntos_de_mejora
 
 - [x] Agregar overlay de compra de objeto (cicla variantes del atuendo; Usar / Más tarde)
 - [x] Agregar overlay de racha rota (reset multi-día + `StreakBrokenOverlay`)
+- [x] Integrar Google Play Billing: 3 cofres de bananas consumibles en tienda

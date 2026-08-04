@@ -37,6 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.josem.monopulcro.R
 import com.josem.monopulcro.ads.AdLoadState
 import com.josem.monopulcro.ads.RewardedAdManager
+import com.josem.monopulcro.billing.BananaChestOfferUi
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.MonkeyStateManager.Companion.AccessoryItem
 import com.josem.monopulcro.data.MonkeyStateManager.Companion.ACCESSORIES
@@ -67,6 +68,7 @@ fun ShopScreen(
     val chestRewardState by vm.chestReward.collectAsStateWithLifecycle()
     val shopChestOverlayBananas by vm.shopChestOverlayBananas.collectAsStateWithLifecycle()
     val purchaseOverlayAccessoryId by vm.purchaseOverlayAccessoryId.collectAsStateWithLifecycle()
+    val billingState by vm.billingState.collectAsStateWithLifecycle()
     val tabs = ShopTab.entries
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
@@ -76,6 +78,7 @@ fun ShopScreen(
     val adLoadState by adManager.adState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
+        vm.startBilling()
         adManager.preload()
         vm.effects.collect { effect ->
             when (effect) {
@@ -98,6 +101,19 @@ fun ShopScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        billingState.lastError?.let { error ->
+            AlertDialog(
+                onDismissRequest = { vm.clearBillingError() },
+                title = { Text("Compra") },
+                text = { Text(error) },
+                confirmButton = {
+                    TextButton(onClick = { vm.clearBillingError() }) {
+                        Text("Entendido")
+                    }
+                },
+            )
+        }
+
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -177,8 +193,14 @@ fun ShopScreen(
                             shopChestOpensToday = state.shopChestOpensToday,
                             shopChestMaxOpens = MonkeyStateManager.MAX_SHOP_CHEST_OPENS_PER_DAY,
                             shopChestReward = MonkeyStateManager.SHOP_CHEST_REWARD,
+                            paidChests = billingState.offers,
+                            purchasingProductId = billingState.purchasingProductId,
+                            billingReady = billingState.isReady,
                             onBuyShield = { vm.buyShield() },
-                            onOpenShopChest = { vm.requestShopChestAd() }
+                            onOpenShopChest = { vm.requestShopChestAd() },
+                            onBuyPaidChest = { productId ->
+                                vm.buyBananaChest(activity, productId)
+                            },
                         )
                     }
                 }
@@ -332,8 +354,12 @@ private fun ObjectsShopPage(
     shopChestOpensToday: Int,
     shopChestMaxOpens: Int,
     shopChestReward: Int,
+    paidChests: List<BananaChestOfferUi>,
+    purchasingProductId: String?,
+    billingReady: Boolean,
     onBuyShield: () -> Unit,
     onOpenShopChest: () -> Unit,
+    onBuyPaidChest: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -356,7 +382,118 @@ private fun ObjectsShopPage(
             canAfford = bananas >= MonkeyStateManager.SHIELD_SHOP_PRICE,
             onBuy = onBuyShield
         )
+
+        Text(
+            text = "Cofres de bananas",
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1E293B),
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(
+            text = "Compra con dinero real. Se acreditan al instante.",
+            fontSize = 13.sp,
+            color = Color(0xFF64748B),
+        )
+        paidChests.forEach { offer ->
+            PaidBananaChestCard(
+                offer = offer,
+                isPurchasing = purchasingProductId == offer.productId,
+                enabled = billingReady &&
+                    offer.formattedPrice != null &&
+                    purchasingProductId == null,
+                onBuy = { onBuyPaidChest(offer.productId) },
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun PaidBananaChestCard(
+    offer: BananaChestOfferUi,
+    isPurchasing: Boolean,
+    enabled: Boolean,
+    onBuy: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = ShopObjectCardMinHeight)
+            .background(Color(0xFFFEF3C7), RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Image(
+            painter = painterResource(R.drawable.cofre_cerrado),
+            contentDescription = null,
+            modifier = Modifier.size(72.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = offer.displayName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E293B),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = offer.subtitle,
+                fontSize = 13.sp,
+                color = Color(0xFF92400E),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.Top) {
+                Image(
+                    painter = painterResource(R.drawable.banana),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(top = 1.dp)
+                        .size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "+${offer.bananas} bananas",
+                    fontSize = 13.sp,
+                    color = Color(0xFF64748B),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+            }
+        }
+        val priceLabel = offer.formattedPrice ?: "…"
+        Box(
+            modifier = Modifier
+                .widthIn(min = ShopObjectActionMinWidth)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (enabled || isPurchasing) ShopAccent else Color(0xFF94A3B8))
+                .clickable(enabled = enabled, onClick = onBuy)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isPurchasing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White,
+                )
+            } else {
+                Text(
+                    text = priceLabel,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
 }
 

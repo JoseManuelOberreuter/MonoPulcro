@@ -21,7 +21,7 @@ El paradigma arquitectónico es **cliente monolítico offline-first**: toda la l
 | Persistencia | SharedPreferences + Gson | Estado del mono, tareas, rachas y bananas |
 | Widget | Glance AppWidget | Widget de pantalla de inicio |
 | Notificaciones | AlarmManager + NotificationCompat | Recordatorios locales (sin push remoto) |
-| Monetización | Google Mobile Ads (AdMob) | Rewarded + native (tareas diarias) |
+| Monetización | AdMob + Play Billing | Rewarded, native, cofres IAP |
 | Audio | SoundPool (SoundManager) | Feedback sonoro de acciones |
 | Landing | HTML / CSS / JS estático (`page/`) | Sitio público y política de privacidad |
 | CI | GitHub Actions (`.github/`) | Automatización del repositorio |
@@ -38,6 +38,7 @@ MonoPulcro/
 │       ├── kotlin/com/josem/monopulcro/
 │       │   ├── MainActivity.kt       # Entry point, splash, NavHost, permisos
 │       │   ├── ads/                  # RewardedAdManager (AdMob)
+│       │   ├── billing/              # Play Billing (cofres IAP)
 │       │   ├── audio/                # SoundManager
 │       │   ├── data/                 # Modelos y MonkeyStateManager (dominio + persistencia)
 │       │   ├── notifications/        # Canales, schedulers y BroadcastReceiver
@@ -62,6 +63,7 @@ Carpetas clave del código Kotlin:
 | `widget/` | Presentación Glance y sincronización con el estado local |
 | `notifications/` | Programación y entrega de notificaciones locales |
 | `ads/` | Rewarded + carga de anuncios nativos |
+| `billing/` | Google Play Billing (cofres consumibles) |
 | `audio/` | Reproducción de efectos de sonido |
 
 ---
@@ -101,6 +103,7 @@ La app organiza el código en capas claras, sin inyección de dependencias exter
 | `notifications/` | Alarmas locales (hábito A/B por horarios, por tarea, celebración); `BOOT_COMPLETED` reprograma |
 | `widget/` | Lectura del mismo estado local; refresh por Glance y por `AlarmManager` horario |
 | `ads/` | Rewarded (cofre) + native bajo tareas diarias |
+| `billing/` | Play Billing: query / buy / consume cofres IAP |
 | `audio/` | Feedback inmediato sin acoplarse a la lógica de negocio |
 
 ### 5. Entrada de aplicación
@@ -180,8 +183,10 @@ Flujo de notificación local:
 
 - AdMob rewarded:
   - triplicar loot del cofre del día (`tripleChestReward`);
-  - cofre de tienda (+5 bananas, máx. 3 aperturas/día).
+  - cofre de tienda (+10 bananas, máx. 3 aperturas/día).
 - IDs de prueba si el APK es debuggable; ID de producción en release.
 - La recompensa solo se acredita si el callback `onUserEarnedReward` confirma la visualización.
+- Play Billing: cofres consumibles `bananas_chest_small/medium/xlarge`
+  (50 / 150 / 400 bananas) vía `BillingManager` + `grantPurchasedBananas`.
 - Detalle: `docs/tienda_y_anuncios.md`.
 )

@@ -32,8 +32,20 @@ Versión documentada: **1.2.3** (versionCode 19).
 | `RECEIVE_BOOT_COMPLETED` | Reprogramar alarms / widget |
 | `INTERNET` / `ACCESS_NETWORK_STATE` | Ads |
 | `AD_ID` | AdMob |
+| `com.android.vending.BILLING` | Cofres de bananas IAP |
 
 No pedir permisos de ubicación ni contactos (la app no los usa).
+
+### Productos IAP (consumibles)
+
+Crear en Console y mantener activos:
+
+- `bananas_chest_small` → 50 bananas
+- `bananas_chest_medium` → 150 bananas
+- `bananas_chest_xlarge` → 400 bananas
+
+Probar con license testing en un track interno antes de producción.
+Detalle: [`tienda_y_anuncios.md`](tienda_y_anuncios.md).
 
 ---
 

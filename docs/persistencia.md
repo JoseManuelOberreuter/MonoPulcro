@@ -66,13 +66,14 @@ Migración al init: si `gold` está owned/equipped → se elimina.
 | `dustLastSpawnMs` | Long | epoch ms último spawn |
 | `dustCount` | Int | **legacy**; se migra a JSON |
 
-### Tienda / ads
+### Tienda / ads / IAP
 
 | Clave | Tipo | Notas |
 |---|---|---|
 | `shopChestOpensToday` | Int | 0–3; reset diario |
 | `pendingShopChestAd` | Bool | reserva antes del anuncio |
 | `shopAffordHintConsumed` | Bool | hint one-shot de “puedes comprar” |
+| `processedIapTokens` | String (JSON) | últimos ≤50 `purchaseToken` ya acreditados |
 
 ### Onboarding / tour
 

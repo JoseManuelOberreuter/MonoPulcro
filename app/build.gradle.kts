@@ -12,8 +12,8 @@ android {
         applicationId = "com.josem.monopulcro"
         minSdk = 26
         targetSdk = 36
-        versionCode = 21
-        versionName = "1.2.5"
+        versionCode = 23
+        versionName = "1.2.7"
     }
 
     buildTypes {
@@ -73,6 +73,9 @@ dependencies {
 
     // AdMob
     implementation("com.google.android.gms:play-services-ads:23.6.0")
+
+    // Google Play Billing (cofres de bananas de pago)
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

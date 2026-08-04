@@ -3,14 +3,16 @@
 ## Resumen
 
 La tienda (`ShopScreen`) vende cosméticos y objetos. La monetización usa
-**AdMob**:
+**AdMob** + **Google Play Billing** (cofres de bananas de pago):
 
 1. **Rewarded — triplicar** el loot del cofre del día (Main).
 2. **Rewarded — cofre de tienda**: ver anuncio → +10 bananas (máx. 3/día).
 3. **Native advanced — Tareas diarias**: tarjeta bajo la lista de hoy en Main.
+4. **IAP consumibles — cofres de bananas**: 3 packs de pago real en pestaña Objetos.
 
 No hay banners ni interstitial. Offline-first: si un anuncio falla, el flujo
 base de bananas sigue funcionando; el nativo simplemente no se muestra.
+Los IAP requieren Play Store / productos activos en Console.
 
 ---
 
@@ -21,7 +23,7 @@ Ruta Compose: `shop`. Pestañas (tap o swipe):
 | Pestaña | Contenido |
 |---|---|
 | Atuendos | Lista `ACCESSORIES` — comprar / equipar |
-| Objetos | Cofre rewarded + Escudo de Pulcritud (100 bananas) |
+| Objetos | Cofre rewarded + Escudo (100 bananas) + 3 cofres IAP |
 
 TopAppBar: bananas disponibles. Hint one-shot cuando el usuario puede
 permitirse el accesorio más barato no poseído
@@ -85,6 +87,47 @@ requestShopChestAd()
 Al reset diario se ponen a 0 `shopChestOpensToday` y el pending.
 
 ---
+
+## 4b. Cofres IAP (Google Play Billing)
+
+Productos consumibles (`BillingClient.ProductType.INAPP`). Catálogo local en
+`billing/BananaChestCatalog.kt`; precios solo en Play Console.
+
+| Product ID | Nombre UI | Bananas |
+|---|---|---|
+| `bananas_chest_small` | Cofre pequeño | 50 |
+| `bananas_chest_medium` | Cofre mediano | 150 |
+| `bananas_chest_xlarge` | Cofre grande | 400 |
+
+Flujo:
+
+```
+BillingManager.start()
+  → queryProductDetails (precios localizados)
+  → queryPurchasesAsync (recuperar compras sin consumir)
+Usuario toca comprar
+  → launchBillingFlow
+  → PURCHASED
+  → grantPurchasedBananas(amount, purchaseToken)  // idempotente
+  → consumeAsync
+  → overlay de celebración (+N bananas)
+```
+
+Archivos: `billing/BillingManager.kt`, `billing/BananaChestCatalog.kt`.
+Dependencia: `com.android.billingclient:billing-ktx:7.1.1`.
+Permiso: `com.android.vending.BILLING`.
+
+### Play Console (checklist)
+
+1. Perfil de pagos / cuenta de comerciante activa.
+2. **Monetizar con Play → Productos → Productos gestionados**.
+3. Crear los 3 product IDs de arriba (compra única / consumible).
+4. Activar cada producto; definir precios por país.
+5. Subir un build con Billing a **prueba interna**.
+6. Agregar testers + cuentas de **license testing** para compras sin cargo.
+
+Sin productos activos + APK en un track de prueba, la UI muestra precio "…"
+y no puede lanzar la compra.
 
 ## 5. Triplicar cofre del día (rewarded)
 
@@ -163,10 +206,12 @@ Estado de overlay: `ChestRewardUiState` + `ChestRewardPhase`.
 
 | Archivo | Rol |
 |---|---|
-| `ui/ShopScreen.kt` | UI tienda + tabs |
+| `ui/ShopScreen.kt` | UI tienda + tabs + cofres IAP |
 | `ui/MainScreen.kt` | Cofre día + botón duplicar |
-| `ui/MonkeyViewModel.kt` | Efectos y estado de cofre |
-| `data/MonkeyStateManager.kt` | buy*, double*, shop chest |
+| `ui/MonkeyViewModel.kt` | Efectos, estado de cofre, Billing |
+| `data/MonkeyStateManager.kt` | buy*, double*, shop chest, IAP grant |
+| `billing/BillingManager.kt` | Play Billing (query / buy / consume) |
+| `billing/BananaChestCatalog.kt` | product IDs → bananas |
 | `ads/RewardedAdManager.kt` | AdMob rewarded |
 | `ads/NativeAdLoader.kt` | AdMob native (Tareas diarias) |
 | `ui/DailyTasksNativeAd.kt` | UI nativo en Main |

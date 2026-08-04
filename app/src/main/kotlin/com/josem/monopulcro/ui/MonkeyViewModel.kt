@@ -1,9 +1,15 @@
 package com.josem.monopulcro.ui
 
+import android.app.Activity
 import android.app.Application
+import android.os.Handler
+import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.josem.monopulcro.audio.SoundManager
+import com.josem.monopulcro.billing.BananaChestCatalog
+import com.josem.monopulcro.billing.BillingManager
+import com.josem.monopulcro.billing.BillingUiState
 import com.josem.monopulcro.data.DustMote
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.Task
@@ -102,6 +108,19 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     private val manager = MonkeyStateManager(application)
     private val sounds  = SoundManager.get(application)
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private val billingManager = BillingManager(application) { productId, purchaseToken ->
+        val amount = BananaChestCatalog.bananasFor(productId) ?: return@BillingManager null
+        val granted = manager.grantPurchasedBananas(amount, purchaseToken) ?: return@BillingManager null
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            onIapBananasGranted(granted)
+        } else {
+            mainHandler.post { onIapBananasGranted(granted) }
+        }
+        granted
+    }
+    val billingState: StateFlow<BillingUiState> = billingManager.state
 
     private val _uiState = MutableStateFlow(MonkeyUiState())
     val uiState: StateFlow<MonkeyUiState> = _uiState.asStateFlow()
@@ -122,6 +141,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         manager.checkAndResetForNewDay()
         refreshState()
         emitPendingStreakMessages()
+        billingManager.start()
         viewModelScope.launch {
             val hasWidget = GlanceAppWidgetManager(getApplication())
                 .getGlanceIds(MonkeyWidget::class.java)
@@ -134,6 +154,11 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         } catch (_: Exception) {
             // No bloquear el arranque si falla la programación de alarmas
         }
+    }
+
+    override fun onCleared() {
+        billingManager.destroy()
+        super.onCleared()
     }
 
     // ─── Tareas ────────────────────────────────────────────────────────────────
@@ -277,6 +302,27 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     fun consumeShopChestOverlay() {
         _shopChestOverlayBananas.value = null
         resetChestRewardUi()
+    }
+
+    /** Conecta / refresca productos IAP al abrir la tienda. */
+    fun startBilling() {
+        billingManager.start()
+    }
+
+    fun buyBananaChest(activity: Activity, productId: String) {
+        billingManager.launchPurchase(activity, productId)
+    }
+
+    fun clearBillingError() {
+        billingManager.clearError()
+    }
+
+    private fun onIapBananasGranted(granted: Int) {
+        sounds.playCashRegister()
+        refreshState()
+        updateWidget()
+        beginChestFlow(baseBananas = granted, offerDouble = false)
+        _shopChestOverlayBananas.value = granted
     }
 
     fun useAccessory(accessoryId: String) {
