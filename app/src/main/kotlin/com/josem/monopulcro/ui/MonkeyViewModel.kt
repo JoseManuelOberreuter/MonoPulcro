@@ -141,7 +141,6 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         manager.checkAndResetForNewDay()
         refreshState()
         emitPendingStreakMessages()
-        billingManager.start()
         viewModelScope.launch {
             val hasWidget = GlanceAppWidgetManager(getApplication())
                 .getGlanceIds(MonkeyWidget::class.java)

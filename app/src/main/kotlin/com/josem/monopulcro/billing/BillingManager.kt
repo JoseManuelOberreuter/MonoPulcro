@@ -9,6 +9,7 @@ import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.ConsumeParams
 import com.android.billingclient.api.ProductDetails
+import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
@@ -55,14 +56,20 @@ class BillingManager(
 
     private val appContext = context.applicationContext
 
-    private val _state = MutableStateFlow(BillingUiState(isConnecting = true))
+    private val _state = MutableStateFlow(BillingUiState())
     val state: StateFlow<BillingUiState> = _state.asStateFlow()
 
     private var productDetailsById: Map<String, ProductDetails> = emptyMap()
+    private var connectionAttemptInFlight = false
 
     private val billingClient: BillingClient = BillingClient.newBuilder(appContext)
         .setListener(this)
-        .enablePendingPurchases()
+        .enablePendingPurchases(
+            PendingPurchasesParams.newBuilder()
+                .enableOneTimeProducts()
+                .build(),
+        )
+        .enableAutoServiceReconnection()
         .build()
 
     fun start() {
@@ -71,41 +78,60 @@ class BillingManager(
             queryAndProcessPendingPurchases()
             return
         }
-        _state.update { it.copy(isConnecting = true, lastError = null) }
+        if (connectionAttemptInFlight) return
+
+        connectionAttemptInFlight = true
+        _state.update { it.copy(isConnecting = true) }
         billingClient.startConnection(object : BillingClientStateListener {
             override fun onBillingSetupFinished(result: BillingResult) {
+                connectionAttemptInFlight = false
                 if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                    _state.update { it.copy(isReady = true, isConnecting = false) }
+                    _state.update {
+                        it.copy(isReady = true, isConnecting = false, lastError = null)
+                    }
                     queryProductDetails()
                     queryAndProcessPendingPurchases()
                 } else {
+                    Log.w(
+                        TAG,
+                        "Billing setup failed: code=${result.responseCode} msg=${result.debugMessage}",
+                    )
                     _state.update {
-                        it.copy(
-                            isReady = false,
-                            isConnecting = false,
-                            lastError = "No se pudo conectar con Play Billing",
-                        )
+                        it.copy(isReady = false, isConnecting = false)
                     }
                 }
             }
 
             override fun onBillingServiceDisconnected() {
+                connectionAttemptInFlight = false
                 _state.update { it.copy(isReady = false) }
             }
         })
     }
 
     fun launchPurchase(activity: Activity, productId: String) {
+        if (!billingClient.isReady) {
+            start()
+            if (!billingClient.isReady) {
+                _state.update {
+                    it.copy(
+                        lastError = if (it.isConnecting) {
+                            "Conectando con Play. Espera un momento e inténtalo de nuevo."
+                        } else {
+                            billingMessage(BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE)
+                        },
+                    )
+                }
+            }
+            return
+        }
+
         val details = productDetailsById[productId]
         if (details == null) {
             _state.update {
                 it.copy(lastError = "Producto no disponible. ¿Está activo en Play Console?")
             }
-            return
-        }
-        if (!billingClient.isReady) {
-            _state.update { it.copy(lastError = "Play Billing no está listo") }
-            start()
+            queryProductDetails()
             return
         }
 
