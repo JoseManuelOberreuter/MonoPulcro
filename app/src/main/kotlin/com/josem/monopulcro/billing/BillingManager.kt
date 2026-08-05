@@ -69,7 +69,6 @@ class BillingManager(
                 .enableOneTimeProducts()
                 .build(),
         )
-        .enableAutoServiceReconnection()
         .build()
 
     fun start() {
