@@ -383,18 +383,6 @@ private fun ObjectsShopPage(
             onBuy = onBuyShield
         )
 
-        Text(
-            text = "Cofres de bananas",
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1E293B),
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        Text(
-            text = "Compra con dinero real. Se acreditan al instante.",
-            fontSize = 13.sp,
-            color = Color(0xFF64748B),
-        )
         paidChests.forEach { offer ->
             PaidBananaChestCard(
                 offer = offer,

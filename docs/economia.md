@@ -30,9 +30,9 @@ tienda = hasta ~20 bananas en un día intenso (poco realista diario).
 | Ítem | Precio |
 |---|---|
 | Escudo | 100 |
-| Lentes … Vampiro | 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 |
+| Lentes … Cocinero | 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120 |
 
-Suma de todos los accesorios: **550** bananas.
+Suma de todos los accesorios: **780** bananas.
 Escudo a tope (3) desde 0 tras gastar stock inicial: **300** bananas.
 
 ---
@@ -46,7 +46,7 @@ Asumiendo ~2 bananas/día netas del cofre:
 | Primer accesorio (10) | ~5 días |
 | Gorro (20) | ~10 días |
 | Escudo (100) | ~50 días |
-| Catálogo completo (550) | ~9 meses |
+| Catálogo completo (780) | ~13 meses |
 
 Con ads (doble + cofre tienda) el ritmo se acelera mucho; el diseño actual
 incentiva el rewarded sin bloquear el progreso free.

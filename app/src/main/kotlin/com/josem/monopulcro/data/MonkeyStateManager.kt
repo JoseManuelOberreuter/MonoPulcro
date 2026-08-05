@@ -759,6 +759,8 @@ class MonkeyStateManager(
             AccessoryItem("mago",      "Mago",       80),
             AccessoryItem("lazo",      "Lazo",       90),
             AccessoryItem("vampiro",   "Vampiro",   100),
+            AccessoryItem("elegante",  "Elegante",  110),
+            AccessoryItem("cocinero",  "Cocinero",  120),
         )
     }
 }

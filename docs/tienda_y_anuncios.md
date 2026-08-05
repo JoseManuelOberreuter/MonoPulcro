@@ -47,6 +47,8 @@ Definidos en `MonkeyStateManager.ACCESSORIES`:
 | mago | Mago | 80 |
 | lazo | Lazo | 90 |
 | vampiro | Vampiro | 100 |
+| elegante | Elegante | 110 |
+| cocinero | Cocinero | 120 |
 
 - `buyAccessory(id)`: descuenta bananas, añade a `ownedAccessories`.
 - `useAccessory(id)`: equipa (solo se ve si `isCleanToday`).
