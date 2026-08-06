@@ -530,16 +530,17 @@ class MonkeyStateManager(
         }
     }
 
-    /** Limpia motas y otorga 1 banana. Devuelve true si había motas. */
-    fun rewardDustCleaning(): Boolean {
-        if (loadDustMotes().isEmpty()) return false
+    /** Limpia motas y otorga 1 banana por cada mota. Devuelve las bananas otorgadas (0 si no había motas). */
+    fun rewardDustCleaning(): Int {
+        val reward = loadDustMotes().size
+        if (reward == 0) return 0
         prefs.edit()
             .putString(KEY_DUST_MOTES, "[]")
             .remove(KEY_DUST_COUNT)
-            .putInt(KEY_BANANAS, bananas + 1)
+            .putInt(KEY_BANANAS, bananas + reward)
             .putLong(KEY_DUST_LAST_SPAWN_MS, currentTimeMs())
             .apply()
-        return true
+        return reward
     }
 
     private fun loadDustMotes(): List<DustMote> {

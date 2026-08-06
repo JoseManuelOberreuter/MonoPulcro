@@ -12,8 +12,8 @@ android {
         applicationId = "com.josem.monopulcro"
         minSdk = 26
         targetSdk = 36
-        versionCode = 26
-        versionName = "1.2.10"
+        versionCode = 27
+        versionName = "1.3.1"
     }
 
     buildTypes {

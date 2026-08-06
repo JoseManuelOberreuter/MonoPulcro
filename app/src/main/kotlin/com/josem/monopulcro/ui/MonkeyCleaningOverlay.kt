@@ -1,14 +1,17 @@
 package com.josem.monopulcro.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -30,6 +33,7 @@ import com.josem.monopulcro.data.DustMote
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 private const val SPRAY_DURATION_MS = 3_000L
 private const val SPRAY_START_DELAY_MS = 500L
@@ -306,48 +310,109 @@ fun MonkeyCleaningOverlay(
     }
 }
 
-/** +1 banana al final de limpiar motas. */
+private data class BananaExplosionParticle(
+    val xFrac: Float,
+    val driftDp: Float,
+    val travelDp: Float,
+    val sizeDp: Float,
+    val delayMs: Long,
+    val durationMs: Int,
+    val spinDeg: Float,
+)
+
+/** Ráfaga de bananas explotando desde abajo (cantidad visual acotada para que se lea bien). */
+private fun bananaExplosionParticles(amount: Int): List<BananaExplosionParticle> {
+    val visualCount = amount.coerceIn(6, 14)
+    return List(visualCount) {
+        BananaExplosionParticle(
+            xFrac = 0.08f + Random.nextFloat() * 0.84f,
+            driftDp = (Random.nextFloat() - 0.5f) * 180f,
+            travelDp = 260f + Random.nextFloat() * 240f,
+            sizeDp = 30f + Random.nextFloat() * 26f,
+            delayMs = (Random.nextFloat() * 180f).toLong(),
+            durationMs = 700 + (Random.nextFloat() * 300f).toInt(),
+            spinDeg = (Random.nextFloat() - 0.5f) * 480f,
+        )
+    }
+}
+
+/** Explosión de bananas desde abajo + "+N bananas" en grande al centro. */
 @Composable
-fun BananaRewardOverlay(onFinished: () -> Unit) {
-    val overlayAlpha = remember { Animatable(0f) }
-    val plusOneY = remember { Animatable(0f) }
-    val plusOneAlpha = remember { Animatable(0f) }
+fun BananaRewardOverlay(amount: Int = 1, onFinished: () -> Unit) {
     val density = LocalDensity.current
+    val particles = remember(amount) { bananaExplosionParticles(amount) }
+    val travel = remember(particles) { particles.map { Animatable(0f) } }
+    val burstAlpha = remember(particles) { particles.map { Animatable(0f) } }
+
+    val textAlpha = remember { Animatable(0f) }
+    val textScale = remember { Animatable(0.4f) }
 
     LaunchedEffect(Unit) {
-        overlayAlpha.animateTo(1f, tween(150))
-        delay(80L)
-        plusOneAlpha.animateTo(1f, tween(140))
-        plusOneY.animateTo(-220f, tween(950, easing = FastOutSlowInEasing))
-        delay(200L)
-        overlayAlpha.animateTo(0f, tween(300))
+        coroutineScope {
+            particles.forEachIndexed { i, p ->
+                launch {
+                    delay(p.delayMs)
+                    burstAlpha[i].animateTo(1f, tween(80))
+                    travel[i].animateTo(1f, tween(p.durationMs, easing = EaseOut))
+                    burstAlpha[i].animateTo(0f, tween(220))
+                }
+            }
+            launch {
+                textAlpha.animateTo(1f, tween(160))
+                textScale.animateTo(1.15f, tween(180, easing = EaseOut))
+                textScale.animateTo(
+                    1f,
+                    spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+                )
+            }
+        }
+        delay(500L)
+        textAlpha.animateTo(0f, tween(280))
         onFinished()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer { alpha = overlayAlpha.value }
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .offset(y = 48.dp)
-                .graphicsLayer {
-                    translationY = with(density) { plusOneY.value.dp.toPx() }
-                    alpha = plusOneAlpha.value
-                }
-        ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val widthDp = maxWidth.value
+
+        particles.forEachIndexed { i, p ->
+            val progress = travel[i].value
+            val xOffset = (widthDp * p.xFrac - p.sizeDp / 2).dp
             Image(
                 painter = painterResource(R.drawable.banana),
                 contentDescription = null,
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier
+                    .size(p.sizeDp.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = xOffset)
+                    .graphicsLayer {
+                        translationX = with(density) { (p.driftDp * progress).dp.toPx() }
+                        translationY = with(density) { (-p.travelDp * progress).dp.toPx() }
+                        rotationZ = p.spinDeg * progress
+                        alpha = burstAlpha[i].value
+                    }
+            )
+        }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .graphicsLayer {
+                    alpha = textAlpha.value
+                    scaleX = textScale.value
+                    scaleY = textScale.value
+                }
+        ) {
+            Text(
+                text = "+$amount",
+                fontSize = 76.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFFEA580C)
             )
             Text(
-                "+1",
-                fontSize = 52.sp,
-                fontWeight = FontWeight.ExtraBold,
+                text = if (amount == 1) "banana" else "bananas",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
                 color = Color(0xFFEA580C)
             )
         }

@@ -202,10 +202,12 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     /** Devuelve cuántas motas había al tocar (para animación y recompensa). */
     fun dustMotesForCleaning(): List<DustMote> = _uiState.value.dustMotes
 
-    fun completeDustCleaning() {
-        manager.rewardDustCleaning()
+    /** Limpia motas y devuelve las bananas otorgadas (1 por mota). */
+    fun completeDustCleaning(): Int {
+        val reward = manager.rewardDustCleaning()
         refreshState()
         updateWidget()
+        return reward
     }
 
     fun addTask(task: Task) {

@@ -5,8 +5,8 @@ Resumen
 Las motas de polvo son un detalle visual de “engagement” que aparece sobre el
 mono con el paso del tiempo. El usuario puede tocar el mono para limpiarlas
 con una animación (spray + gotas + paño). Si había motas, al terminar recibe
-+1 banana gratis. Sin motas, la animación de limpieza sigue disponible pero
-sin recompensa.
++1 banana por cada mota que hubiera (hasta +5, según el máximo). Sin motas, la
+animación de limpieza sigue disponible pero sin recompensa.
 
 
 1. APARICIÓN Y LÍMITE
@@ -53,8 +53,8 @@ Al tocar la imagen del mono:
   c) Durante el paño, las motas y gotas se desvanecen suavemente.
   d) Si había motas al tocar:
        - Se borran del almacenamiento.
-       - +1 banana.
-       - Overlay “+1” con la banana.
+       - +1 banana por cada mota (ej.: 3 motas → +3 bananas).
+       - Overlay “+N” con la banana (N = motas limpiadas).
 
 Si no hay motas, la animación y los sonidos (spray + window_cleaning) se
 reproducen igual, pero no hay banana al final.
@@ -106,7 +106,7 @@ Constantes:
          ▼
   Usuario toca mono ──► animación limpieza
          │
-         ├── Con motas ──► rewardDustCleaning() ──► +1 banana, motas = 0
+         ├── Con motas ──► rewardDustCleaning() ──► +1 banana/mota, motas = 0
          └── Sin motas ──► solo animación
 
 

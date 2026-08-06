@@ -138,6 +138,7 @@ fun MainScreen(
     var isMonkeyCleaning by remember { mutableStateOf(false) }
     var dustAtCleanStart by remember { mutableStateOf(emptyList<com.josem.monopulcro.data.DustMote>()) }
     var showDustBananaReward by remember { mutableStateOf(false) }
+    var dustBananaReward by remember { mutableStateOf(0) }
     var selectedDayOfWeek by remember { mutableStateOf<Int?>(null) }
     val selectedWeekDay = selectedDayOfWeek?.let { dow ->
         state.weekDays.find { it.dayOfWeek == dow }
@@ -366,7 +367,7 @@ fun MainScreen(
                             onCleaningFinished = {
                                 isMonkeyCleaning = false
                                 if (dustAtCleanStart.isNotEmpty()) {
-                                    vm.completeDustCleaning()
+                                    dustBananaReward = vm.completeDustCleaning()
                                     showDustBananaReward = true
                                 }
                             }
@@ -556,7 +557,7 @@ fun MainScreen(
             )
         }
         if (showDustBananaReward) {
-            BananaRewardOverlay(onFinished = { showDustBananaReward = false })
+            BananaRewardOverlay(amount = dustBananaReward, onFinished = { showDustBananaReward = false })
         }
         if (rewardFlowActive) {
             BackHandler { /* bloquea navegación atrás durante racha/cofre */ }

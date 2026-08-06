@@ -169,8 +169,19 @@ class MonkeyStateManagerTest {
     val m = manager()
     m.debugAdvanceDustHours(2)
     assertTrue(m.dustCount > 0)
-    assertTrue(m.rewardDustCleaning())
+    assertEquals(1, m.rewardDustCleaning())
     assertEquals(1, m.bananas)
+    assertEquals(0, m.dustCount)
+  }
+
+  @Test
+  fun rewardDustCleaning_grantsOneBananaPerMote() {
+    val m = manager()
+    m.debugAdvanceDustHours(6)
+    val motes = m.dustCount
+    assertTrue(motes > 1)
+    assertEquals(motes, m.rewardDustCleaning())
+    assertEquals(motes, m.bananas)
     assertEquals(0, m.dustCount)
   }
 
