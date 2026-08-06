@@ -2,6 +2,12 @@
 
 Aplicación Android nativa para mantener hábitos de limpieza del hogar. Cada día completas tus tareas, el mono se pone contento y ganas bananas. Si no las haces, el mono se ensucia.
 
+<p align="center">
+  <img src="img/Mono_Pulcro.png" alt="Mono limpio" width="160" />
+  <img src="img/Mono_Sucio_1.png" alt="Mono sucio" width="160" />
+  <img src="img/Mono_Corona.png" alt="Mono con corona" width="160" />
+</p>
+
 **Versión actual:** 1.2.9 (versionCode 25)
 
 ## ¿Qué hace?
