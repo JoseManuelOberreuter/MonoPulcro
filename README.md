@@ -2,7 +2,7 @@
 
 Aplicación Android nativa para mantener hábitos de limpieza del hogar. Cada día completas tus tareas, el mono se pone contento y ganas bananas. Si no las haces, el mono se ensucia.
 
-**Versión actual:** 1.2.5 (versionCode 21)
+**Versión actual:** 1.2.9 (versionCode 25)
 
 ## ¿Qué hace?
 
@@ -10,7 +10,7 @@ Aplicación Android nativa para mantener hábitos de limpieza del hogar. Cada d�
 - **Racha de días** consecutivos al completar todas las tareas del día.
 - **Bananas** como moneda: loot del cofre al completar el día, motas de polvo y anuncios rewarded.
 - **Escudos de Pulcritud** que protegen la racha si fallas un día.
-- **Tienda**: accesorios cosméticos, escudos y cofre por anuncio (máx. 3/día).
+- **Tienda**: accesorios cosméticos, escudos, cofre por anuncio (máx. 3/día) y cofres de bananas de pago (Google Play Billing).
 - **Widget** de pantalla de inicio con el estado del mono y la racha.
 - **Notificaciones locales**: recordatorios de hábito (mañana/tarde/noche), por tarea y celebración.
 - **Reset automático diario** (incluye huecos de varios días sin abrir la app).
@@ -44,6 +44,7 @@ app/src/main/
 │   ├── MainActivity.kt              # Entry point, NavHost, permisos
 │   ├── ads/                         # Rewarded + Native AdMob
 │   ├── audio/                       # SoundManager
+│   ├── billing/                     # Google Play Billing (cofres de bananas IAP)
 │   ├── data/                        # Task, DustMote, MonkeyStateManager
 │   ├── notifications/               # Canales, schedulers, receiver
 │   ├── ui/                          # Compose screens, ViewModel, theme
@@ -64,6 +65,7 @@ app/src/main/
 | Widget | Glance AppWidget |
 | Notificaciones | AlarmManager + NotificationCompat |
 | Ads | Google Mobile Ads (rewarded + native) |
+| Pagos | Google Play Billing (cofres de bananas consumibles) |
 | Min / target SDK | 26 / 36 |
 
 Documentación de arquitectura: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Índice completo: [`docs/INDEX.md`](docs/INDEX.md).
@@ -83,7 +85,7 @@ Documentación de arquitectura: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). 
 Imágenes en `app/src/main/res/drawable/` (y referencias en `/img`):
 
 - `mono_pulcro_1/2/3` — limpio (variante cada 3 h)
-- Accesorios: lentes, gorro, chaleco, corona, payaso, vikingo, astronauta, mago, lazo
+- Accesorios: lentes, gorro, chaleco, corona, payaso, vikingo, astronauta, mago, lazo, vampiro, elegante, cocinero
 - `mono_sucio_1/2/3` + estados extremos (cansado, enfermo, frustrado, llorando)
 - `banana`, `fuego`, `mota_polvo`, `cofre_cerrado` / `cofre_abierto`, `escudo_pulcritud`
 

@@ -29,3 +29,6 @@ local.properties
 *.log
 
 keystore
+
+# Claude Code project guidance (local, no versionar)
+CLAUDE.md

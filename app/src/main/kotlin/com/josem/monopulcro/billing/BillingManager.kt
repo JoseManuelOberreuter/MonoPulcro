@@ -69,7 +69,8 @@ class BillingManager(
                 .enableOneTimeProducts()
                 .build(),
         )
-        .build()
+        .
+        build()
 
     fun start() {
         if (billingClient.isReady) {
