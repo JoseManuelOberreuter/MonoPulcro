@@ -117,7 +117,7 @@ Usuario toca comprar
 ```
 
 Archivos: `billing/BillingManager.kt`, `billing/BananaChestCatalog.kt`.
-Dependencia: `com.android.billingclient:billing-ktx:7.1.1`.
+Dependencia: `com.android.billingclient:billing-ktx:9.1.0` (requisito de Play Console: v8.0.0+ antes del 30 ago 2026).
 Permiso: `com.android.vending.BILLING`.
 
 ### Play Console (checklist)

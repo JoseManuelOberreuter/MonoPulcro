@@ -8,7 +8,7 @@ Aplicación Android nativa para mantener hábitos de limpieza del hogar. Cada d�
   <img src="img/Mono_Corona.png" alt="Mono con corona" width="160" />
 </p>
 
-**Versión actual:** 1.2.9 (versionCode 25)
+**Versión actual:** 1.2.10 (versionCode 26)
 
 ## ¿Qué hace?
 

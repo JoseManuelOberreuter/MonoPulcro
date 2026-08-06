@@ -79,6 +79,7 @@ object MonkeyImageResolver {
         R.drawable.mono_elegante_1,
         R.drawable.mono_elegante_2,
         R.drawable.mono_elegante_3,
+        R.drawable.mono_elegante_4,
     )
 
     private val COCINERO_STATES = listOf(

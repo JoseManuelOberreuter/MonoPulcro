@@ -81,7 +81,7 @@ Precios actuales (`MonkeyStateManager.ACCESSORIES`):
 | mago | Mago | 80 | `mono_mago_1/2/3/4` |
 | lazo | Lazo | 90 | `mono_lazo_1/2/3/4` |
 | vampiro | Vampiro | 100 | `mono_vampiro_1/2/3` |
-| elegante | Elegante | 110 | `mono_elegante_1/2/3` |
+| elegante | Elegante | 110 | `mono_elegante_1/2/3/4` |
 | cocinero | Cocinero | 120 | `mono_cocinero_1/2/3` |
 
 Cada accesorio con variantes usa la misma lógica de rotación cada 3 horas.
