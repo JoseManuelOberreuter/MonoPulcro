@@ -140,12 +140,12 @@ fun ShopScreen(
                             Image(
                                 painter = painterResource(R.drawable.banana),
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(52.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "${state.bananas}",
-                                fontSize = 16.sp,
+                                fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = ShopAccent
                             )
