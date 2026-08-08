@@ -23,6 +23,7 @@ Guía de lectura de `docs/`. Versión de app alineada: **1.2.3**.
 | [`motas_de_polvo.md`](motas_de_polvo.md) | Spawn cada 2 h, limpieza, +1 banana |
 | [`economia.md`](economia.md) | Fuentes/gastos de bananas y balance |
 | [`tienda_y_anuncios.md`](tienda_y_anuncios.md) | Shop, rewarded ads, cofre tienda |
+| [`eventos_firebase.md`](eventos_firebase.md) | Eventos de Firebase Analytics implementados |
 
 ## Features de UI / sistema
 

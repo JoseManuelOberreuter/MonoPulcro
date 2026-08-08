@@ -12,6 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.josem.monopulcro.R
+import com.josem.monopulcro.analytics.AnalyticsLogger
 import kotlinx.coroutines.launch
 
 private val WaveColor = Color(0xFF7DD3FC)
@@ -70,6 +72,10 @@ fun OnboardingScreen(
     val scope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == ONBOARDING_PAGES.lastIndex
 
+    LaunchedEffect(Unit) {
+        AnalyticsLogger.log(AnalyticsLogger.Events.ONBOARDING_START)
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -114,7 +120,10 @@ fun OnboardingScreen(
 
             if (isLastPage) {
                 Button(
-                    onClick = onAddFirstTask,
+                    onClick = {
+                        AnalyticsLogger.log(AnalyticsLogger.Events.ONBOARDING_COMPLETE)
+                        onAddFirstTask()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),

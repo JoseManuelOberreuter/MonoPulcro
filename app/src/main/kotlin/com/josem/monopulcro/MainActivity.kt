@@ -21,6 +21,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.ads.MobileAds
+import com.josem.monopulcro.analytics.AnalyticsLogger
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.notifications.NotificationHelper
 import com.josem.monopulcro.notifications.NotificationScheduler
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        AnalyticsLogger.init(this)
         MobileAds.initialize(this) {}
 
         setupNotifications()
@@ -152,6 +154,10 @@ private fun AppNavigation(
                     }
                 },
                 onOpenShop = {
+                    AnalyticsLogger.log(
+                        AnalyticsLogger.Events.STORE_OPENED,
+                        mapOf(AnalyticsLogger.Params.SOURCE to "shop_button")
+                    )
                     navController.navigate(ROUTE_SHOP) {
                         launchSingleTop = true
                     }

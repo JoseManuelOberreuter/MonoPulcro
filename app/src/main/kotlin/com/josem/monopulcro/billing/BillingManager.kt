@@ -3,6 +3,8 @@ package com.josem.monopulcro.billing
 import android.app.Activity
 import android.content.Context
 import android.util.Log
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.josem.monopulcro.analytics.AnalyticsLogger
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
@@ -245,7 +247,23 @@ class BillingManager(
 
         // Idempotent grant, then consume so the pack can be bought again.
         val bananasGranted = onPurchaseReady(productId, purchase.purchaseToken)
+        if (bananasGranted != null) {
+            logPurchaseEvent(productId, purchase.purchaseToken)
+        }
         consumePurchase(purchase, productId, bananasGranted != null)
+    }
+
+    private fun logPurchaseEvent(productId: String, purchaseToken: String) {
+        val offer = productDetailsById[productId]?.oneTimePurchaseOfferDetails ?: return
+        AnalyticsLogger.log(
+            FirebaseAnalytics.Event.PURCHASE,
+            mapOf(
+                FirebaseAnalytics.Param.CURRENCY to offer.priceCurrencyCode,
+                FirebaseAnalytics.Param.VALUE to offer.priceAmountMicros / 1_000_000.0,
+                FirebaseAnalytics.Param.TRANSACTION_ID to purchaseToken,
+                AnalyticsLogger.Params.PRODUCT_ID to productId,
+            )
+        )
     }
 
     private fun consumePurchase(purchase: Purchase, productId: String, newlyGranted: Boolean) {

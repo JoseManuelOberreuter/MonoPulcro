@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.josem.monopulcro.analytics.AnalyticsLogger
 import com.josem.monopulcro.audio.SoundManager
 import com.josem.monopulcro.billing.BananaChestCatalog
 import com.josem.monopulcro.billing.BillingManager
@@ -175,6 +176,10 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         val earned = manager.toggleTask(taskId)
         val newStreak = manager.streakCount
 
+        if (!wasDone) {
+            AnalyticsLogger.logTaskCompleted(taskId)
+        }
+
         val celebration = if (earned) {
             StreakCelebration(
                 previousStreak = previousStreak,
@@ -222,6 +227,10 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
             val wasFirstTaskDuringOnboarding =
                 !manager.onboardingCompleted && manager.loadTasks().isEmpty()
             manager.addTask(task)
+            AnalyticsLogger.log(
+                AnalyticsLogger.Events.TASK_CREATED,
+                mapOf(AnalyticsLogger.Params.DAYS_COUNT to task.scheduledDays.size)
+            )
             if (wasFirstTaskDuringOnboarding) {
                 manager.markMainTourPending()
             }
@@ -252,6 +261,14 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     fun buyAccessory(accessoryId: String) {
         if (manager.buyAccessory(accessoryId)) {
             sounds.playCashRegister()
+            val price = MonkeyStateManager.ACCESSORIES.firstOrNull { it.id == accessoryId }?.price
+            AnalyticsLogger.log(
+                AnalyticsLogger.Events.COSMETIC_UNLOCKED,
+                buildMap {
+                    put(AnalyticsLogger.Params.ACCESSORY_ID, accessoryId)
+                    if (price != null) put(AnalyticsLogger.Params.PRICE, price)
+                }
+            )
             applyAchievementUnlocks()
             refreshState()
             updateWidget()
@@ -319,6 +336,10 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun buyBananaChest(activity: Activity, productId: String) {
+        AnalyticsLogger.log(
+            AnalyticsLogger.Events.PURCHASE_STARTED,
+            mapOf(AnalyticsLogger.Params.PRODUCT_ID to productId)
+        )
         billingManager.launchPurchase(activity, productId)
     }
 
@@ -410,10 +431,15 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun onChestRevealed() {
+        val displayed = _chestReward.value.displayedBananas.takeIf { it > 0 }
+            ?: manager.lastRewardBananas
+        AnalyticsLogger.log(
+            AnalyticsLogger.Events.CHEST_OPENED,
+            mapOf(AnalyticsLogger.Params.BANANAS to displayed)
+        )
         _chestReward.update {
             it.copy(
-                displayedBananas = it.displayedBananas.takeIf { n -> n > 0 }
-                    ?: manager.lastRewardBananas,
+                displayedBananas = displayed,
                 phase = ChestRewardPhase.Revealed,
                 canOfferDouble = it.canOfferDouble && !manager.rewardDoubledToday,
             )
