@@ -316,9 +316,10 @@ fun MainScreen(
                     Box(
                         modifier = Modifier
                             .mainTourAnchor(MainTourStep.STREAK, tourBounds, tourScrollY)
-                            .clickable {
-                                if (!interactionLocked) onOpenStreakDetails()
-                            }
+                        // Navegación a la pantalla "Racha y logros" deshabilitada
+                        // temporalmente para el lanzamiento con Firebase.
+                        // onOpenStreakDetails queda sin usar a propósito; el resto
+                        // del sistema de logros/estadísticas sigue activo.
                     ) {
                         StreakCounter(streak = state.streak)
                     }
