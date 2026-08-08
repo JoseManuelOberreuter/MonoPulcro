@@ -68,6 +68,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.ComponentActivity
 import com.josem.monopulcro.R
+import com.josem.monopulcro.data.Achievement
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.ads.AdLoadState
 import com.josem.monopulcro.ads.RewardedAdManager
@@ -130,6 +131,7 @@ fun MainScreen(
     onAddTask: () -> Unit,
     onEditTask: (taskId: String) -> Unit,
     onOpenShop: () -> Unit,
+    onOpenStreakDetails: () -> Unit,
     vm: MonkeyViewModel = viewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
@@ -139,6 +141,7 @@ fun MainScreen(
     var dustAtCleanStart by remember { mutableStateOf(emptyList<com.josem.monopulcro.data.DustMote>()) }
     var showDustBananaReward by remember { mutableStateOf(false) }
     var dustBananaReward by remember { mutableStateOf(0) }
+    val achievementQueue = remember { mutableStateListOf<Achievement>() }
     var selectedDayOfWeek by remember { mutableStateOf<Int?>(null) }
     val selectedWeekDay = selectedDayOfWeek?.let { dow ->
         state.weekDays.find { it.dayOfWeek == dow }
@@ -256,6 +259,9 @@ fun MainScreen(
                 MonkeyUiEffect.ShowRewardedAdForShopChest -> {
                     // Lo maneja ShopScreen; ignorar en MainScreen.
                 }
+                is MonkeyUiEffect.ShowAchievementUnlocked -> {
+                    achievementQueue.add(effect.achievement)
+                }
             }
         }
     }
@@ -308,11 +314,11 @@ fun MainScreen(
                         )
                     }
                     Box(
-                        modifier = Modifier.mainTourAnchor(
-                            MainTourStep.STREAK,
-                            tourBounds,
-                            tourScrollY
-                        )
+                        modifier = Modifier
+                            .mainTourAnchor(MainTourStep.STREAK, tourBounds, tourScrollY)
+                            .clickable {
+                                if (!interactionLocked) onOpenStreakDetails()
+                            }
                     ) {
                         StreakCounter(streak = state.streak)
                     }
@@ -558,6 +564,12 @@ fun MainScreen(
         }
         if (showDustBananaReward) {
             BananaRewardOverlay(amount = dustBananaReward, onFinished = { showDustBananaReward = false })
+        }
+        achievementQueue.firstOrNull()?.let { achievement ->
+            AchievementUnlockedOverlay(
+                achievement = achievement,
+                onFinished = { achievementQueue.removeAt(0) }
+            )
         }
         if (rewardFlowActive) {
             BackHandler { /* bloquea navegación atrás durante racha/cofre */ }

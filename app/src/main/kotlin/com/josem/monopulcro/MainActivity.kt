@@ -29,6 +29,7 @@ import com.josem.monopulcro.ui.MainScreen
 import com.josem.monopulcro.ui.OnboardingScreen
 import com.josem.monopulcro.ui.ShopScreen
 import com.josem.monopulcro.ui.SplashScreen
+import com.josem.monopulcro.ui.StreakScreen
 import com.josem.monopulcro.ui.TaskEditScreen
 import com.josem.monopulcro.ui.theme.MonoPulcroTheme
 
@@ -37,6 +38,7 @@ private const val ROUTE_MAIN = "main"
 private const val ROUTE_TASK_NEW = "task_new"
 private const val ROUTE_TASK_EDIT = "task_edit/{taskId}"
 private const val ROUTE_SHOP = "shop"
+private const val ROUTE_STREAK = "streak"
 
 class MainActivity : ComponentActivity() {
 
@@ -154,7 +156,15 @@ private fun AppNavigation(
                         launchSingleTop = true
                     }
                 },
+                onOpenStreakDetails = {
+                    navController.navigate(ROUTE_STREAK) {
+                        launchSingleTop = true
+                    }
+                },
             )
+        }
+        composable(ROUTE_STREAK) {
+            StreakScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(ROUTE_TASK_NEW) {
             TaskEditScreen(

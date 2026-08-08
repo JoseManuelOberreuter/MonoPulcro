@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "525045561421",
+    "project_id": "mono-pulcro",
+    "storage_bucket": "mono-pulcro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:525045561421:android:139d689101e1bc4bf34404",
+        "android_client_info": {
+          "package_name": "com.josem.monopulcro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCHmKT2DTczOTlgmcGRBa6YgzgQkWR75R0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

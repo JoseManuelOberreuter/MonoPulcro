@@ -173,7 +173,7 @@ private fun WidgetDustMote(mote: DustMote, monkeyDp: Float) {
         contentAlignment = Alignment.TopStart
     ) {
         Image(
-            provider = ImageProvider(R.drawable.mota_polvo),
+            provider = ImageProvider(R.drawable.polvo_mota),
             contentDescription = null,
             modifier = GlanceModifier
                 .size(sizeDp.dp)

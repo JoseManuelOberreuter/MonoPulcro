@@ -9,12 +9,15 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.josem.monopulcro.R
+import com.josem.monopulcro.data.Achievement
 import com.josem.monopulcro.data.DustMote
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -170,7 +174,7 @@ fun DustMotesOverlay(
             val y = (maxHeight.value * mote.yFrac - half)
                 .coerceIn(0f, maxHeight.value - mote.sizeDp)
             Image(
-                painter = painterResource(R.drawable.mota_polvo),
+                painter = painterResource(R.drawable.polvo_mota),
                 contentDescription = null,
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -414,6 +418,66 @@ fun BananaRewardOverlay(amount: Int = 1, onFinished: () -> Unit) {
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFEA580C)
+            )
+        }
+    }
+}
+
+/** Insignia de "logro desbloqueado": aparece al centro con un rebote y se desvanece sola. */
+@Composable
+fun AchievementUnlockedOverlay(achievement: Achievement, onFinished: () -> Unit) {
+    val cardAlpha = remember { Animatable(0f) }
+    val cardScale = remember { Animatable(0.6f) }
+
+    LaunchedEffect(achievement) {
+        cardAlpha.animateTo(1f, tween(160))
+        cardScale.animateTo(1.08f, tween(180, easing = EaseOut))
+        cardScale.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+        )
+        delay(1_600L)
+        cardAlpha.animateTo(0f, tween(280))
+        onFinished()
+    }
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .graphicsLayer {
+                    alpha = cardAlpha.value
+                    scaleX = cardScale.value
+                    scaleY = cardScale.value
+                }
+                .background(Color(0xFFFFF7ED), RoundedCornerShape(20.dp))
+                .padding(horizontal = 28.dp, vertical = 20.dp)
+        ) {
+            if (achievement.iconRes != null) {
+                Image(
+                    painter = painterResource(achievement.iconRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp)
+                )
+            } else {
+                Text(text = achievement.emoji, fontSize = 56.sp)
+            }
+            Text(
+                text = "¡Logro desbloqueado!",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFEA580C)
+            )
+            Text(
+                text = achievement.title,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF1E293B)
+            )
+            Text(
+                text = achievement.description,
+                fontSize = 13.sp,
+                color = Color(0xFF475569)
             )
         }
     }

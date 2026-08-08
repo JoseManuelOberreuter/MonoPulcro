@@ -51,7 +51,7 @@ private val ONBOARDING_PAGES = listOf(
         description = "Cada día que completes tus tareas aumenta tu racha. ¡No la rompas!"
     ),
     OnboardingPage(
-        imageRes = R.drawable.mota_polvo,
+        imageRes = R.drawable.polvo_mota,
         title = "Pelusas en tu mono",
         description = "Con el tiempo se ensucia. Tócalo para limpiarlo y gana una banana extra."
     ),

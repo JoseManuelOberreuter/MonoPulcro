@@ -82,6 +82,17 @@ Migración al init: si `gold` está owned/equipped → se elimina.
 | `onboardingDone` | Bool | onboarding o tour completado |
 | `mainTourPending` | Bool | tour de Main pendiente |
 
+### Logros y progresión a largo plazo
+
+| Clave | Tipo | Notas |
+|---|---|---|
+| `bestStreakCount` | Int | racha máxima histórica; nunca baja, ni al romperse la racha activa |
+| `totalBananasEarned` | Int | suma de bananas ganadas (cofre, motas, ads); NO cuenta IAP ni se resta al gastar/revertir |
+| `totalMotesCleaned` | Int | motas limpiadas acumuladas de por vida |
+| `achievementsUnlocked` | StringSet | ids de `Achievements.ALL` ya reclamados (one-shot, para siempre) |
+
+Ver [`logros.md`](logros.md) para el catálogo y las reglas de desbloqueo.
+
 ### Debug
 
 | Clave | Tipo | Notas |
@@ -136,4 +147,4 @@ data class Task(
 
 ---
 
-Relacionado: [`racha_y_bananas.md`](racha_y_bananas.md) · [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md) · [`motas_de_polvo.md`](motas_de_polvo.md)
+Relacionado: [`racha_y_bananas.md`](racha_y_bananas.md) · [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md) · [`motas_de_polvo.md`](motas_de_polvo.md) · [`logros.md`](logros.md)

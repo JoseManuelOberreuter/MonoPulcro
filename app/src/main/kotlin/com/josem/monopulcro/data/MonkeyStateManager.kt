@@ -366,6 +366,8 @@ class MonkeyStateManager(
                     .putInt(KEY_BANANAS, bananas + chestBananas)
                     .putInt(KEY_REWARD_BANANAS, chestBananas)
                     .putInt(KEY_STREAK, newStreak)
+                    .putInt(KEY_BEST_STREAK, maxOf(bestStreakCount, newStreak))
+                    .putInt(KEY_TOTAL_BANANAS_EARNED, totalBananasEarned + chestBananas)
                     .putBoolean(KEY_REWARD_GIVEN, true)
                     .putBoolean(KEY_STREAK_COUNTED, true)
                     .putBoolean(KEY_STREAK_BROKEN, false)
@@ -409,6 +411,7 @@ class MonkeyStateManager(
         prefs.edit()
             .putInt(KEY_BANANAS, bananas + extra)
             .putInt(KEY_REWARD_BANANAS, awarded * CHEST_AD_MULTIPLIER)
+            .putInt(KEY_TOTAL_BANANAS_EARNED, totalBananasEarned + extra)
             .putBoolean(KEY_REWARD_DOUBLED, true)
             .apply()
         return true
@@ -461,6 +464,7 @@ class MonkeyStateManager(
         }
         prefs.edit()
             .putInt(KEY_BANANAS, bananas + SHOP_CHEST_REWARD)
+            .putInt(KEY_TOTAL_BANANAS_EARNED, totalBananasEarned + SHOP_CHEST_REWARD)
             .putInt(KEY_SHOP_CHEST_OPENS_TODAY, shopChestOpensToday + 1)
             .putBoolean(KEY_PENDING_SHOP_CHEST_AD, false)
             .commit()
@@ -538,6 +542,8 @@ class MonkeyStateManager(
             .putString(KEY_DUST_MOTES, "[]")
             .remove(KEY_DUST_COUNT)
             .putInt(KEY_BANANAS, bananas + reward)
+            .putInt(KEY_TOTAL_BANANAS_EARNED, totalBananasEarned + reward)
+            .putInt(KEY_TOTAL_MOTES_CLEANED, totalMotesCleaned + reward)
             .putLong(KEY_DUST_LAST_SPAWN_MS, currentTimeMs())
             .apply()
         return reward
@@ -573,6 +579,64 @@ class MonkeyStateManager(
     private fun saveDustMotes(motes: List<DustMote>) {
         val canonical = dustMotesForCount(motes.size, MAX_DUST_MOTES)
         prefs.edit().putString(KEY_DUST_MOTES, gson.toJson(canonical)).apply()
+    }
+
+    // ─── Logros y progresión a largo plazo ─────────────────────────────────────
+
+    val bestStreakCount: Int get() = prefs.getInt(KEY_BEST_STREAK, 0)
+    val totalBananasEarned: Int get() = prefs.getInt(KEY_TOTAL_BANANAS_EARNED, 0)
+    val totalMotesCleaned: Int get() = prefs.getInt(KEY_TOTAL_MOTES_CLEANED, 0)
+    val unlockedAchievements: Set<String>
+        get() = prefs.getStringSet(KEY_ACHIEVEMENTS_UNLOCKED, emptySet()) ?: emptySet()
+
+    /**
+     * Evalúa el catálogo de logros contra las estadísticas históricas actuales.
+     * Idempotente: un logro ya reclamado nunca se re-otorga ni se revierte.
+     * @return los logros recién desbloqueados en esta llamada (para celebrar en la UI).
+     */
+    fun checkAchievements(): List<Achievement> {
+        val claimed = unlockedAchievements.toMutableSet()
+        val newlyUnlocked = mutableListOf<Achievement>()
+
+        fun tryUnlock(id: String, condition: Boolean) {
+            if (id in claimed || !condition) return
+            val achievement = Achievements.byId(id) ?: return
+            claimed.add(id)
+            newlyUnlocked.add(achievement)
+        }
+
+        tryUnlock("streak_3", bestStreakCount >= 3)
+        tryUnlock("streak_7", bestStreakCount >= 7)
+        tryUnlock("streak_30", bestStreakCount >= 30)
+        tryUnlock("streak_100", bestStreakCount >= 100)
+        tryUnlock("bananas_50", totalBananasEarned >= 50)
+        tryUnlock("bananas_500", totalBananasEarned >= 500)
+        tryUnlock("motes_10", totalMotesCleaned >= 10)
+        tryUnlock("motes_50", totalMotesCleaned >= 50)
+        tryUnlock("accessory_first", ownedAccessories.isNotEmpty())
+        tryUnlock("accessory_all", ownedAccessories.size >= ACCESSORIES.size)
+
+        if (newlyUnlocked.isNotEmpty()) {
+            prefs.edit().putStringSet(KEY_ACHIEVEMENTS_UNLOCKED, HashSet(claimed)).commit()
+        }
+        return newlyUnlocked
+    }
+
+    /** Debug: fuerza todos los logros a "desbloqueado" para revisar sus íconos. */
+    fun debugUnlockAllAchievements() {
+        prefs.edit()
+            .putStringSet(KEY_ACHIEVEMENTS_UNLOCKED, HashSet(Achievements.ALL.map { it.id }))
+            .commit()
+    }
+
+    /** Debug: bloquea todos los logros y resetea los contadores de por vida a 0. */
+    fun debugResetAchievements() {
+        prefs.edit()
+            .remove(KEY_ACHIEVEMENTS_UNLOCKED)
+            .putInt(KEY_BEST_STREAK, 0)
+            .putInt(KEY_TOTAL_BANANAS_EARNED, 0)
+            .putInt(KEY_TOTAL_MOTES_CLEANED, 0)
+            .commit()
     }
 
     // ─── Debug ─────────────────────────────────────────────────────────────────
@@ -717,6 +781,11 @@ class MonkeyStateManager(
         const val KEY_PENDING_BROKEN_SHIELDS_USED = "pendingBrokenShieldsUsed"
         const val KEY_SHIELDS_USED_ACCUMULATOR = "shieldsUsedAccumulator"
         const val KEY_DEBUG_DAY_OFFSET = "debugDayOffset"
+
+        const val KEY_BEST_STREAK = "bestStreakCount"
+        const val KEY_TOTAL_BANANAS_EARNED = "totalBananasEarned"
+        const val KEY_TOTAL_MOTES_CLEANED = "totalMotesCleaned"
+        const val KEY_ACHIEVEMENTS_UNLOCKED = "achievementsUnlocked"
 
         const val VIEW_MODE_TODAY = "today"
         const val VIEW_MODE_WEEK  = "week"

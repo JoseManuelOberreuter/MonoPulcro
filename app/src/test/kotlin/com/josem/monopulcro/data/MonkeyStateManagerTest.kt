@@ -186,6 +186,83 @@ class MonkeyStateManagerTest {
   }
 
   @Test
+  fun toggleTask_updatesBestStreakAndTotalBananasEarned() {
+    val m = manager()
+    val task = addTaskForDow(m, wednesday.dayOfWeek.value)
+    m.toggleTask(task.id)
+    assertEquals(1, m.bestStreakCount)
+    assertEquals(2, m.totalBananasEarned)
+  }
+
+  @Test
+  fun bestStreakCount_survivesStreakBreak() {
+    val tuesday = LocalDate.of(2026, 7, 14)
+    val prefs = context.getSharedPreferences(
+      "monkey_test_beststreak_${UUID.randomUUID()}",
+      Context.MODE_PRIVATE,
+    )
+    prefs.edit()
+      .putString(MonkeyStateManager.KEY_LAST_RESET, tuesday.toString())
+      .putInt(MonkeyStateManager.KEY_STREAK, 5)
+      .putInt(MonkeyStateManager.KEY_BEST_STREAK, 5)
+      .putBoolean(MonkeyStateManager.KEY_STREAK_COUNTED, false)
+      .putBoolean(MonkeyStateManager.KEY_SHIELDS_INITIALIZED, true)
+      .putInt(MonkeyStateManager.KEY_SHIELDS_COUNT, 0)
+      .apply()
+    val m = MonkeyStateManager(
+      context = context,
+      todayProvider = { wednesday },
+      prefsOverride = prefs,
+      chestLootProvider = { 2 },
+    )
+    m.addTask(Task(name = "Lavar", scheduledDays = listOf(tuesday.dayOfWeek.value)))
+    m.checkAndResetForNewDay()
+    assertEquals(0, m.streakCount)
+    assertEquals(5, m.bestStreakCount)
+  }
+
+  @Test
+  fun rewardDustCleaning_updatesTotalMotesCleaned() {
+    val m = manager()
+    m.debugAdvanceDustHours(6)
+    val motes = m.dustCount
+    assertTrue(motes > 0)
+    m.rewardDustCleaning()
+    assertEquals(motes, m.totalMotesCleaned)
+  }
+
+  @Test
+  fun checkAchievements_unlocksStreakMilestone_onlyOnce() {
+    val prefs = context.getSharedPreferences(
+      "monkey_test_ach_${UUID.randomUUID()}",
+      Context.MODE_PRIVATE,
+    )
+    prefs.edit().putInt(MonkeyStateManager.KEY_BEST_STREAK, 3).apply()
+    val m = MonkeyStateManager(
+      context = context,
+      todayProvider = { wednesday },
+      prefsOverride = prefs,
+      chestLootProvider = { 2 },
+    )
+    val unlocked = m.checkAchievements()
+    assertTrue(unlocked.any { it.id == "streak_3" })
+    assertTrue("streak_3" in m.unlockedAchievements)
+
+    val again = m.checkAchievements()
+    assertTrue(again.isEmpty())
+  }
+
+  @Test
+  fun checkAchievements_unlocksAccessoryMilestones() {
+    val m = manager()
+    m.debugAddBananas(10)
+    m.buyAccessory("glasses")
+    val unlocked = m.checkAchievements()
+    assertTrue(unlocked.any { it.id == "accessory_first" })
+    assertFalse(unlocked.any { it.id == "accessory_all" })
+  }
+
+  @Test
   fun grantPurchasedBananas_addsOncePerToken() {
     val m = manager()
     assertEquals(50, m.grantPurchasedBananas(50, "token-a"))

@@ -10,6 +10,7 @@ Guía de lectura de `docs/`. Versión de app alineada: **1.2.3**.
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Capas, stack, flujos de datos |
 | [`puntos_de_mejora.md`](puntos_de_mejora.md) | Backlog técnico y de producto |
 | [`todo.md`](todo.md) | Pendientes concretos de UX / assets |
+| [`ideas_gamificacion.md`](ideas_gamificacion.md) | Feedback y roadmap de ideas de gamificación |
 
 ## Dominio y gamificación
 
@@ -18,6 +19,7 @@ Guía de lectura de `docs/`. Versión de app alineada: **1.2.3**.
 | [`estado_mono_principal.md`](estado_mono_principal.md) | Limpio/sucio, imágenes, accesorios |
 | [`racha_y_bananas.md`](racha_y_bananas.md) | Streak, cofre, anti-exploit |
 | [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md) | Protección de racha, hitos, tienda |
+| [`logros.md`](logros.md) | Racha máxima histórica, contadores de por vida, catálogo de logros |
 | [`motas_de_polvo.md`](motas_de_polvo.md) | Spawn cada 2 h, limpieza, +1 banana |
 | [`economia.md`](economia.md) | Fuentes/gastos de bananas y balance |
 | [`tienda_y_anuncios.md`](tienda_y_anuncios.md) | Shop, rewarded ads, cofre tienda |

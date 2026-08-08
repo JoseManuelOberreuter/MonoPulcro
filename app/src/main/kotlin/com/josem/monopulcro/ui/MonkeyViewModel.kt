@@ -10,6 +10,7 @@ import com.josem.monopulcro.audio.SoundManager
 import com.josem.monopulcro.billing.BananaChestCatalog
 import com.josem.monopulcro.billing.BillingManager
 import com.josem.monopulcro.billing.BillingUiState
+import com.josem.monopulcro.data.Achievement
 import com.josem.monopulcro.data.DustMote
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.Task
@@ -78,6 +79,7 @@ sealed interface MonkeyUiEffect {
         val lostStreak: Int,
         val shieldsUsed: Int,
     ) : MonkeyUiEffect
+    data class ShowAchievementUnlocked(val achievement: Achievement) : MonkeyUiEffect
 }
 
 data class MonkeyUiState(
@@ -100,6 +102,8 @@ data class MonkeyUiState(
     val showMainTour: Boolean = false,
     val shopChestOpensToday: Int = 0,
     val shopChestRemainingToday: Int = MonkeyStateManager.MAX_SHOP_CHEST_OPENS_PER_DAY,
+    val bestStreakCount: Int = 0,
+    val unlockedAchievements: Set<String> = emptySet(),
 )
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
@@ -139,6 +143,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         manager.checkAndResetForNewDay()
+        applyAchievementUnlocks()
         refreshState()
         emitPendingStreakMessages()
         viewModelScope.launch {
@@ -179,6 +184,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
             )
         } else null
 
+        applyAchievementUnlocks()
         refreshState(celebration = celebration)
         updateWidget()
 
@@ -205,6 +211,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     /** Limpia motas y devuelve las bananas otorgadas (1 por mota). */
     fun completeDustCleaning(): Int {
         val reward = manager.rewardDustCleaning()
+        applyAchievementUnlocks()
         refreshState()
         updateWidget()
         return reward
@@ -245,6 +252,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     fun buyAccessory(accessoryId: String) {
         if (manager.buyAccessory(accessoryId)) {
             sounds.playCashRegister()
+            applyAchievementUnlocks()
             refreshState()
             updateWidget()
             _purchaseOverlayAccessoryId.value = accessoryId
@@ -350,8 +358,28 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun refresh() {
+        applyAchievementUnlocks()
         refreshState()
         emitPendingStreakMessages()
+    }
+
+    /** Chequea el catálogo de logros y emite un efecto por cada uno recién desbloqueado. */
+    private fun applyAchievementUnlocks() {
+        manager.checkAchievements().forEach { achievement ->
+            _effects.tryEmit(MonkeyUiEffect.ShowAchievementUnlocked(achievement))
+        }
+    }
+
+    /** Debug: fuerza todos los logros a "desbloqueado" para revisar sus íconos. */
+    fun debugUnlockAllAchievements() {
+        manager.debugUnlockAllAchievements()
+        refreshState()
+    }
+
+    /** Debug: bloquea todos los logros y resetea los contadores de por vida a 0. */
+    fun debugResetAchievements() {
+        manager.debugResetAchievements()
+        refreshState()
     }
 
     /** Racha rota tiene prioridad sobre overlay de escudo (mutuamente excluyentes). */
@@ -470,6 +498,8 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 showMainTour      = manager.shouldShowMainTour,
                 shopChestOpensToday = manager.shopChestOpensToday,
                 shopChestRemainingToday = manager.shopChestRemainingToday,
+                bestStreakCount = manager.bestStreakCount,
+                unlockedAchievements = manager.unlockedAchievements,
             )
         }
     }
