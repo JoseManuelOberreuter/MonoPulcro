@@ -415,6 +415,19 @@ private fun TaskNameSelector(
                 onDismissRequest = { expanded = false },
                 modifier = Modifier.heightIn(max = 320.dp),
             ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = CUSTOM_TASK_LABEL,
+                            fontWeight = if (isCustomTask) FontWeight.SemiBold else FontWeight.Normal,
+                            color = Color(0xFF0EA5E9),
+                        )
+                    },
+                    onClick = {
+                        onCustomModeChange(true)
+                        expanded = false
+                    },
+                )
                 predefinedOptions.forEach { name ->
                     DropdownMenuItem(
                         text = {
@@ -434,19 +447,6 @@ private fun TaskNameSelector(
                         },
                     )
                 }
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = CUSTOM_TASK_LABEL,
-                            fontWeight = if (isCustomTask) FontWeight.SemiBold else FontWeight.Normal,
-                            color = Color(0xFF0EA5E9),
-                        )
-                    },
-                    onClick = {
-                        onCustomModeChange(true)
-                        expanded = false
-                    },
-                )
             }
         }
 
