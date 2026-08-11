@@ -351,7 +351,16 @@ class MonkeyStateManager(
     fun toggleTask(taskId: String): Boolean {
         val rewardAlreadyGiven = prefs.getBoolean(KEY_REWARD_GIVEN, false)
         val newState = !prefs.getBoolean(taskKey(taskId), false)
-        prefs.edit().putBoolean(taskKey(taskId), newState).apply()
+
+        // +1 banana real por tarea marcada; se revierte al desmarcar (evita farmeo).
+        val taskBananaDelta = if (newState) TASK_BANANA_REWARD else -TASK_BANANA_REWARD
+        val editor = prefs.edit()
+            .putBoolean(taskKey(taskId), newState)
+            .putInt(KEY_BANANAS, maxOf(0, bananas + taskBananaDelta))
+        if (newState) {
+            editor.putInt(KEY_TOTAL_BANANAS_EARNED, totalBananasEarned + TASK_BANANA_REWARD)
+        }
+        editor.apply()
 
         val allTodayDone = todayTasks.isNotEmpty() && todayTasks.all { isTaskCompleted(it.id) }
 
@@ -752,6 +761,8 @@ class MonkeyStateManager(
         const val PREFS_NAME           = "monkey_prefs"
         const val KEY_STREAK           = "streakCount"
         const val KEY_BANANAS          = "bananas"
+        /** Banana real otorgada al marcar cada tarea individual como completada. */
+        const val TASK_BANANA_REWARD   = 1
         const val KEY_LAST_RESET       = "lastResetDate"
         const val KEY_REWARD_GIVEN     = "rewardGivenToday"
         const val KEY_STREAK_COUNTED   = "streakCountedToday"
@@ -831,6 +842,7 @@ class MonkeyStateManager(
             AccessoryItem("vampiro",   "Vampiro",   100),
             AccessoryItem("elegante",  "Elegante",  110),
             AccessoryItem("cocinero",  "Cocinero",  120),
+            AccessoryItem("pirata",    "Pirata",    130),
         )
     }
 }

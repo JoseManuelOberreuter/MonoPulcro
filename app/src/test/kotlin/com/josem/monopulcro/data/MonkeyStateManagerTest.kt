@@ -74,7 +74,8 @@ class MonkeyStateManagerTest {
     val task = addTaskForDow(m, wednesday.dayOfWeek.value)
     assertTrue(m.toggleTask(task.id))
     assertEquals(1, m.streakCount)
-    assertEquals(2, m.bananas)
+    // +1 banana real por la tarea marcada + 2 del loot del cofre (loot fijo de prueba)
+    assertEquals(3, m.bananas)
     assertEquals(2, m.lastRewardBananas)
   }
 
@@ -90,12 +91,38 @@ class MonkeyStateManagerTest {
   }
 
   @Test
+  fun toggleTask_singleTaskOfSeveral_grantsOneBananaWithoutChest() {
+    val m = manager()
+    val dow = wednesday.dayOfWeek.value
+    val task1 = addTaskForDow(m, dow, "Tarea 1")
+    addTaskForDow(m, dow, "Tarea 2")
+
+    assertFalse(m.toggleTask(task1.id))
+    assertEquals(1, m.bananas)
+    assertEquals(0, m.streakCount)
+    assertEquals(0, m.lastRewardBananas)
+  }
+
+  @Test
+  fun toggleTask_uncheckSingleTask_revertsItsBanana() {
+    val m = manager()
+    val dow = wednesday.dayOfWeek.value
+    val task1 = addTaskForDow(m, dow, "Tarea 1")
+    addTaskForDow(m, dow, "Tarea 2")
+
+    m.toggleTask(task1.id)
+    m.toggleTask(task1.id)
+    assertEquals(0, m.bananas)
+  }
+
+  @Test
   fun tripleChestReward_succeedsOnceThenFails() {
     val m = manager()
     val task = addTaskForDow(m, wednesday.dayOfWeek.value)
     m.toggleTask(task.id)
     assertTrue(m.tripleChestReward())
-    assertEquals(6, m.bananas)
+    // 1 (tarea) + 2 (loot base) + 4 (extra x3 sobre el loot) = 7
+    assertEquals(7, m.bananas)
     assertTrue(m.rewardDoubledToday)
     assertFalse(m.tripleChestReward())
   }
@@ -108,7 +135,7 @@ class MonkeyStateManagerTest {
     m.checkAndResetForNewDay()
     assertEquals(wednesday.toString(), m.lastResetDate)
     assertEquals(1, m.streakCount)
-    assertEquals(2, m.bananas)
+    assertEquals(3, m.bananas)
   }
 
   @Test
@@ -191,7 +218,7 @@ class MonkeyStateManagerTest {
     val task = addTaskForDow(m, wednesday.dayOfWeek.value)
     m.toggleTask(task.id)
     assertEquals(1, m.bestStreakCount)
-    assertEquals(2, m.totalBananasEarned)
+    assertEquals(3, m.totalBananasEarned)
   }
 
   @Test

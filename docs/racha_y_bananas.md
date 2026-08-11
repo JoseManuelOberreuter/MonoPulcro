@@ -37,7 +37,10 @@ Ver tabla completa en [`persistencia.md`](persistencia.md). Claves clave:
 ## 2. Cómo se gana la racha y el loot (`toggleTask`)
 
 1. Se invierte `done_<id>`.
-2. ¿Todas las tareas de **hoy** completadas?
+2. **Banana individual:** marcar cualquier tarea suma `TASK_BANANA_REWARD` (1 banana)
+   al saldo real de inmediato; desmarcarla la resta (evita farmeo con check/uncheck).
+   Dispara la animación `BananaRewardOverlay` (misma que limpiar pelusas).
+3. ¿Todas las tareas de **hoy** completadas?
 
 **Caso A — Última tarea y aún no se pagó hoy:**
 
@@ -45,7 +48,7 @@ Ver tabla completa en [`persistencia.md`](persistencia.md). Claves clave:
 nuevaRacha   = streakCount + 1
 esHito       = nuevaRacha % 7 == 0
 lootCofre    = random(1..3) + (3 si esHito)   → 1–3 o 4–6
-bananas     += lootCofre
+bananas     += lootCofre   (además de la banana individual del punto 2)
 streakCount  = nuevaRacha
 rewardGivenToday / streakCountedToday = true
 streakBroken = false, missedDays = 0
@@ -55,10 +58,12 @@ streakBroken = false, missedDays = 0
 
 **Caso B — Desmarcar tras completar el día:**
 
-- Resta `rewardBananasToday` exacto, racha −1, limpia flags de recompensa.
-- Si vuelve a marcar todo, se tira un **nuevo** random.
+- Resta la banana individual (1) y además `rewardBananasToday` exacto del cofre,
+  racha −1, limpia flags de recompensa.
+- Si vuelve a marcar todo, se tira un **nuevo** random para el cofre.
 
-**Caso C — Toggle intermedio:** no toca racha ni bananas.
+**Caso C — Toggle intermedio (no es la última tarea del día):** solo aplica la
+banana individual del punto 2; no toca racha ni cofre.
 
 ---
 
@@ -110,6 +115,7 @@ consumir varios escudos; las bananas **nunca** se pierden al fallar.
 | vampiro | Vampiro | 100 |
 | elegante | Elegante | 110 |
 | cocinero | Cocinero | 120 |
+| pirata | Pirata | 130 |
 
 Balance resumido: [`economia.md`](economia.md). Tienda/ads: [`tienda_y_anuncios.md`](tienda_y_anuncios.md).
 

@@ -14,6 +14,7 @@ Priorización amplia y backlog técnico: `[puntos_de_mejora.md](puntos_de_mejora
 - [x] Agregar la skin de vampiro (`mono_vampiro_1/2/3`)
 - [x] Agregar la skin de elegante (`mono_elegante_1/2/3/4`)
 - [x] Agregar la skin de cocinero (`mono_cocinero_1/2/3`)
+- [x] Agregar la skin de pirata (`mono_pirata_1/2/3/4`)
 - [x] Agregar overlay de racha rota
 - [ ] Agregar funcionalidades de recuperar tareas del día anterior por bananas
 - [x] Agregar overlay de compra de objeto

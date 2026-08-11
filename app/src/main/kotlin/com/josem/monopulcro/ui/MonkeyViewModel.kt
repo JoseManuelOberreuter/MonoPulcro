@@ -81,6 +81,7 @@ sealed interface MonkeyUiEffect {
         val shieldsUsed: Int,
     ) : MonkeyUiEffect
     data class ShowAchievementUnlocked(val achievement: Achievement) : MonkeyUiEffect
+    data object ShowTaskBananaReward : MonkeyUiEffect
 }
 
 data class MonkeyUiState(
@@ -178,6 +179,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
         if (!wasDone) {
             AnalyticsLogger.logTaskCompleted(taskId)
+            _effects.tryEmit(MonkeyUiEffect.ShowTaskBananaReward)
         }
 
         val celebration = if (earned) {

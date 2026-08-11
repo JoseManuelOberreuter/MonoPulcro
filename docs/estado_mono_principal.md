@@ -83,6 +83,7 @@ Precios actuales (`MonkeyStateManager.ACCESSORIES`):
 | vampiro | Vampiro | 100 | `mono_vampiro_1/2/3` |
 | elegante | Elegante | 110 | `mono_elegante_1/2/3/4` |
 | cocinero | Cocinero | 120 | `mono_cocinero_1/2/3` |
+| pirata | Pirata | 130 | `mono_pirata_1/2/3/4` |
 
 Cada accesorio con variantes usa la misma lógica de rotación cada 3 horas.
 

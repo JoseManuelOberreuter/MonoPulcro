@@ -91,7 +91,7 @@ Documentación de arquitectura: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). 
 Imágenes en `app/src/main/res/drawable/` (y referencias en `/img`):
 
 - `mono_pulcro_1/2/3` — limpio (variante cada 3 h)
-- Accesorios: lentes, gorro, chaleco, corona, payaso, vikingo, astronauta, mago, lazo, vampiro, elegante, cocinero
+- Accesorios: lentes, gorro, chaleco, corona, payaso, vikingo, astronauta, mago, lazo, vampiro, elegante, cocinero, pirata
 - `mono_sucio_1/2/3` + estados extremos (cansado, enfermo, frustrado, llorando)
 - `banana`, `fuego`, `mota_polvo`, `cofre_cerrado` / `cofre_abierto`, `escudo_pulcritud`
 

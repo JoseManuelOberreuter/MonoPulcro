@@ -49,6 +49,7 @@ Definidos en `MonkeyStateManager.ACCESSORIES`:
 | vampiro | Vampiro | 100 |
 | elegante | Elegante | 110 |
 | cocinero | Cocinero | 120 |
+| pirata | Pirata | 130 |
 
 - `buyAccessory(id)`: descuenta bananas, añade a `ownedAccessories`.
 - `useAccessory(id)`: equipa (solo se ve si `isCleanToday`).

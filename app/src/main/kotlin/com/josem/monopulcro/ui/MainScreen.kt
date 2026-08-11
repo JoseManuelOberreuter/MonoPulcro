@@ -142,6 +142,7 @@ fun MainScreen(
     var showDustBananaReward by remember { mutableStateOf(false) }
     var dustBananaReward by remember { mutableStateOf(0) }
     val achievementQueue = remember { mutableStateListOf<Achievement>() }
+    val taskBananaRewardQueue = remember { mutableStateListOf<Long>() }
     var selectedDayOfWeek by remember { mutableStateOf<Int?>(null) }
     val selectedWeekDay = selectedDayOfWeek?.let { dow ->
         state.weekDays.find { it.dayOfWeek == dow }
@@ -261,6 +262,9 @@ fun MainScreen(
                 }
                 is MonkeyUiEffect.ShowAchievementUnlocked -> {
                     achievementQueue.add(effect.achievement)
+                }
+                MonkeyUiEffect.ShowTaskBananaReward -> {
+                    taskBananaRewardQueue.add(System.nanoTime())
                 }
             }
         }
@@ -565,6 +569,14 @@ fun MainScreen(
         }
         if (showDustBananaReward) {
             BananaRewardOverlay(amount = dustBananaReward, onFinished = { showDustBananaReward = false })
+        }
+        taskBananaRewardQueue.firstOrNull()?.let { rewardKey ->
+            key(rewardKey) {
+                BananaRewardOverlay(
+                    amount = 1,
+                    onFinished = { taskBananaRewardQueue.remove(rewardKey) }
+                )
+            }
         }
         achievementQueue.firstOrNull()?.let { achievement ->
             AchievementUnlockedOverlay(
