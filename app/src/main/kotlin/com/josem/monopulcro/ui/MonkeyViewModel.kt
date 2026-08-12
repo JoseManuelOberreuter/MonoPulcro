@@ -94,6 +94,8 @@ data class MonkeyUiState(
     val missedDaysCount: Int = 0,
     val ownedAccessories: Set<String> = emptySet(),
     val equippedAccessory: String? = null,
+    val ownedAuras: Set<String> = emptySet(),
+    val equippedAura: String? = null,
     val todayTasks: List<TaskUiState> = emptyList(),
     val allTasks: List<Task> = emptyList(),
     val weekDays: List<WeekDayUi> = emptyList(),
@@ -282,6 +284,30 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         _purchaseOverlayAccessoryId.value = null
     }
 
+    fun buyAura(auraId: String) {
+        if (manager.buyAura(auraId)) {
+            sounds.playCashRegister()
+            manager.useAura(auraId)
+            val price = MonkeyStateManager.AURAS.firstOrNull { it.id == auraId }?.price
+            AnalyticsLogger.log(
+                AnalyticsLogger.Events.COSMETIC_UNLOCKED,
+                buildMap {
+                    put(AnalyticsLogger.Params.ACCESSORY_ID, auraId)
+                    if (price != null) put(AnalyticsLogger.Params.PRICE, price)
+                }
+            )
+            applyAchievementUnlocks()
+            refreshState()
+            updateWidget()
+        }
+    }
+
+    fun useAura(auraId: String?) {
+        manager.useAura(auraId)
+        refreshState()
+        updateWidget()
+    }
+
     fun usePurchasedAccessory(accessoryId: String) {
         manager.useAccessory(accessoryId)
         _purchaseOverlayAccessoryId.value = null
@@ -357,7 +383,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         _shopChestOverlayBananas.value = granted
     }
 
-    fun useAccessory(accessoryId: String) {
+    fun useAccessory(accessoryId: String?) {
         viewModelScope.launch {
             manager.useAccessory(accessoryId)
             refreshState()
@@ -514,6 +540,8 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 missedDaysCount   = manager.missedDaysCount,
                 ownedAccessories  = manager.ownedAccessories,
                 equippedAccessory = manager.equippedAccessory,
+                ownedAuras        = manager.ownedAuras,
+                equippedAura      = manager.equippedAura,
                 todayTasks        = todayStates.map { (task, done) ->
                     TaskUiState(task, done)
                 },

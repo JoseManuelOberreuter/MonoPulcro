@@ -2,15 +2,20 @@ package com.josem.monopulcro.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,14 +35,21 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.util.lerp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.josem.monopulcro.R
 import com.josem.monopulcro.data.Achievement
 import com.josem.monopulcro.data.DustMote
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.random.Random
 
 private const val SPRAY_DURATION_MS = 3_000L
@@ -480,5 +493,90 @@ fun AchievementUnlockedOverlay(achievement: Achievement, onFinished: () -> Unit)
                 color = Color(0xFF475569)
             )
         }
+    }
+}
+
+// ─── Aura de brillos ──────────────────────────────────────────────────────────
+
+/** Nº de partículas que forman el aro ovalado. */
+private const val AURA_RING_COUNT = 8
+private const val AURA_CYCLE_MS = 4600
+/** Vueltas completas que da el aro mientras sube (entero: evita saltos al reiniciar el loop). */
+private const val AURA_RING_ORBIT_TURNS = 2
+/** Vueltas que gira cada partícula sobre sí misma mientras sube (entero por el mismo motivo). */
+private const val AURA_SELF_SPIN_TURNS = 3
+/** Ancho relativo del óvalo al empezar (abajo) y al terminar (arriba, cerrado). */
+private const val AURA_RADIUS_START_FRAC = 0.54f
+private const val AURA_RADIUS_END_FRAC = 0.14f
+/** Variación de tamaño por partícula para que el aro no se vea uniforme/plano. */
+private val AURA_RING_SIZE_VARIATION = listOf(1f, 0.8f, 1.08f, 0.86f, 1f, 0.78f, 1.05f, 0.9f)
+
+/**
+ * Aro ovalado hecho de [AURA_RING_COUNT] partículas: gira sobre sí mismo y alrededor del
+ * mono (cada partícula además gira sobre su propio eje) mientras sube — ancho al empezar
+ * (abajo) y cada vez más cerrado a medida que llega arriba. Debe llamarse dentro del mismo
+ * [Box] que contiene la imagen del mono (el mono lleva `Modifier.zIndex(1f)`) para que el
+ * orden de dibujo se resuelva por zIndex y no por orden de composición.
+ */
+@Composable
+fun BoxScope.AuraSparkles(boxSize: Dp, auraId: String, modifier: Modifier = Modifier) {
+    val density = LocalDensity.current
+    val sparkleDrawable = MonkeyImageResolver.auraSparkleDrawable(auraId)
+    val infinite = rememberInfiniteTransition(label = "auraSparkles")
+    val t by infinite.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(AURA_CYCLE_MS, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "auraSparklesT"
+    )
+
+    // El óvalo se cierra más rápido cerca del final ("se hace más cerrado" al llegar arriba).
+    val radiusFrac = AURA_RADIUS_START_FRAC +
+        (AURA_RADIUS_END_FRAC - AURA_RADIUS_START_FRAC) * t.pow(1.4f)
+    val baseYFrac = lerp(0.56f, -0.60f, t)
+    val ringRotation = t * AURA_RING_ORBIT_TURNS * 2f * PI.toFloat()
+    val selfSpinDeg = t * AURA_SELF_SPIN_TURNS * 360f
+
+    // Fundido en los extremos para que el reinicio del loop (abajo/ancho) no se note.
+    val fadeIn = (t / 0.08f).coerceIn(0f, 1f)
+    val fadeOut = ((1f - t) / 0.10f).coerceIn(0f, 1f)
+    val edgeAlpha = minOf(fadeIn, fadeOut)
+
+    for (i in 0 until AURA_RING_COUNT) {
+        val baseAngle = i * (2f * PI.toFloat() / AURA_RING_COUNT)
+        val angle = baseAngle + ringRotation
+        val depth = sin(angle)
+        val depthUnit = (depth + 1f) / 2f
+        val isFront = depth >= 0f
+
+        // Óvalo: el ancho lo da radiusFrac; el "achatado" (profundidad) lo da el propio seno.
+        val xOffsetDp = boxSize * (radiusFrac * cos(angle))
+        val yOffsetDp = boxSize * (baseYFrac + radiusFrac * 0.32f * depth)
+
+        val sizeVariation = AURA_RING_SIZE_VARIATION[i % AURA_RING_SIZE_VARIATION.size]
+        val depthScale = 0.7f + 0.3f * depthUnit
+        val depthAlpha = 0.55f + 0.45f * depthUnit
+        val finalAlpha = edgeAlpha * depthAlpha
+        val selfSpin = if (i % 2 == 0) selfSpinDeg else -selfSpinDeg
+
+        Image(
+            painter = painterResource(sparkleDrawable),
+            contentDescription = null,
+            modifier = modifier
+                .align(Alignment.Center)
+                .size(boxSize * 0.24f * sizeVariation)
+                .zIndex(if (isFront) 2f else 0f)
+                .graphicsLayer {
+                    translationX = with(density) { xOffsetDp.toPx() }
+                    translationY = with(density) { yOffsetDp.toPx() }
+                    scaleX = depthScale
+                    scaleY = depthScale
+                    rotationZ = selfSpin
+                    alpha = finalAlpha
+                }
+        )
     }
 }

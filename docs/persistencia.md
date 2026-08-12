@@ -41,6 +41,8 @@ El constructor acepta `todayProvider` y `prefsOverride` (útil para tests).
 |---|---|---|
 | `ownedAccessories` | StringSet | ids comprados |
 | `equippedAccessory` | String | id equipado; vacío = ninguno |
+| `ownedAuras` | StringSet | ids de auras compradas |
+| `equippedAura` | String | id de aura equipada; vacío = ninguna (slot independiente del atuendo) |
 
 Migración al init: si `gold` está owned/equipped → se elimina.
 

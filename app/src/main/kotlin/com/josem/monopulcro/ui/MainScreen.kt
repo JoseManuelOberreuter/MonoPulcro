@@ -356,6 +356,11 @@ fun MainScreen(
                             translationY = if (isAstronautFloating) astronautFloatY else 0f
                         }
                     ) {
+                        if (state.isCleanToday) {
+                            state.equippedAura?.let { auraId ->
+                                AuraSparkles(boxSize = monkeyImageSize, auraId = auraId)
+                            }
+                        }
                         Image(
                             painter = painterResource(
                                 id = MonkeyImageResolver.resolve(
@@ -366,7 +371,7 @@ fun MainScreen(
                                 )
                             ),
                             contentDescription = "Mono Pulcro",
-                            modifier = Modifier.size(monkeyImageSize)
+                            modifier = Modifier.size(monkeyImageSize).zIndex(1f)
                         )
                         if (!isMonkeyCleaning && state.dustMotes.isNotEmpty()) {
                             DustMotesOverlay(motes = state.dustMotes)

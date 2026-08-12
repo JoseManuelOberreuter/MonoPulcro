@@ -290,6 +290,36 @@ class MonkeyStateManagerTest {
   }
 
   @Test
+  fun buyAura_deductsBananasAndOwnsIt() {
+    val m = manager()
+    m.debugAddBananas(500)
+    assertTrue(m.buyAura("brillos"))
+    assertEquals(0, m.bananas)
+    assertTrue("brillos" in m.ownedAuras)
+    assertFalse(m.buyAura("brillos"))
+  }
+
+  @Test
+  fun buyAura_insufficientBananas_fails() {
+    val m = manager()
+    m.debugAddBananas(10)
+    assertFalse(m.buyAura("brillos"))
+    assertEquals(10, m.bananas)
+    assertTrue(m.ownedAuras.isEmpty())
+  }
+
+  @Test
+  fun useAura_equipsAndUnequips() {
+    val m = manager()
+    m.debugAddBananas(500)
+    m.buyAura("brillos")
+    m.useAura("brillos")
+    assertEquals("brillos", m.equippedAura)
+    m.useAura(null)
+    assertEquals(null, m.equippedAura)
+  }
+
+  @Test
   fun grantPurchasedBananas_addsOncePerToken() {
     val m = manager()
     assertEquals(50, m.grantPurchasedBananas(50, "token-a"))

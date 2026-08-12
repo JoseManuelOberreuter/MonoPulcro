@@ -111,6 +111,16 @@ object MonkeyImageResolver {
         "pirata"    to PIRATA_STATES,
     )
 
+    /** Drawable de la partícula que orbita al mono para cada aura (ver [AuraSparkles]). */
+    private val AURA_SPARKLE_DRAWABLES = mapOf(
+        "brillos"  to R.drawable.brillo,
+        "motas"    to R.drawable.polvo_mota,
+        "platanos" to R.drawable.banana,
+    )
+
+    fun auraSparkleDrawable(auraId: String): Int =
+        AURA_SPARKLE_DRAWABLES[auraId] ?: R.drawable.brillo
+
     private val ESTADOS_EXTREMO = listOf(
         R.drawable.mono_sucio_cansado,
         R.drawable.mono_sucio_enfermo,

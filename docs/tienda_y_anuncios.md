@@ -52,8 +52,30 @@ Definidos en `MonkeyStateManager.ACCESSORIES`:
 | pirata | Pirata | 130 |
 
 - `buyAccessory(id)`: descuenta bananas, añade a `ownedAccessories`.
-- `useAccessory(id)`: equipa (solo se ve si `isCleanToday`).
-- Preview en tienda: `MonkeyImageResolver.previewForAccessory` (variante `_1`).
+- `useAccessory(id?)`: equipa (solo se ve si `isCleanToday`); `useAccessory(null)`
+  desequipa (botón "Quitar" en la card cuando está puesto).
+
+### Auras
+
+Categoría independiente del atuendo — se pueden llevar ambas a la vez (slots
+separados: `equippedAccessory` y `equippedAura`). Definidas en
+`MonkeyStateManager.AURAS`:
+
+| ID | Nombre | Precio | Partícula |
+|---|---|---|---|
+| brillos | Aura de Brillos | 500 | `brillo.png` |
+| motas | Aura de Motas | 500 | `polvo_mota.png` |
+| platanos | Aura de Plátanos | 500 | `banana.png` |
+
+- `buyAura(id)` / `useAura(id?)`: igual que accesorios (ambos admiten `null`
+  para desequipar, con botón "Quitar" en la tienda).
+- Visual: `AuraSparkles` (`ui/MonkeyCleaningOverlay.kt`) — aro ovalado de 8
+  partículas que gira sobre sí mismo y alrededor del mono (cada partícula gira
+  además sobre su propio eje) mientras sube: empieza ancho abajo y se va
+  cerrando hasta quedar angosto arriba, alternando delante/detrás vía
+  `Modifier.zIndex`, en loop infinito. La partícula usada depende del aura
+  (`MonkeyImageResolver.auraSparkleDrawable`). Solo se ve si `isCleanToday`.
+- Preview en tienda: imagen estática de la partícula (`AuraPreview`, sin animar).
 
 El id `gold` está migrado fuera de prefs (obsoleto).
 

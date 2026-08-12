@@ -11,10 +11,12 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +43,8 @@ import com.josem.monopulcro.billing.BananaChestOfferUi
 import com.josem.monopulcro.data.MonkeyStateManager
 import com.josem.monopulcro.data.MonkeyStateManager.Companion.AccessoryItem
 import com.josem.monopulcro.data.MonkeyStateManager.Companion.ACCESSORIES
+import com.josem.monopulcro.data.MonkeyStateManager.Companion.AuraItem
+import com.josem.monopulcro.data.MonkeyStateManager.Companion.AURAS
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -55,6 +59,7 @@ private val ShopObjectCardMinHeight = 112.dp
 
 private enum class ShopTab(val title: String) {
     OUTFITS("Atuendos"),
+    AURAS("Auras"),
     OBJECTS("Objetos"),
 }
 
@@ -184,7 +189,14 @@ fun ShopScreen(
                             ownedAccessories = state.ownedAccessories,
                             equippedAccessory = state.equippedAccessory,
                             onBuy = { vm.buyAccessory(it) },
-                            onUse = { vm.useAccessory(it) }
+                            onUse = { vm.useAccessory(if (state.equippedAccessory == it) null else it) }
+                        )
+                        ShopTab.AURAS -> AurasShopPage(
+                            bananas = state.bananas,
+                            ownedAuras = state.ownedAuras,
+                            equippedAura = state.equippedAura,
+                            onBuy = { vm.buyAura(it) },
+                            onUse = { vm.useAura(if (state.equippedAura == it) null else it) }
                         )
                         ShopTab.OBJECTS -> ObjectsShopPage(
                             bananas = state.bananas,
@@ -340,6 +352,40 @@ private fun OutfitsShopPage(
                 canAfford = canAfford,
                 onBuy = { onBuy(accessory.id) },
                 onUse = { onUse(accessory.id) }
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun AurasShopPage(
+    bananas: Int,
+    ownedAuras: Set<String>,
+    equippedAura: String?,
+    onBuy: (String) -> Unit,
+    onUse: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .navigationBarsPadding(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        AURAS.forEach { aura ->
+            val isOwned = aura.id in ownedAuras
+            val isEquipped = equippedAura == aura.id
+            val canAfford = bananas >= aura.price
+
+            AuraCard(
+                aura = aura,
+                isOwned = isOwned,
+                isEquipped = isEquipped,
+                canAfford = canAfford,
+                onBuy = { onBuy(aura.id) },
+                onUse = { onUse(aura.id) }
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -729,17 +775,34 @@ private fun AccessoryCard(
 
         when {
             isEquipped -> {
-                Box(
-                    modifier = Modifier
-                        .background(ShopWaveColor, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "✓ Puesto",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFEE2E2))
+                            .clickable(onClick = onUse),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Quitar",
+                            tint = Color(0xFFB91C1C),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(ShopWaveColor, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "✓ Puesto",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
             isOwned -> {
@@ -784,6 +847,130 @@ private fun AccessoryPreview(
 ) {
     Image(
         painter = painterResource(MonkeyImageResolver.previewForAccessory(accessoryId)),
+        contentDescription = null,
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun AuraCard(
+    aura: AuraItem,
+    isOwned: Boolean,
+    isEquipped: Boolean,
+    canAfford: Boolean,
+    onBuy: () -> Unit,
+    onUse: () -> Unit
+) {
+    val cardBackground = when {
+        isEquipped -> Color(0xFFE0F2FE)
+        isOwned    -> Color(0xFFF0FDF4)
+        else       -> Color(0xFFF8FAFC)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(cardBackground, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        AuraPreview(auraId = aura.id, modifier = Modifier.size(72.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = aura.name,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1E293B)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.banana),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "${aura.price} bananas",
+                    fontSize = 13.sp,
+                    color = Color(0xFF64748B)
+                )
+            }
+        }
+
+        when {
+            isEquipped -> {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFEE2E2))
+                            .clickable(onClick = onUse),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Quitar",
+                            tint = Color(0xFFB91C1C),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(ShopWaveColor, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "✓ Puesta",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+            isOwned -> {
+                Button(
+                    onClick = onUse,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF16A34A)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text("Usar", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            else -> {
+                Button(
+                    onClick = onBuy,
+                    enabled = canAfford,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFEA580C),
+                        disabledContainerColor = Color(0xFFE2E8F0)
+                    ),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Comprar",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (canAfford) Color.White else Color(0xFF94A3B8)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AuraPreview(auraId: String, modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource(MonkeyImageResolver.auraSparkleDrawable(auraId)),
         contentDescription = null,
         modifier = modifier
     )

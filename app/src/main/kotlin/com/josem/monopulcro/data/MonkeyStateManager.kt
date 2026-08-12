@@ -123,6 +123,12 @@ class MonkeyStateManager(
     val equippedAccessory: String?
         get() = prefs.getString(KEY_EQUIPPED_ACCESSORY, "").takeIf { it?.isNotEmpty() == true }
 
+    /** Auras: capa visual independiente del atuendo (pueden ir equipadas ambas a la vez). */
+    val ownedAuras: Set<String>
+        get() = prefs.getStringSet(KEY_OWNED_AURAS, emptySet()) ?: emptySet()
+    val equippedAura: String?
+        get() = prefs.getString(KEY_EQUIPPED_AURA, "").takeIf { it?.isNotEmpty() == true }
+
     val onboardingCompleted: Boolean
         get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
 
@@ -437,6 +443,22 @@ class MonkeyStateManager(
         return true
     }
 
+    fun buyAura(auraId: String): Boolean {
+        val item = AURAS.find { it.id == auraId } ?: return false
+        if (bananas < item.price || auraId in ownedAuras) return false
+        val newOwned = ownedAuras.toMutableSet().also { it.add(auraId) }
+        prefs.edit()
+            .putInt(KEY_BANANAS, bananas - item.price)
+            .putStringSet(KEY_OWNED_AURAS, newOwned)
+            .apply()
+        return true
+    }
+
+    /** Equipa/desequipa el aura (a diferencia del atuendo, admite "ninguna"). */
+    fun useAura(auraId: String?) {
+        prefs.edit().putString(KEY_EQUIPPED_AURA, auraId ?: "").apply()
+    }
+
     /** Compra 1 Escudo de Pulcritud en la tienda (100 bananas, máx. MAX_SHIELDS). */
     fun buyShield(): Boolean {
         if (bananas < SHIELD_SHOP_PRICE) return false
@@ -485,8 +507,9 @@ class MonkeyStateManager(
         prefs.edit().putBoolean(KEY_PENDING_SHOP_CHEST_AD, false).commit()
     }
 
-    fun useAccessory(accessoryId: String) {
-        prefs.edit().putString(KEY_EQUIPPED_ACCESSORY, accessoryId).apply()
+    /** Equipa/desequipa el atuendo (accessoryId = null → ninguno puesto). */
+    fun useAccessory(accessoryId: String?) {
+        prefs.edit().putString(KEY_EQUIPPED_ACCESSORY, accessoryId ?: "").apply()
     }
 
     // ─── Hint tienda (primera vez que alcanza el accesorio más barato) ─────────
@@ -771,6 +794,8 @@ class MonkeyStateManager(
         const val KEY_TASKS            = "tasksJson"
         const val KEY_OWNED_ACCESSORIES  = "ownedAccessories"
         const val KEY_EQUIPPED_ACCESSORY = "equippedAccessory"
+        const val KEY_OWNED_AURAS        = "ownedAuras"
+        const val KEY_EQUIPPED_AURA      = "equippedAura"
         const val KEY_STREAK_BONUS_GIVEN = "streakBonusGiven"
         const val KEY_REWARD_BANANAS     = "rewardBananasToday"
         const val KEY_REWARD_DOUBLED     = "rewardDoubledToday"
@@ -843,6 +868,14 @@ class MonkeyStateManager(
             AccessoryItem("elegante",  "Elegante",  110),
             AccessoryItem("cocinero",  "Cocinero",  120),
             AccessoryItem("pirata",    "Pirata",    130),
+        )
+
+        data class AuraItem(val id: String, val name: String, val price: Int)
+
+        val AURAS = listOf(
+            AuraItem("brillos",  "Aura de Brillos",   500),
+            AuraItem("motas",    "Aura de Motas",     500),
+            AuraItem("platanos", "Aura de Plátanos",  500),
         )
     }
 }
