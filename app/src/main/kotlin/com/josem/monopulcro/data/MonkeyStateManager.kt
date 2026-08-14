@@ -248,6 +248,7 @@ class MonkeyStateManager(
         editor.putBoolean(KEY_REWARD_DOUBLED, false)
         editor.putInt(KEY_SHOP_CHEST_OPENS_TODAY, 0)
         editor.putBoolean(KEY_PENDING_SHOP_CHEST_AD, false)
+        editor.putInt(KEY_PETS_TODAY, 0)
         editor.putString(KEY_LAST_RESET, todayStr)
         editor.commit()
     }
@@ -613,6 +614,19 @@ class MonkeyStateManager(
         prefs.edit().putString(KEY_DUST_MOTES, gson.toJson(canonical)).apply()
     }
 
+    // ─── Acariciar ─────────────────────────────────────────────────────────────
+
+    val petsToday: Int get() = prefs.getInt(KEY_PETS_TODAY, 0)
+    val petsRemainingToday: Int
+        get() = (MAX_PETS_PER_DAY - petsToday).coerceAtLeast(0)
+
+    /** Acaricia al mono (gratis). Devuelve false si ya se agotó el tope diario. */
+    fun petMonkey(): Boolean {
+        if (petsToday >= MAX_PETS_PER_DAY) return false
+        prefs.edit().putInt(KEY_PETS_TODAY, petsToday + 1).apply()
+        return true
+    }
+
     // ─── Logros y progresión a largo plazo ─────────────────────────────────────
 
     val bestStreakCount: Int get() = prefs.getInt(KEY_BEST_STREAK, 0)
@@ -761,6 +775,10 @@ class MonkeyStateManager(
         syncDustSpawns()
     }
 
+    fun debugResetPetsToday() {
+        prefs.edit().putInt(KEY_PETS_TODAY, 0).commit()
+    }
+
     fun debugClearDayOffset() {
         prefs.edit().putInt(KEY_DEBUG_DAY_OFFSET, 0).commit()
         checkAndResetForNewDay()
@@ -841,6 +859,9 @@ class MonkeyStateManager(
         const val KEY_PENDING_SHOP_CHEST_AD = "pendingShopChestAd"
         const val KEY_PROCESSED_IAP_TOKENS = "processedIapTokens"
         const val MAX_PROCESSED_IAP_TOKENS = 50
+
+        const val KEY_PETS_TODAY = "petsToday"
+        const val MAX_PETS_PER_DAY = 10
 
         /** Hitos one-shot de racha → escudos. Independiente del bonus banana % 7. */
         val SHIELD_MILESTONES: Map<Int, Int> = linkedMapOf(

@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.ComponentActivity
+import com.josem.monopulcro.BuildConfig
 import com.josem.monopulcro.R
 import com.josem.monopulcro.data.Achievement
 import com.josem.monopulcro.data.MonkeyStateManager
@@ -138,6 +139,7 @@ fun MainScreen(
     var celebration by remember { mutableStateOf<StreakCelebration?>(null) }
     var chestCelebration by remember { mutableStateOf<StreakCelebration?>(null) }
     var isMonkeyCleaning by remember { mutableStateOf(false) }
+    var isMonkeyPetting by remember { mutableStateOf(false) }
     var dustAtCleanStart by remember { mutableStateOf(emptyList<com.josem.monopulcro.data.DustMote>()) }
     var showDustBananaReward by remember { mutableStateOf(false) }
     var dustBananaReward by remember { mutableStateOf(0) }
@@ -340,11 +342,16 @@ fun MainScreen(
                         .clickable(
                             interactionSource = monkeyInteractionSource,
                             indication = null,
-                            enabled = !isMonkeyCleaning && !interactionLocked,
+                            enabled = !isMonkeyCleaning && !isMonkeyPetting && !interactionLocked,
                             onClick = {
-                                dustAtCleanStart = vm.dustMotesForCleaning()
-                                isMonkeyCleaning = true
-                                sounds.playCleaningSequence()
+                                val dustNow = vm.dustMotesForCleaning()
+                                if (dustNow.isNotEmpty()) {
+                                    dustAtCleanStart = dustNow
+                                    isMonkeyCleaning = true
+                                    sounds.playCleaningSequence()
+                                } else if (vm.petMonkey()) {
+                                    isMonkeyPetting = true
+                                }
                             }
                         )
                 ) {
@@ -389,32 +396,12 @@ fun MainScreen(
                             }
                         )
                     }
+                    if (isMonkeyPetting) {
+                        MonkeyPettingOverlay(onFinished = { isMonkeyPetting = false })
+                    }
                 }
 
-                Text(
-                    text = when {
-                        state.allTasks.isEmpty()                          -> "¡Agrega tareas para empezar!"
-                        state.todayTasks.isEmpty()                        -> "¡Hoy es día de descanso!"
-                        state.isCleanToday                                -> TIPS_PHRASES[tipIndex]
-                        state.missedDaysCount >= 2 || state.streakBroken  -> SUCIO2_PHRASES[sucio2Index]
-                        state.missedDaysCount == 1                        -> SUCIO1_PHRASES[sucio1Index]
-                        else                                              -> "Hay tareas pendientes..."
-                    },
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center,
-                    color = when {
-                        state.allTasks.isEmpty()                          -> Color(0xFF7C3AED)
-                        state.todayTasks.isEmpty()                        -> Color(0xFF0369A1)
-                        state.isCleanToday                                -> Color(0xFF16A34A)
-                        state.missedDaysCount >= 2 || state.streakBroken  -> Color(0xFFB91C1C)
-                        state.missedDaysCount == 1                        -> Color(0xFF92400E)
-                        else                                              -> Color(0xFF92400E)
-                    },
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // ── Sección tareas ─────────────────────────────────────────────
                 Row(
@@ -466,6 +453,31 @@ fun MainScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = when {
+                        state.allTasks.isEmpty()                          -> "¡Agrega tareas para empezar!"
+                        state.todayTasks.isEmpty()                        -> "¡Hoy es día de descanso!"
+                        state.isCleanToday                                -> TIPS_PHRASES[tipIndex]
+                        state.missedDaysCount >= 2 || state.streakBroken  -> SUCIO2_PHRASES[sucio2Index]
+                        state.missedDaysCount == 1                        -> SUCIO1_PHRASES[sucio1Index]
+                        else                                              -> "Hay tareas pendientes..."
+                    },
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center,
+                    color = when {
+                        state.allTasks.isEmpty()                          -> Color(0xFF7C3AED)
+                        state.todayTasks.isEmpty()                        -> Color(0xFF0369A1)
+                        state.isCleanToday                                -> Color(0xFF16A34A)
+                        state.missedDaysCount >= 2 || state.streakBroken  -> Color(0xFFB91C1C)
+                        state.missedDaysCount == 1                        -> Color(0xFF92400E)
+                        else                                              -> Color(0xFF92400E)
+                    },
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Box(
@@ -513,6 +525,11 @@ fun MainScreen(
                     // Espacio ≈ una fila de tarea invisible entre la lista y el anuncio
                     Spacer(modifier = Modifier.height(TaskRowHeight))
                     DailyTasksNativeAd()
+                }
+
+                if (BuildConfig.DEBUG) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    DebugPanel(state = state, vm = vm)
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -716,6 +733,77 @@ private fun ViewModeIconButton(
             tint = if (selected) Color(0xFF0EA5E9) else Color(0xFF94A3B8),
             modifier = Modifier.size(18.dp)
         )
+    }
+}
+
+// ── Panel de debug (solo BuildConfig.DEBUG) ────────────────────────────────
+
+@Composable
+private fun DebugPanel(state: MonkeyUiState, vm: MonkeyViewModel) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFEF3C7), RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "DEBUG · Escudos / Días / Caricias",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF92400E)
+        )
+        Text(
+            text = "Fecha juego: ${state.debugGameDate} (offset ${state.debugDayOffset})\n" +
+                "lastReset: ${state.debugLastResetDate}\n" +
+                "Racha: ${state.streak} · Escudos: ${state.shieldsCount}/${state.maxShields}\n" +
+                "streakCounted: ${state.debugStreakCountedToday} · broken: ${state.streakBroken}\n" +
+                "Tareas hoy: ${state.todayTasks.count { it.isCompleted }}/${state.todayTasks.size} · missedDays: ${state.missedDaysCount}\n" +
+                "Último escudo usado: ${state.debugLastShieldProtectedDate}\n" +
+                "Caricias hoy: ${MonkeyStateManager.MAX_PETS_PER_DAY - state.petsRemainingToday}/${MonkeyStateManager.MAX_PETS_PER_DAY}",
+            fontSize = 11.sp,
+            color = Color(0xFF92400E)
+        )
+
+        DebugButtonRow {
+            DebugButton("Día perdido", Modifier.weight(1f)) { vm.debugAdvanceDay(false) }
+            DebugButton("Día ganado", Modifier.weight(1f)) { vm.debugAdvanceDay(true) }
+            DebugButton("Avanzar tal cual", Modifier.weight(1f)) { vm.debugAdvanceDay(null) }
+        }
+        DebugButtonRow {
+            DebugButton("Offset=0", Modifier.weight(1f)) { vm.debugClearDayOffset() }
+            DebugButton("+1 escudo", Modifier.weight(1f)) { vm.debugAddShields(1) }
+            DebugButton("−1 escudo", Modifier.weight(1f)) { vm.debugAddShields(-1) }
+        }
+        DebugButtonRow {
+            DebugButton("Racha=6 (hito)", Modifier.weight(1f)) { vm.debugSetStreak(6) }
+            DebugButton("+100 bananas", Modifier.weight(1f)) { vm.debugAddBananas(100) }
+            DebugButton("+2h polvo", Modifier.weight(1f)) { vm.debugAdvanceDustHours(2) }
+        }
+        DebugButtonRow {
+            DebugButton("Reset caricias", Modifier.weight(1f)) { vm.debugResetPetsToday() }
+            DebugButton("Reset prefs", Modifier.weight(1f)) { vm.debugResetAllPrefs() }
+        }
+    }
+}
+
+@Composable
+private fun DebugButtonRow(content: @Composable RowScope.() -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        content = content
+    )
+}
+
+@Composable
+private fun DebugButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+    ) {
+        Text(text = text, fontSize = 10.sp, textAlign = TextAlign.Center)
     }
 }
 

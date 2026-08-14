@@ -153,8 +153,9 @@ El mono puede amanecer sucio si fallaste ayer (salvo protección de escudo).
 - Caja ~240×240 dp, imagen ~220×220 dp.
 - Sombra radial debajo (Canvas).
 - Motas de polvo: overlay encima si hay (`DustMotesOverlay`).
-- Tap en el mono: animación de limpieza (spray/paño), independiente del
-  estado limpio/sucio de tareas.
+- Tap en el mono: si hay motas de polvo, animación de limpieza (spray/paño);
+  si no hay motas, acaricia al mono (corazones, tope diario). Ver
+  [`xp_y_niveles.md`](xp_y_niveles.md).
 
 Header: bananas (izq), icono tienda (centro), racha fuego (der).
 

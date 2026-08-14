@@ -19,6 +19,7 @@ Priorización amplia y backlog técnico: `[puntos_de_mejora.md](puntos_de_mejora
 
 ## Hecho
 
+- [x] Acariciar al mono: tap sin motas de polvo dispara corazones + tope diario (`docs/xp_y_niveles.md`)
 - [x] Agregar overlay de compra de objeto (cicla variantes del atuendo; Usar / Más tarde)
 - [x] Agregar overlay de racha rota (reset multi-día + `StreakBrokenOverlay`)
 - [x] Integrar Google Play Billing: 3 cofres de bananas consumibles en tienda

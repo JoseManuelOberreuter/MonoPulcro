@@ -337,4 +337,31 @@ class MonkeyStateManagerTest {
     assertEquals(null, m.grantPurchasedBananas(-5, "token-z"))
     assertEquals(0, m.bananas)
   }
+
+  @Test
+  fun petMonkey_succeedsAndDecrementsRemaining() {
+    val m = manager()
+    assertEquals(MonkeyStateManager.MAX_PETS_PER_DAY, m.petsRemainingToday)
+    assertTrue(m.petMonkey())
+    assertEquals(1, m.petsToday)
+    assertEquals(MonkeyStateManager.MAX_PETS_PER_DAY - 1, m.petsRemainingToday)
+  }
+
+  @Test
+  fun petMonkey_failsWhenDailyCapReached() {
+    val m = manager()
+    repeat(MonkeyStateManager.MAX_PETS_PER_DAY) { assertTrue(m.petMonkey()) }
+    assertEquals(0, m.petsRemainingToday)
+    assertFalse(m.petMonkey())
+    assertEquals(MonkeyStateManager.MAX_PETS_PER_DAY, m.petsToday)
+  }
+
+  @Test
+  fun checkAndResetForNewDay_resetsPetsToday() {
+    val m = manager()
+    repeat(3) { m.petMonkey() }
+    assertEquals(3, m.petsToday)
+    m.debugAdvanceDay()
+    assertEquals(0, m.petsToday)
+  }
 }

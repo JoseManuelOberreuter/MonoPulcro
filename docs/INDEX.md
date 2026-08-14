@@ -21,6 +21,7 @@ Guía de lectura de `docs/`. Versión de app alineada: **1.2.3**.
 | [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md) | Protección de racha, hitos, tienda |
 | [`logros.md`](logros.md) | Racha máxima histórica, contadores de por vida, catálogo de logros |
 | [`motas_de_polvo.md`](motas_de_polvo.md) | Spawn cada 2 h, limpieza, +1 banana |
+| [`xp_y_niveles.md`](xp_y_niveles.md) | Acariciar al mono (implementado) + plan a futuro de XP/niveles/alimentar |
 | [`economia.md`](economia.md) | Fuentes/gastos de bananas y balance |
 | [`tienda_y_anuncios.md`](tienda_y_anuncios.md) | Shop, rewarded ads, cofre tienda |
 | [`eventos_firebase.md`](eventos_firebase.md) | Eventos de Firebase Analytics implementados |

@@ -108,6 +108,12 @@ data class MonkeyUiState(
     val shopChestRemainingToday: Int = MonkeyStateManager.MAX_SHOP_CHEST_OPENS_PER_DAY,
     val bestStreakCount: Int = 0,
     val unlockedAchievements: Set<String> = emptySet(),
+    val petsRemainingToday: Int = MonkeyStateManager.MAX_PETS_PER_DAY,
+    val debugGameDate: String = "",
+    val debugDayOffset: Int = 0,
+    val debugLastResetDate: String = "",
+    val debugStreakCountedToday: Boolean = false,
+    val debugLastShieldProtectedDate: String = "",
 )
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
@@ -224,6 +230,16 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         refreshState()
         updateWidget()
         return reward
+    }
+
+    /** Acaricia al mono (gratis, tope diario). Devuelve true si tuvo efecto. */
+    fun petMonkey(): Boolean {
+        val success = manager.petMonkey()
+        if (success) {
+            sounds.playMonkeyCheer()
+            refreshState()
+        }
+        return success
     }
 
     fun addTask(task: Task) {
@@ -431,6 +447,54 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         refreshState()
     }
 
+    // ─── Panel de debug (solo BuildConfig.DEBUG) ───────────────────────────────
+
+    fun debugAdvanceDay(markPreviousCompleted: Boolean? = null) {
+        manager.debugAdvanceDay(markPreviousCompleted)
+        applyAchievementUnlocks()
+        refreshState()
+        updateWidget()
+    }
+
+    fun debugAddShields(delta: Int) {
+        manager.debugAddShields(delta)
+        refreshState()
+    }
+
+    fun debugSetStreak(value: Int) {
+        manager.debugSetStreak(value)
+        refreshState()
+    }
+
+    fun debugAddBananas(amount: Int) {
+        manager.debugAddBananas(amount)
+        refreshState()
+        updateWidget()
+    }
+
+    fun debugAdvanceDustHours(hours: Int) {
+        manager.debugAdvanceDustHours(hours)
+        refreshState()
+        updateWidget()
+    }
+
+    fun debugResetPetsToday() {
+        manager.debugResetPetsToday()
+        refreshState()
+    }
+
+    fun debugClearDayOffset() {
+        manager.debugClearDayOffset()
+        refreshState()
+        updateWidget()
+    }
+
+    fun debugResetAllPrefs() {
+        manager.debugResetAllPrefs()
+        refreshState()
+        updateWidget()
+    }
+
     /** Racha rota tiene prioridad sobre overlay de escudo (mutuamente excluyentes). */
     private fun emitPendingStreakMessages() {
         val broken = manager.consumePendingStreakBrokenMessage()
@@ -556,6 +620,12 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 shopChestRemainingToday = manager.shopChestRemainingToday,
                 bestStreakCount = manager.bestStreakCount,
                 unlockedAchievements = manager.unlockedAchievements,
+                petsRemainingToday = manager.petsRemainingToday,
+                debugGameDate = manager.currentGameDate().toString(),
+                debugDayOffset = manager.debugDayOffset,
+                debugLastResetDate = manager.lastResetDate,
+                debugStreakCountedToday = manager.streakCountedToday,
+                debugLastShieldProtectedDate = manager.lastShieldProtectedDate,
             )
         }
     }

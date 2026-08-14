@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -324,6 +327,75 @@ fun MonkeyCleaningOverlay(
                     rotationZ = clothRotation.value
                 }
         )
+    }
+}
+
+private data class HeartParticle(
+    val xFrac: Float,
+    val driftDp: Float,
+    val travelDp: Float,
+    val sizeDp: Float,
+    val delayMs: Long,
+    val durationMs: Int,
+)
+
+private const val PET_HEART_COUNT = 6
+private const val PET_DURATION_MS = 1_000L
+
+private fun heartParticles(): List<HeartParticle> = List(PET_HEART_COUNT) {
+    HeartParticle(
+        xFrac = 0.22f + Random.nextFloat() * 0.56f,
+        driftDp = (Random.nextFloat() - 0.5f) * 50f,
+        travelDp = 90f + Random.nextFloat() * 50f,
+        sizeDp = 20f + Random.nextFloat() * 14f,
+        delayMs = (Random.nextFloat() * 220f).toLong(),
+        durationMs = 650 + (Random.nextFloat() * 200f).toInt(),
+    )
+}
+
+/** Corazones subiendo al acariciar al mono (tap sin motas de polvo pendientes), ~1 s. */
+@Composable
+fun MonkeyPettingOverlay(onFinished: () -> Unit) {
+    val density = LocalDensity.current
+    val particles = remember { heartParticles() }
+    val travel = remember(particles) { particles.map { Animatable(0f) } }
+    val heartAlpha = remember(particles) { particles.map { Animatable(0f) } }
+
+    LaunchedEffect(Unit) {
+        coroutineScope {
+            particles.forEachIndexed { i, p ->
+                launch {
+                    delay(p.delayMs)
+                    heartAlpha[i].animateTo(1f, tween(120))
+                    travel[i].animateTo(1f, tween(p.durationMs, easing = EaseOut))
+                    heartAlpha[i].animateTo(0f, tween(220))
+                }
+            }
+        }
+        delay(PET_DURATION_MS)
+        onFinished()
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val widthDp = maxWidth.value
+        particles.forEachIndexed { i, p ->
+            val progress = travel[i].value
+            val xOffset = (widthDp * p.xFrac - p.sizeDp / 2).dp
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = null,
+                tint = Color(0xFFE53935),
+                modifier = Modifier
+                    .size(p.sizeDp.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = xOffset, y = (-40).dp)
+                    .graphicsLayer {
+                        translationX = with(density) { (p.driftDp * progress).dp.toPx() }
+                        translationY = with(density) { (-p.travelDp * progress).dp.toPx() }
+                        alpha = heartAlpha[i].value
+                    }
+            )
+        }
     }
 }
 

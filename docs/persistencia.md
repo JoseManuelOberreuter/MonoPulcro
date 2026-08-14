@@ -68,6 +68,14 @@ Migración al init: si `gold` está owned/equipped → se elimina.
 | `dustLastSpawnMs` | Long | epoch ms último spawn |
 | `dustCount` | Int | **legacy**; se migra a JSON |
 
+### Acariciar
+
+| Clave | Tipo | Notas |
+|---|---|---|
+| `petsToday` | Int | 0–10; reset diario |
+
+Ver [`xp_y_niveles.md`](xp_y_niveles.md).
+
 ### Tienda / ads / IAP
 
 | Clave | Tipo | Notas |
@@ -113,6 +121,7 @@ INITIAL_SHIELDS = 3
 SHIELD_SHOP_PRICE = 100
 SHOP_CHEST_REWARD = 10
 MAX_SHOP_CHEST_OPENS_PER_DAY = 3
+MAX_PETS_PER_DAY = 10
 ```
 
 ---
