@@ -10,7 +10,7 @@ Priorización amplia y backlog técnico: `[puntos_de_mejora.md](puntos_de_mejora
 
 - [ ] Cambiar la imagen del splash/inicio de la app Android por la cara del mono (no el onboarding de "Mono Pulcro · tu mono siempre pulcro")
 - [ ] Agregar funcionalidades de recuperar tareas del día anterior por bananas
-- [ ] dar +1 de bananas para cuando tachen una tarea
+- [X] dar +1 de bananas para cuando tachen una tarea
 - [ ] agreegar base de datos
 - [ ] agregar suscripciones
 - [ ] agregar funcion de compartir tareas de la casa
@@ -33,3 +33,4 @@ Priorización amplia y backlog técnico: `[puntos_de_mejora.md](puntos_de_mejora
 - [x] Agregar overlay de racha rota
 - [x] Activar en Play Console los 3 productos IAP (`bananas_chest_small/medium/xlarge`) + license testing
 - [ ] Logros de racha de dias
+ 

@@ -204,12 +204,12 @@ class BillingManager(
             .setProductList(products)
             .build()
 
-        billingClient.queryProductDetailsAsync(params) { result, detailsList ->
+        billingClient.queryProductDetailsAsync(params) { result, productDetailsResult ->
             if (result.responseCode != BillingClient.BillingResponseCode.OK) {
                 Log.w(TAG, "queryProductDetails failed: ${result.debugMessage}")
                 return@queryProductDetailsAsync
             }
-            productDetailsById = detailsList.associateBy { it.productId }
+            productDetailsById = productDetailsResult.productDetailsList.associateBy { it.productId }
             _state.update { current ->
                 current.copy(
                     offers = BananaChestCatalog.ALL.map { chest ->

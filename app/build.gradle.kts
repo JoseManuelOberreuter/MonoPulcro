@@ -82,7 +82,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:23.6.0")
 
     // Google Play Billing (cofres de bananas de pago)
-    implementation("com.android.billingclient:billing-ktx:7.1.1")
+    implementation("com.android.billingclient:billing-ktx:9.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

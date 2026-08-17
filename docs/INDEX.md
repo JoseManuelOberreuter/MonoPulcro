@@ -36,6 +36,12 @@ Guía de lectura de `docs/`. Versión de app alineada: **1.2.3**.
 | [`notificaciones.md`](notificaciones.md) | Alarmas locales y canales |
 | [`audio.md`](audio.md) | SoundManager y assets |
 
+## Marketing y crecimiento
+
+| Doc | Contenido |
+|---|---|
+| [`analisis_marketing_ago2026.md`](analisis_marketing_ago2026.md) | Snapshot cruzado de Google Ads, AdMob, Firebase y Play Console (ago 2026) |
+
 ## Infraestructura y calidad
 
 | Doc | Contenido |
