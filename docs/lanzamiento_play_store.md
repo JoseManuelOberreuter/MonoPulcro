@@ -9,9 +9,18 @@ Versión documentada: **1.2.3** (versionCode 19).
 
 - [ ] `versionCode` / `versionName` incrementados en `app/build.gradle.kts`
 - [ ] Firma release configurada (no commitear keystores ni passwords)
-- [ ] `./gradlew :app:assembleRelease` o App Bundle (`bundleRelease`)
+- [ ] `./gradlew :app:bundleRelease` (App Bundle, lo que sube Play Console)
 - [ ] ProGuard: verificar que AdMob / Gson / Glance no se rompen
       (reglas en `proguard-rules.pro` si hace falta)
+- [ ] Subir `mapping.txt` (`app/build/outputs/mapping/release/`) en Play
+      Console — obligatorio con R8 activado, si no los crashes llegan
+      ofuscados
+- [ ] Páginas de 16 KB: AGP ≥ 8.5.1 alinea automáticamente los `.so`
+      empaquetados (ver `build.gradle.kts` raíz, hoy en 8.13.2). Verificar
+      localmente si hay dudas:
+      `./gradlew :app:assembleRelease` → luego
+      `zipalign -c -P 16 -v 4 app/build/outputs/apk/release/app-release-unsigned.apk`
+      debe terminar en "Verification successful"
 
 ---
 

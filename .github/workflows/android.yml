@@ -22,8 +22,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.9"
 
       - name: Run unit tests and assemble debug
-        run: gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug --no-daemon

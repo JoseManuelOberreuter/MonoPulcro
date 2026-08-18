@@ -15,8 +15,8 @@ android {
         applicationId = "com.josem.monopulcro"
         minSdk = 26
         targetSdk = 36
-        versionCode = 30
-        versionName = "1.3.4"
+        versionCode = 31
+        versionName = "1.3.5"
     }
 
     buildTypes {
@@ -58,6 +58,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
+    // Fuerza una versión reciente: play-services-basement arrastra fragment 1.1.0
+    // transitivamente, y el lint de AGP exige >= 1.3.0 para ActivityResult APIs.
+    implementation("androidx.fragment:fragment-ktx:1.9.0")
 
     // Compose
     implementation("androidx.compose.ui:ui")
