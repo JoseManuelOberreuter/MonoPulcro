@@ -130,12 +130,9 @@ private fun AppNavigation(
     NavHost(navController = navController, startDestination = startDestination) {
         composable(ROUTE_ONBOARDING) {
             OnboardingScreen(
-                onAddFirstTask = {
+                onFinished = {
                     navController.navigate(ROUTE_MAIN) {
                         popUpTo(ROUTE_ONBOARDING) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                    navController.navigate(ROUTE_TASK_NEW) {
                         launchSingleTop = true
                     }
                 },

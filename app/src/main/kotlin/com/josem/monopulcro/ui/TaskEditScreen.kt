@@ -28,6 +28,7 @@ import androidx.compose.ui.res.painterResource
 import com.josem.monopulcro.R
 import com.josem.monopulcro.data.PredefinedTasks
 import com.josem.monopulcro.data.Task
+import java.time.LocalDate
 import java.util.UUID
 
 // ─── Días de la semana ────────────────────────────────────────────────────────
@@ -49,13 +50,25 @@ fun TaskEditScreen(
     val existingTask = remember(taskId) {
         if (!isNew) vm.uiState.value.allTasks.find { it.id == taskId } else null
     }
+    // Primera tarea de un usuario nuevo: evitamos el formulario en blanco
+    // (dropdown vacío + ningún día) precargando una sugerencia editable.
+    val isFirstEverTask = remember(taskId) { isNew && vm.uiState.value.allTasks.isEmpty() }
+    val todayIsoDay = remember { LocalDate.now().dayOfWeek.value }
 
-    var taskName by rememberSaveable { mutableStateOf(existingTask?.name ?: "") }
+    var taskName by rememberSaveable {
+        mutableStateOf(
+            existingTask?.name
+                ?: if (isFirstEverTask) PredefinedTasks.quickSuggestions.first() else ""
+        )
+    }
     var isCustomTask by rememberSaveable {
         mutableStateOf(existingTask?.name?.let { it !in PredefinedTasks.names } ?: false)
     }
     var selectedDays by rememberSaveable {
-        mutableStateOf((existingTask?.scheduledDays ?: emptyList()).toSet())
+        mutableStateOf(
+            (existingTask?.scheduledDays ?: if (isFirstEverTask) listOf(todayIsoDay) else emptyList())
+                .toSet()
+        )
     }
     var notificationEnabled by rememberSaveable {
         mutableStateOf(existingTask?.notificationEnabled ?: false)
@@ -126,6 +139,20 @@ fun TaskEditScreen(
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF64748B)
                     )
+                    if (isFirstEverTask) {
+                        Text(
+                            text = "Elige algo rápido y hazlo hoy mismo:",
+                            fontSize = 13.sp,
+                            color = Color(0xFF64748B),
+                        )
+                        QuickSuggestionChips(
+                            selectedName = taskName.takeIf { !isCustomTask },
+                            onSuggestionSelected = { name ->
+                                isCustomTask = false
+                                taskName = name
+                            },
+                        )
+                    }
                     TaskNameSelector(
                         taskName = taskName,
                         isCustomTask = isCustomTask,
@@ -368,6 +395,39 @@ private fun TaskNotificationSection(
 
 private fun formatTime(hour: Int, minute: Int): String =
     "%02d:%02d".format(hour, minute)
+
+// ─── Sugerencias rápidas (primera tarea) ──────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QuickSuggestionChips(
+    selectedName: String?,
+    onSuggestionSelected: (String) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        PredefinedTasks.quickSuggestions.forEach { suggestion ->
+            val selected = suggestion == selectedName
+            FilterChip(
+                selected = selected,
+                onClick = { onSuggestionSelected(suggestion) },
+                label = {
+                    Text(
+                        text = suggestion,
+                        fontSize = 13.sp,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFF0EA5E9),
+                    selectedLabelColor = Color.White,
+                ),
+            )
+        }
+    }
+}
 
 // ─── Selector de tarea ────────────────────────────────────────────────────────
 

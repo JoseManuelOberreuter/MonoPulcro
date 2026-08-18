@@ -8,7 +8,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -26,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -113,12 +111,10 @@ fun MainScreenTourOverlay(
         label = "tourRingAlpha"
     )
 
+    // Sin bloqueo de taps: es una guía visual, el usuario puede interactuar
+    // con la UI real debajo en cualquier momento (ver MainScreen.interactionLocked).
     BoxWithConstraints(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures { /* bloquea taps en el scrim */ }
-            }
+        modifier = modifier.fillMaxSize()
     ) {
         // Si el target está abajo, la tarjeta va arriba (y viceversa) para no taparlo.
         val cardOnTop = targetBounds != null &&

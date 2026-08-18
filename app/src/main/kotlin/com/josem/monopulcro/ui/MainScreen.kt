@@ -67,7 +67,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.ComponentActivity
-import com.josem.monopulcro.BuildConfig
 import com.josem.monopulcro.R
 import com.josem.monopulcro.data.Achievement
 import com.josem.monopulcro.data.MonkeyStateManager
@@ -188,10 +187,14 @@ fun MainScreen(
     val showTour = state.showMainTour
     var showShieldProtection by remember { mutableStateOf(false) }
     var streakBrokenOverlay by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var showHonestyCheck by remember { mutableStateOf(false) }
     val rewardFlowActive =
         celebration != null || chestCelebration != null || showShieldProtection ||
-            streakBrokenOverlay != null
-    val interactionLocked = showTour || rewardFlowActive
+            streakBrokenOverlay != null || showHonestyCheck
+    // El tour ya no bloquea interacción: es una guía visual no intrusiva, no
+    // una jaula modal (evita repetir el hallazgo de ago-2026: el usuario no
+    // podía marcar su primera tarea porque el tour se lo impedía).
+    val interactionLocked = rewardFlowActive
     var tourStep by remember { mutableIntStateOf(0) }
     val tourBounds = remember { mutableStateMapOf<MainTourStep, Rect>() }
     val tourScrollY = remember { mutableStateMapOf<MainTourStep, Float>() }
@@ -227,6 +230,10 @@ fun MainScreen(
             selectedDayOfWeek = null
             vm.consumeCelebration()
         }
+    }
+
+    LaunchedEffect(state.honestyCheckPending) {
+        if (state.honestyCheckPending) showHonestyCheck = true
     }
 
     LaunchedEffect(celebration, chestCelebration) {
@@ -527,11 +534,6 @@ fun MainScreen(
                     DailyTasksNativeAd()
                 }
 
-                if (BuildConfig.DEBUG) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    DebugPanel(state = state, vm = vm)
-                }
-
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
@@ -553,6 +555,14 @@ fun MainScreen(
                 shieldsRemaining = state.shieldsCount,
                 maxShields = state.maxShields,
                 onFinished = { showShieldProtection = false }
+            )
+        }
+        if (showHonestyCheck) {
+            HonestyCheckOverlay(
+                onFinished = {
+                    showHonestyCheck = false
+                    vm.confirmDayCompletionHonesty()
+                }
             )
         }
         streakBrokenOverlay?.let { (lostStreak, shieldsUsed) ->
@@ -733,77 +743,6 @@ private fun ViewModeIconButton(
             tint = if (selected) Color(0xFF0EA5E9) else Color(0xFF94A3B8),
             modifier = Modifier.size(18.dp)
         )
-    }
-}
-
-// ── Panel de debug (solo BuildConfig.DEBUG) ────────────────────────────────
-
-@Composable
-private fun DebugPanel(state: MonkeyUiState, vm: MonkeyViewModel) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFFFEF3C7), RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "DEBUG · Escudos / Días / Caricias",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF92400E)
-        )
-        Text(
-            text = "Fecha juego: ${state.debugGameDate} (offset ${state.debugDayOffset})\n" +
-                "lastReset: ${state.debugLastResetDate}\n" +
-                "Racha: ${state.streak} · Escudos: ${state.shieldsCount}/${state.maxShields}\n" +
-                "streakCounted: ${state.debugStreakCountedToday} · broken: ${state.streakBroken}\n" +
-                "Tareas hoy: ${state.todayTasks.count { it.isCompleted }}/${state.todayTasks.size} · missedDays: ${state.missedDaysCount}\n" +
-                "Último escudo usado: ${state.debugLastShieldProtectedDate}\n" +
-                "Caricias hoy: ${MonkeyStateManager.MAX_PETS_PER_DAY - state.petsRemainingToday}/${MonkeyStateManager.MAX_PETS_PER_DAY}",
-            fontSize = 11.sp,
-            color = Color(0xFF92400E)
-        )
-
-        DebugButtonRow {
-            DebugButton("Día perdido", Modifier.weight(1f)) { vm.debugAdvanceDay(false) }
-            DebugButton("Día ganado", Modifier.weight(1f)) { vm.debugAdvanceDay(true) }
-            DebugButton("Avanzar tal cual", Modifier.weight(1f)) { vm.debugAdvanceDay(null) }
-        }
-        DebugButtonRow {
-            DebugButton("Offset=0", Modifier.weight(1f)) { vm.debugClearDayOffset() }
-            DebugButton("+1 escudo", Modifier.weight(1f)) { vm.debugAddShields(1) }
-            DebugButton("−1 escudo", Modifier.weight(1f)) { vm.debugAddShields(-1) }
-        }
-        DebugButtonRow {
-            DebugButton("Racha=6 (hito)", Modifier.weight(1f)) { vm.debugSetStreak(6) }
-            DebugButton("+100 bananas", Modifier.weight(1f)) { vm.debugAddBananas(100) }
-            DebugButton("+2h polvo", Modifier.weight(1f)) { vm.debugAdvanceDustHours(2) }
-        }
-        DebugButtonRow {
-            DebugButton("Reset caricias", Modifier.weight(1f)) { vm.debugResetPetsToday() }
-            DebugButton("Reset prefs", Modifier.weight(1f)) { vm.debugResetAllPrefs() }
-        }
-    }
-}
-
-@Composable
-private fun DebugButtonRow(content: @Composable RowScope.() -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        content = content
-    )
-}
-
-@Composable
-private fun DebugButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
-    ) {
-        Text(text = text, fontSize = 10.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -1891,6 +1830,10 @@ private val ShieldBgTop = Color(0xFF38BDF8)
 private val ShieldBgBottom = Color(0xFF0284C7)
 private val ShieldGlow = Color(0xFFBAE6FD)
 
+private val HonestyBgTop = Color(0xFF64748B)
+private val HonestyBgBottom = Color(0xFF334155)
+private val HonestyGlow = Color(0xFFCBD5E1)
+
 private val BrokenBgTop = Color(0xFF78716C)
 private val BrokenBgBottom = Color(0xFF44403C)
 private val BrokenGlow = Color(0xFFFDA4AF)
@@ -2281,6 +2224,148 @@ private fun ShieldProtectionOverlay(
             ) {
                 Text(
                     text = "¡Seguir!",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Chequeo de honestidad: aparece cuando el usuario completa todas las
+ * tareas del día sospechosamente rápido (ver RUSH_COMPLETION_THRESHOLD_MS
+ * en MonkeyViewModel). Es un momento de tono/personalidad, no una mecánica
+ * anti-trampa: la banana/racha ya se otorgó, esto solo retrasa la
+ * celebración un instante.
+ */
+@Composable
+private fun HonestyCheckOverlay(
+    onFinished: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+
+    val overlayAlpha = remember { Animatable(0f) }
+    val iconScale = remember { Animatable(0.5f) }
+    val headlineAlpha = remember { Animatable(0f) }
+    val ctaAlpha = remember { Animatable(0f) }
+
+    var closing by remember { mutableStateOf(false) }
+    fun dismiss() {
+        if (closing || ctaAlpha.value < 0.5f) return
+        closing = true
+        scope.launch {
+            overlayAlpha.animateTo(0f, tween(220))
+            onFinished()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        overlayAlpha.animateTo(1f, tween(220, easing = FastOutSlowInEasing))
+        iconScale.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+        )
+        headlineAlpha.animateTo(1f, tween(260))
+        ctaAlpha.animateTo(1f, tween(260, delayMillis = 250))
+    }
+
+    val wobbleTransition = rememberInfiniteTransition(label = "honestyWobble")
+    val wobble by wobbleTransition.animateFloat(
+        initialValue = -4f,
+        targetValue = 4f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "honestyWobbleAngle"
+    )
+
+    Box(
+        modifier = Modifier
+            .modalOverlayScrim()
+            .graphicsLayer { alpha = overlayAlpha.value }
+            .background(Brush.verticalGradient(listOf(HonestyBgTop, HonestyBgBottom))),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .padding(horizontal = 28.dp, vertical = 40.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(contentAlignment = Alignment.Center) {
+                    Canvas(modifier = Modifier.size(300.dp)) {
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    HonestyGlow.copy(alpha = 0.5f),
+                                    HonestyGlow.copy(alpha = 0.1f),
+                                    Color.Transparent
+                                )
+                            ),
+                            radius = size.minDimension * 0.5f
+                        )
+                    }
+                    Image(
+                        painter = painterResource(R.drawable.mono_sucio_llorando),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(220.dp)
+                            .graphicsLayer {
+                                scaleX = iconScale.value
+                                scaleY = iconScale.value
+                                rotationZ = wobble
+                            }
+                    )
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = "Un momento...",
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer { alpha = headlineAlpha.value }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "¿De verdad hiciste tus tareas de hoy?",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.95f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer { alpha = headlineAlpha.value }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Si me mientes, tu mono se pondrá muy triste.",
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.graphicsLayer { alpha = headlineAlpha.value }
+                )
+            }
+
+            Button(
+                onClick = { dismiss() },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = HonestyBgBottom
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .graphicsLayer { alpha = ctaAlpha.value }
+            ) {
+                Text(
+                    text = "Sí, lo prometo",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )

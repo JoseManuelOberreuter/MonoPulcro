@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.josem.monopulcro.R
 import com.josem.monopulcro.analytics.AnalyticsLogger
 import kotlinx.coroutines.launch
@@ -38,35 +40,21 @@ private data class OnboardingPage(
 
 private val ONBOARDING_PAGES = listOf(
     OnboardingPage(
-        imageRes = MonkeyImageResolver.DEFAULT_PULCRO,
-        title = "Bienvenido a Mono Pulcro",
-        description = "Tu app de hábitos de limpieza para el hogar."
-    ),
-    OnboardingPage(
-        imageRes = R.drawable.banana,
-        title = "Gana bananas",
-        description = "Completa todas tus tareas del día y gana 1 banana como recompensa"
-    ),
-    OnboardingPage(
-        imageRes = R.drawable.fuego,
-        title = "Construye tu racha",
-        description = "Cada día que completes tus tareas aumenta tu racha. ¡No la rompas!"
-    ),
-    OnboardingPage(
-        imageRes = R.drawable.polvo_mota,
-        title = "Pelusas en tu mono",
-        description = "Con el tiempo se ensucia. Tócalo para limpiarlo y gana una banana extra."
-    ),
-    OnboardingPage(
         imageRes = R.drawable.cara_mono,
-        title = "La tienda",
-        description = "Usa tus bananas en la tienda para comprarle accesorios a tu mono"
-    )
+        title = "Bienvenido a Mono Pulcro",
+        description = "La app que te ayuda con los hábitos de tu hogar."
+    ),
+    OnboardingPage(
+        imageRes = R.drawable.cofre_abierto,
+        title = "Un hábito que se disfruta",
+        description = "Convierte tus tareas del hogar en un hábito entretenido y lleno de recompensas."
+    ),
 )
 
 @Composable
 fun OnboardingScreen(
-    onAddFirstTask: () -> Unit
+    onFinished: () -> Unit,
+    vm: MonkeyViewModel = viewModel(),
 ) {
     val pagerState = rememberPagerState(pageCount = { ONBOARDING_PAGES.size })
     val scope = rememberCoroutineScope()
@@ -89,6 +77,31 @@ fun OnboardingScreen(
                 .padding(horizontal = 24.dp, vertical = 16.dp)
                 .navigationBarsPadding()
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (!isLastPage) {
+                    TextButton(
+                        onClick = {
+                            AnalyticsLogger.log(AnalyticsLogger.Events.ONBOARDING_SKIPPED)
+                            vm.seedFirstTasks()
+                            onFinished()
+                        },
+                    ) {
+                        Text(
+                            text = "Saltar",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF64748B),
+                        )
+                    }
+                }
+            }
+
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -122,7 +135,8 @@ fun OnboardingScreen(
                 Button(
                     onClick = {
                         AnalyticsLogger.log(AnalyticsLogger.Events.ONBOARDING_COMPLETE)
-                        onAddFirstTask()
+                        vm.seedFirstTasks()
+                        onFinished()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -131,7 +145,7 @@ fun OnboardingScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9))
                 ) {
                     Text(
-                        text = "Agregar mi primera tarea",
+                        text = "Empezar",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White

@@ -188,7 +188,8 @@ Constantes nuevas en el companion object de `MonkeyStateManager`:
   presentes (el tap debe seguir limpiando motas cuando las hay), subir de
   nivel y ver el overlay + pestaña "Nivel" en `StreakScreen`, y verificar que
   `checkAndResetForNewDay()` resetea `feedsToday`/`petsToday` al otro día
-  (panel de debug, `debugAdvanceDay`).
+  (vía test o `manager.debugAdvanceDay()` directo — el panel de debug en
+  Main se quitó en 2026-08).
 
 ---
 

@@ -66,6 +66,13 @@ Vista semana: filas por día con progreso; sheet con detalle al tocar un día.
 baño, aspirar, etc.). No son plantillas de rutina empaquetadas; el usuario
 elige uno al crear la tarea.
 
+`PredefinedTasks.quickSuggestions` (3 nombres) se usa solo en
+`TaskEditScreen` cuando es la primera tarea del usuario (`allTasks.isEmpty()`
++ `isNew`): precarga el nombre y el día de hoy para evitar el formulario en
+blanco (dropdown vacío + ningún día), mostrando además chips de sugerencia
+rápida. Ver [`analisis_marketing_ago2026.md`](analisis_marketing_ago2026.md)
+y [`onboarding_y_tour.md`](onboarding_y_tour.md).
+
 Mejora propuesta: plantillas multi-tarea (ver [`puntos_de_mejora.md`](puntos_de_mejora.md)).
 
 ---

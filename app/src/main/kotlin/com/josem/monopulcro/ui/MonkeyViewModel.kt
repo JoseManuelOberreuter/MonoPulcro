@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.josem.monopulcro.analytics.AnalyticsLogger
@@ -14,6 +15,7 @@ import com.josem.monopulcro.billing.BillingUiState
 import com.josem.monopulcro.data.Achievement
 import com.josem.monopulcro.data.DustMote
 import com.josem.monopulcro.data.MonkeyStateManager
+import com.josem.monopulcro.data.PredefinedTasks
 import com.josem.monopulcro.data.Task
 import com.josem.monopulcro.notifications.NotificationHelper
 import com.josem.monopulcro.notifications.NotificationScheduler
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 // ─── Modelos de estado ────────────────────────────────────────────────────────
 
@@ -102,6 +105,7 @@ data class MonkeyUiState(
     val tasksViewMode: TasksViewMode = TasksViewMode.TODAY,
     val dustMotes: List<DustMote> = emptyList(),
     val celebration: StreakCelebration? = null,
+    val honestyCheckPending: Boolean = false,
     val showShopAffordHint: Boolean = false,
     val showMainTour: Boolean = false,
     val shopChestOpensToday: Int = 0,
@@ -109,11 +113,6 @@ data class MonkeyUiState(
     val bestStreakCount: Int = 0,
     val unlockedAchievements: Set<String> = emptySet(),
     val petsRemainingToday: Int = MonkeyStateManager.MAX_PETS_PER_DAY,
-    val debugGameDate: String = "",
-    val debugDayOffset: Int = 0,
-    val debugLastResetDate: String = "",
-    val debugStreakCountedToday: Boolean = false,
-    val debugLastShieldProtectedDate: String = "",
 )
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
@@ -151,6 +150,10 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     private val _effects = MutableSharedFlow<MonkeyUiEffect>(extraBufferCapacity = 1)
     val effects: SharedFlow<MonkeyUiEffect> = _effects.asSharedFlow()
 
+    // ─── Chequeo de honestidad (completó el día muy rápido) ───────────────────
+    private var firstCompletionAtElapsedMs: Long? = null
+    private var pendingCelebration: StreakCelebration? = null
+
     init {
         manager.checkAndResetForNewDay()
         applyAchievementUnlocks()
@@ -180,6 +183,9 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
     fun toggleTask(taskId: String) {
         val wasDone = manager.isTaskCompleted(taskId)
         if (!wasDone) sounds.playTaskPop()
+        if (!wasDone && firstCompletionAtElapsedMs == null) {
+            firstCompletionAtElapsedMs = SystemClock.elapsedRealtime()
+        }
 
         val previousStreak = manager.streakCount
         val earned = manager.toggleTask(taskId)
@@ -200,6 +206,35 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         } else null
 
         applyAchievementUnlocks()
+
+        if (earned && celebration != null) {
+            val startedAt = firstCompletionAtElapsedMs
+            firstCompletionAtElapsedMs = null
+            val elapsedMs = startedAt?.let { SystemClock.elapsedRealtime() - it }
+            val taskCount = _uiState.value.todayTasks.size
+            val rushed = taskCount > 1 &&
+                elapsedMs != null && elapsedMs < RUSH_COMPLETION_THRESHOLD_MS
+            if (rushed) {
+                pendingCelebration = celebration
+                // honestyCheckPending se deriva de pendingCelebration dentro de
+                // refreshState() — va por StateFlow (nunca se pierde), no por
+                // el SharedFlow de efectos (que sí puede descartar un tryEmit
+                // si dos efectos se emiten en el mismo tick sin que el
+                // colector alcance a drenar el buffer, como ShowTaskBananaReward
+                // arriba en esta misma función).
+                refreshState()
+                AnalyticsLogger.log(
+                    AnalyticsLogger.Events.HONESTY_CHECK_SHOWN,
+                    mapOf(
+                        AnalyticsLogger.Params.TASK_COUNT to taskCount,
+                        AnalyticsLogger.Params.ELAPSED_MS to (elapsedMs ?: 0L),
+                    )
+                )
+                updateWidget()
+                return
+            }
+        }
+
         refreshState(celebration = celebration)
         updateWidget()
 
@@ -208,6 +243,47 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 NotificationScheduler.schedule(getApplication())
             } catch (_: Exception) { }
             NotificationHelper.showCelebrationNotification(getApplication())
+        }
+    }
+
+    /** El usuario confirmó (o le restó importancia) al chequeo de honestidad: revela la celebración. */
+    fun confirmDayCompletionHonesty() {
+        val pending = pendingCelebration ?: return
+        pendingCelebration = null
+        _uiState.update { it.copy(celebration = pending, honestyCheckPending = false) }
+        AnalyticsLogger.log(
+            AnalyticsLogger.Events.HONESTY_CHECK_CONFIRMED,
+            mapOf(AnalyticsLogger.Params.BANANAS to pending.bananasEarned)
+        )
+        try {
+            NotificationScheduler.schedule(getApplication())
+        } catch (_: Exception) { }
+        NotificationHelper.showCelebrationNotification(getApplication())
+    }
+
+    /**
+     * Crea las 3 tareas rápidas sugeridas para un usuario nuevo (reemplaza el
+     * formulario manual al terminar el onboarding) y marca el tour pendiente.
+     */
+    fun seedFirstTasks() {
+        viewModelScope.launch {
+            if (manager.loadTasks().isNotEmpty()) return@launch
+            val allDays = (1..7).toList()
+            PredefinedTasks.quickSuggestions.forEach { name ->
+                manager.addTask(
+                    Task(id = UUID.randomUUID().toString(), name = name, scheduledDays = allDays)
+                )
+            }
+            AnalyticsLogger.log(
+                AnalyticsLogger.Events.TASKS_SEEDED,
+                mapOf(
+                    AnalyticsLogger.Params.TASK_COUNT to PredefinedTasks.quickSuggestions.size,
+                    AnalyticsLogger.Params.SOURCE to "onboarding",
+                )
+            )
+            manager.markMainTourPending()
+            TaskNotificationScheduler.scheduleAll(getApplication())
+            refreshState()
         }
     }
 
@@ -447,54 +523,6 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
         refreshState()
     }
 
-    // ─── Panel de debug (solo BuildConfig.DEBUG) ───────────────────────────────
-
-    fun debugAdvanceDay(markPreviousCompleted: Boolean? = null) {
-        manager.debugAdvanceDay(markPreviousCompleted)
-        applyAchievementUnlocks()
-        refreshState()
-        updateWidget()
-    }
-
-    fun debugAddShields(delta: Int) {
-        manager.debugAddShields(delta)
-        refreshState()
-    }
-
-    fun debugSetStreak(value: Int) {
-        manager.debugSetStreak(value)
-        refreshState()
-    }
-
-    fun debugAddBananas(amount: Int) {
-        manager.debugAddBananas(amount)
-        refreshState()
-        updateWidget()
-    }
-
-    fun debugAdvanceDustHours(hours: Int) {
-        manager.debugAdvanceDustHours(hours)
-        refreshState()
-        updateWidget()
-    }
-
-    fun debugResetPetsToday() {
-        manager.debugResetPetsToday()
-        refreshState()
-    }
-
-    fun debugClearDayOffset() {
-        manager.debugClearDayOffset()
-        refreshState()
-        updateWidget()
-    }
-
-    fun debugResetAllPrefs() {
-        manager.debugResetAllPrefs()
-        refreshState()
-        updateWidget()
-    }
-
     /** Racha rota tiene prioridad sobre overlay de escudo (mutuamente excluyentes). */
     private fun emitPendingStreakMessages() {
         val broken = manager.consumePendingStreakBrokenMessage()
@@ -614,6 +642,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 tasksViewMode     = viewMode,
                 dustMotes         = manager.dustMotes,
                 celebration       = celebration,
+                honestyCheckPending = pendingCelebration != null,
                 showShopAffordHint = manager.shouldShowShopAffordHint(),
                 showMainTour      = manager.shouldShowMainTour,
                 shopChestOpensToday = manager.shopChestOpensToday,
@@ -621,11 +650,6 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
                 bestStreakCount = manager.bestStreakCount,
                 unlockedAchievements = manager.unlockedAchievements,
                 petsRemainingToday = manager.petsRemainingToday,
-                debugGameDate = manager.currentGameDate().toString(),
-                debugDayOffset = manager.debugDayOffset,
-                debugLastResetDate = manager.lastResetDate,
-                debugStreakCountedToday = manager.streakCountedToday,
-                debugLastShieldProtectedDate = manager.lastShieldProtectedDate,
             )
         }
     }
@@ -663,5 +687,7 @@ class MonkeyViewModel(application: Application) : AndroidViewModel(application) 
 
     companion object {
         private val DAY_LABELS = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+        /** Bajo este tiempo entre la primera y la última tarea, se considera "hecho de una". */
+        private const val RUSH_COMPLETION_THRESHOLD_MS = 45_000L
     }
 }

@@ -97,8 +97,13 @@ Ver también [`calidad_y_testing.md`](calidad_y_testing.md).
 
 - Plantillas de rutina (“Depto”, “Casa con niños”, “Fin de semana”)
   empaquetando `PredefinedTasks`
-- Skip en onboarding
-- Primera tarea sugerida en un tap
+- ~~Skip en onboarding~~ (hecho 2026-08, ver `onboarding_y_tour.md`)
+- ~~Primera tarea sugerida en un tap~~ (hecho 2026-08, ver
+  `PredefinedTasks.quickSuggestions` en `tareas_y_calendario.md`)
+- Tour de Main (7 pasos, spotlight pasivo) sigue siendo un recorrido guiado
+  previo, no ayuda contextual — candidato a convertir en tips que aparecen
+  la primera vez que cada mecánica ocurre (bananas, tienda, racha), según
+  investigación UX citada en `analisis_marketing_ago2026.md`
 
 ### Widget
 

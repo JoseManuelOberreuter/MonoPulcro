@@ -13,6 +13,7 @@ object AnalyticsLogger {
     object Events {
         const val ONBOARDING_START = "onboarding_start"
         const val ONBOARDING_COMPLETE = "onboarding_complete"
+        const val ONBOARDING_SKIPPED = "onboarding_skipped"
         const val TASK_CREATED = "task_created"
         const val TASK_COMPLETED = "task_completed"
         const val FIRST_TASK_COMPLETED = "first_task_completed"
@@ -20,6 +21,9 @@ object AnalyticsLogger {
         const val COSMETIC_UNLOCKED = "cosmetic_unlocked"
         const val STORE_OPENED = "store_opened"
         const val PURCHASE_STARTED = "purchase_started"
+        const val TASKS_SEEDED = "tasks_seeded"
+        const val HONESTY_CHECK_SHOWN = "honesty_check_shown"
+        const val HONESTY_CHECK_CONFIRMED = "honesty_check_confirmed"
     }
 
     object Params {
@@ -30,6 +34,8 @@ object AnalyticsLogger {
         const val PRICE = "price"
         const val SOURCE = "source"
         const val PRODUCT_ID = "product_id"
+        const val TASK_COUNT = "task_count"
+        const val ELAPSED_MS = "elapsed_ms"
     }
 
     private const val PREFS_NAME = "analytics_prefs"

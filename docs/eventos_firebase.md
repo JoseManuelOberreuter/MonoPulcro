@@ -45,12 +45,16 @@ object AnalyticsLogger {
 | Evento | Cuándo | Parámetros | Hook |
 |---|---|---|---|
 | `onboarding_start` | Se compone `OnboardingScreen` | — | `ui/OnboardingScreen.kt` — `LaunchedEffect(Unit)` |
-| `onboarding_complete` | Usuario toca "Agregar mi primera tarea" | — | `ui/OnboardingScreen.kt` — `onClick` del botón de la última página |
+| `onboarding_complete` | Usuario toca "Empezar" en la última página | — | `ui/OnboardingScreen.kt` — `onClick` del botón de la última página |
+| `onboarding_skipped` | Usuario toca "Saltar" en cualquier página no-final | — | `ui/OnboardingScreen.kt` — `onClick` del botón "Saltar" |
+| `tasks_seeded` | Se crean las 3 tareas rápidas sugeridas al terminar/saltar el onboarding (reemplaza el formulario manual) | `task_count` (siempre 3, tamaño de `PredefinedTasks.quickSuggestions`), `source = "onboarding"` | `ui/MonkeyViewModel.kt` — `seedFirstTasks()`, solo si `manager.loadTasks()` estaba vacío |
 
 `OnboardingScreen` solo se compone cuando `AppNavigation` arranca en
 `ROUTE_ONBOARDING` (`startOnboarding = !onboardingCompleted && !shouldShowMainTour`
 en `MainActivity.kt`), así que `onboarding_start` ya queda acotado a usuarios
-nuevos sin lógica extra.
+nuevos sin lógica extra. Tanto el CTA final como "Saltar" llaman a
+`vm.seedFirstTasks()` antes de navegar — el flujo ya no pasa por
+`TaskEditScreen` (ver [`onboarding_y_tour.md`](onboarding_y_tour.md)).
 
 ---
 
@@ -66,6 +70,20 @@ nuevos sin lógica extra.
 del toggle), **no** en el valor de retorno de `manager.toggleTask()` — ese
 booleano indica si se ganó la recompensa del día completo (cofre), que es un
 evento distinto. Al desmarcar una tarea no se loguea nada.
+
+### 3.1 Chequeo de honestidad
+
+| Evento | Cuándo | Parámetros | Hook |
+|---|---|---|---|
+| `honesty_check_shown` | Se completa el día (`earned == true`) y pasaron menos de `RUSH_COMPLETION_THRESHOLD_MS` (45 s) entre la primera y la última tarea marcada, con más de 1 tarea hoy | `task_count`, `elapsed_ms` | `ui/MonkeyViewModel.kt` — `toggleTask()`, rama `rushed` |
+| `honesty_check_confirmed` | Usuario toca "Sí, lo prometo" en el diálogo del mono triste | `bananas` (de la celebración pendiente) | `ui/MonkeyViewModel.kt` — `confirmDayCompletionHonesty()` |
+
+Es un momento de tono/personalidad, no una mecánica anti-trampa: la
+recompensa (`manager.toggleTask()`) ya se otorgó igual en el momento del
+toggle; `honesty_check_shown` solo retiene la celebración (`state.celebration`
+queda en `null`, la real se guarda en `pendingCelebration` dentro del
+ViewModel) hasta que el usuario confirma. Ver `ui/MainScreen.kt` —
+`HonestyCheckOverlay`.
 
 ---
 
@@ -108,8 +126,8 @@ compras ya procesadas (reintentos de `queryPurchasesAsync`).
 |---|---|
 | `analytics/AnalyticsLogger.kt` | Wrapper único de Firebase Analytics; catálogo de eventos/parámetros |
 | `MainActivity.kt` | `AnalyticsLogger.init`; `store_opened` |
-| `ui/OnboardingScreen.kt` | `onboarding_start`, `onboarding_complete` |
-| `ui/MonkeyViewModel.kt` | `task_created`, `task_completed`, `chest_opened`, `cosmetic_unlocked`, `purchase_started` |
+| `ui/OnboardingScreen.kt` | `onboarding_start`, `onboarding_complete`, `onboarding_skipped` |
+| `ui/MonkeyViewModel.kt` | `tasks_seeded`, `task_created`, `task_completed`, `honesty_check_shown`, `honesty_check_confirmed`, `chest_opened`, `cosmetic_unlocked`, `purchase_started` |
 | `data/MonkeyStateManager.kt` | Fuente de `task.scheduledDays`, `ACCESSORIES` (precio) — sin dependencia de Analytics |
 | `billing/BillingManager.kt` | `purchase` (evento estándar GA4) |
 

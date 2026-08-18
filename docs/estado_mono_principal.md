@@ -182,13 +182,11 @@ Ver [`estado_widget.md`](estado_widget.md).
 
 ---
 
-## 12. Debug (panel amarillo, solo `BuildConfig.DEBUG`)
+## 12. Debug
 
-Controles de días/escudos: ver [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md) §10.
-
-- Día perdido / ganado → avanza día y dispara reset
-- +1/−1 escudo, Reset prefs
-- +100 bananas / +2h polvo
+El panel de debug en Main se quitó (2026-08). Los seams determinísticos de
+`MonkeyStateManager` (avanzar día, escudos, bananas, polvo) siguen
+existiendo para tests — ver [`escudos_de_pulcritud.md`](escudos_de_pulcritud.md) §10.
 
 ---
 

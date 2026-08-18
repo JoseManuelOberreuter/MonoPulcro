@@ -1,6 +1,16 @@
 package com.josem.monopulcro.data
 
 object PredefinedTasks {
+    /**
+     * Subconjunto rápido (2-3 min) sugerido en el formulario de la primera
+     * tarea, para no dejar al usuario nuevo frente a un dropdown vacío.
+     */
+    val quickSuggestions: List<String> = listOf(
+        "Hacer la cama",
+        "Lavar los platos",
+        "Sacar la basura",
+    )
+
     val names: List<String> = listOf(
         "Lavar los platos",
         "Limpiar la terraza",

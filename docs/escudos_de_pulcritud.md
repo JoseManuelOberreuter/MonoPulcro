@@ -199,14 +199,17 @@ uno o más; el overlay aparece al abrir/reanudar la app.
                                      pending StreakBrokenOverlay
 
 
-10. DEBUG (panel amarillo, solo BuildConfig.DEBUG)
---------------------------------------------------
-En MainScreen, al final del scroll, panel "DEBUG · Escudos / Días".
-
-Estado mostrado: fecha de juego, offset, lastReset, racha, escudos,
-streakCounted, broken, tareas hoy, missedDays, último día protegido.
-
-Botones clave:
+10. DEBUG
+---------
+El panel amarillo "DEBUG · Escudos / Días / Caricias" en MainScreen se quitó
+en 2026-08 (era solo BuildConfig.DEBUG, pero ya no aporta una vez que las
+mecánicas están estables). Los métodos `debugAdvanceDay`, `debugAddShields`,
+`debugSetStreak`, `debugAddBananas`, `debugAdvanceDustHours`,
+`debugResetPetsToday`, `debugClearDayOffset`, `debugResetAllPrefs` siguen
+existiendo en `MonkeyStateManager` (no en el ViewModel) porque los usa
+`MonkeyStateManagerTest` como seams determinísticos — para reproducir estos
+escenarios manualmente ahora hay que hacerlo vía test o llamando al manager
+directo, no desde la UI.
 
   Día perdido →     Marca el día actual como incompleto, avanza +1 día
                     y corre checkAndResetForNewDay. Debe consumir 1 escudo
@@ -216,7 +219,6 @@ Botones clave:
   Offset=0          Vuelve la fecha de juego a hoy real.
   +1 / −1 escudo    Ajusta el contador (0–3).
   Racha=6 (hito)    Deja streak en 6; al completar el día se dispara hito 7.
-  +100 bananas / +2h polvo / Reset prefs
 
 La fecha de juego es LocalDate.now() + debugDayOffset (prefs).
 todayTasks y el reset usan esa fecha.
